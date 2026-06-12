@@ -148,6 +148,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list + [
         "https://krishnavarshith21-co-mitra-vrify.vercel.app",
+        "https://krishnavarshith21-co-mitra-vrfiy.vercel.app",
         "https://krishnavarshith21-co-mitra-vrify-git-main-krishnavarshith21-cos-projects.vercel.app"
     ],
     allow_origin_regex="https://.*\\.vercel\\.app",
@@ -189,5 +190,6 @@ async def root():
     }
 
 @app.get("/health")
+@app.get("/api/v1/health")
 async def health():
-    return {"status": "ok", "service": "mitra-verify-api"}
+    return {"status": "ok", "version": "1.0"}

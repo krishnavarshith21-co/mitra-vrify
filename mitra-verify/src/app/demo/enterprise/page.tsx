@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Camera, Fingerprint, AlertTriangle, Users, Brain, Activity, RotateCcw, CheckCircle, Terminal, Lock, XCircle, Shield, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { livenessAPI } from '@/lib/api';
+import { livenessAPI, checkHealth, API_BASE } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { processHeadPose } from '@/lib/headPose';
 import dynamic from 'next/dynamic';
@@ -277,6 +277,38 @@ export default function EnterpriseDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+
+  // Debug HUD overlay additions
+  const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<{ url: string; status: number | string; body: string } | null>(null);
+
+  useEffect(() => {
+    console.log("NEXT_PUBLIC_API_URL =", process.env.NEXT_PUBLIC_API_URL);
+    async function performHealthCheck() {
+      try {
+        const res = await checkHealth();
+        if (res.data && res.data.status === 'ok') {
+          setBackendHealthy(true);
+        } else {
+          setBackendHealthy(false);
+          setDiagnosticInfo({
+            url: `${API_BASE}/health`,
+            status: res.status || 'unknown',
+            body: JSON.stringify(res.data)
+          });
+        }
+      } catch (err: any) {
+        console.error('Backend health check failed', err);
+        setBackendHealthy(false);
+        setDiagnosticInfo({
+          url: `${API_BASE}/health`,
+          status: err.response?.status || 'network_error',
+          body: err.response ? JSON.stringify(err.response.data) : (err.message || 'Connection Refused')
+        });
+      }
+    }
+    performHealthCheck();
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -1686,11 +1718,41 @@ export default function EnterpriseDemoPage() {
               )}
             </div>
 
+            {backendHealthy === false && (
+              <div className="glass" style={{ padding: 20, borderRadius: 16, border: '1px solid rgba(255, 51, 102, 0.3)', background: 'rgba(255, 51, 102, 0.03)', marginTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <AlertCircle size={16} color="#ff3366" />
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#ff3366', margin: 0 }}>Connection Diagnostics</h3>
+                </div>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4, margin: '0 0 12px 0' }}>
+                  The biometric verification system is offline. Diagnostics:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11, fontFamily: 'monospace', color: '#cbd5e1', background: '#090f1d', padding: 10, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto', textAlign: 'left' }}>
+                  <div><strong>URL:</strong> {diagnosticInfo?.url}</div>
+                  <div><strong>HTTP Status:</strong> {diagnosticInfo?.status}</div>
+                  <div><strong>Response:</strong> {diagnosticInfo?.body}</div>
+                </div>
+              </div>
+            )}
+
             {/* Camera actions */}
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
               {!streaming ? (
-                <button className="btn-primary" onClick={startCamera} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <Camera size={16} /> Start Session
+                <button
+                  className="btn-primary"
+                  onClick={startCamera}
+                  disabled={backendHealthy !== true}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    opacity: backendHealthy === true ? 1 : 0.6,
+                    cursor: backendHealthy === true ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <Camera size={16} /> {backendHealthy === null ? 'Checking Backend...' : 'Start Session'}
                 </button>
               ) : (
                 <>

@@ -1,1 +1,48 @@
-nohup: uvicorn: No such file or directory
+INFO:     Will watch for changes in these directories: ['/Users/krishnavarshithkamanaboina/Desktop/mitra-vrify/mitra-verify-backend']
+INFO:     Uvicorn running on http://127.0.0.1:8005 (Press CTRL+C to quit)
+INFO:     Started reloader process [67609] using WatchFiles
+INFO:     Started server process [67611]
+INFO:     Waiting for application startup.
+2026-06-12 10:10:03,345 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 10:10:03,346 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-06-12 10:10:03,346 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,346 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("organizations")
+2026-06-12 10:10:03,346 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("api_keys")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("api_usage")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("verification_logs")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("liveness_logs")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sessions")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notifications")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("system_logs")
+2026-06-12 10:10:03,347 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("face_embeddings")
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("face_profiles")
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("face_enrollments")
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-06-12 10:10:03,348 INFO sqlalchemy.engine.Engine COMMIT
+2026-06-12 10:10:03,349 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-06-12 10:10:03,373 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.full_name, users.role, users.email_verified, users.is_active, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.email = ?
+2026-06-12 10:10:03,373 INFO sqlalchemy.engine.Engine [generated in 0.00010s] ('admin@mitraverify.com',)
+2026-06-12 10:10:03,374 INFO sqlalchemy.engine.Engine SELECT system_logs.id, system_logs.level, system_logs.message, system_logs.meta_data, system_logs.created_at 
+FROM system_logs
+ LIMIT ? OFFSET ?
+2026-06-12 10:10:03,374 INFO sqlalchemy.engine.Engine [generated in 0.00005s] (1, 0)
+2026-06-12 10:10:03,375 INFO sqlalchemy.engine.Engine SELECT audit_logs.id, audit_logs.user_id, audit_logs.action, audit_logs.resource_type, audit_logs.resource_id, audit_logs.meta_data, audit_logs.ip_address, audit_logs.created_at 
+FROM audit_logs
+ LIMIT ? OFFSET ?
+2026-06-12 10:10:03,375 INFO sqlalchemy.engine.Engine [generated in 0.00004s] (1, 0)
+2026-06-12 10:10:03,376 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Application startup complete.

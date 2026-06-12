@@ -3,24 +3,11 @@ import axios from 'axios';
 // Set global 5-second timeout limit for all axios requests
 axios.defaults.timeout = 5000;
 
-// Enforce production URL safety rules
-const isProduction = process.env.NODE_ENV === 'production';
-let API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+// Read API URL from environment variable strictly
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-if (isProduction) {
-  // Production must NEVER point to localhost or 127.0.0.1
-  if (!API_BASE || API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1')) {
-    // Fallback to the production backend URL (the localtunnel domain)
-    API_BASE = 'https://mitra-verify-backend-prod.loca.lt/api/v1';
-  }
-} else {
-  if (!API_BASE) {
-    API_BASE = 'http://localhost:8005/api/v1';
-  }
-}
-
-// Startup validation: Log active API URL
-console.log(`[MITRA VERIFY STARTUP] Active API URL: ${API_BASE}`);
+// Log active API URL during startup
+console.log(`[MITRA VERIFY STARTUP] Active API URL: ${API_BASE || 'MISSING'}`);
 
 // Add request/response logging interceptors to global axios
 axios.interceptors.request.use(config => {
@@ -31,13 +18,30 @@ axios.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-axios.interceptors.response.use(response => {
-  console.log(`[AXIOS RESPONSE] ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
-  return response;
-}, error => {
-  console.error(`[AXIOS RESPONSE ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.message}`);
-  return Promise.reject(error);
-});
+// Automatic retry with exponential backoff interceptor on global axios
+axios.interceptors.response.use(
+  response => {
+    console.log(`[AXIOS RESPONSE SUCCESS] ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    return response;
+  },
+  async error => {
+    const config = error.config;
+    if (!config) return Promise.reject(error);
+
+    // Track retries
+    config.__retryCount = config.__retryCount || 0;
+    if (config.__retryCount < 3) {
+      config.__retryCount += 1;
+      const delay = Math.pow(2, config.__retryCount) * 250; // 500ms, 1000ms, 2000ms
+      console.warn(`[AXIOS RETRY] Connection failed. Retrying ${config.method?.toUpperCase()} ${config.url} in ${delay}ms (Attempt ${config.__retryCount}/3)...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return axios(config);
+    }
+
+    console.error(`[AXIOS RESPONSE ERROR] ${config.method?.toUpperCase()} ${config.url} - ${error.message}`);
+    return Promise.reject(error);
+  }
+);
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -67,14 +71,25 @@ api.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-// Token refresh on 401 and response/body logging
+// Token refresh on 401, detailed logging, and automatic retry with backoff on api instance
 api.interceptors.response.use(
   res => {
-    // Detailed logging: endpoint, status code, response body
     console.log(`[API RESPONSE SUCCESS] Endpoint: ${res.config.url}, Status: ${res.status}, Body:`, JSON.stringify(res.data));
     return res;
   },
   async err => {
+    const config = err.config;
+    if (config) {
+      config.__retryCount = config.__retryCount || 0;
+      if (config.__retryCount < 3) {
+        config.__retryCount += 1;
+        const delay = Math.pow(2, config.__retryCount) * 250; // 500ms, 1000ms, 2000ms
+        console.warn(`[API RETRY] Connection failed. Retrying ${config.url} in ${delay}ms (Attempt ${config.__retryCount}/3)...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return api(config);
+      }
+    }
+
     if (err.response) {
       console.error(`[API RESPONSE ERROR] Endpoint: ${err.config?.url}, Status: ${err.response.status}, Body:`, JSON.stringify(err.response.data));
     } else {
@@ -153,5 +168,8 @@ export const adminAPI = {
   clearSystemLogs: () => api.delete('/admin/logs/system'),
   clearAuditLogs: () => api.delete('/admin/logs/audit'),
 };
+
+export { API_BASE };
+export const checkHealth = () => api.get('/health');
 
 export default api;

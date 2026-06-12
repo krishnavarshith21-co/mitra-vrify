@@ -11,7 +11,7 @@ if (isProduction) {
   // Production must NEVER point to localhost or 127.0.0.1
   if (!API_BASE || API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1')) {
     // Fallback to the production backend URL (the localtunnel domain)
-    API_BASE = 'https://red-cooks-feel.loca.lt/api/v1';
+    API_BASE = 'https://mitra-verify-backend-prod.loca.lt/api/v1';
   }
 } else {
   if (!API_BASE) {
@@ -42,7 +42,10 @@ axios.interceptors.response.use(response => {
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 5000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true'
+  },
 });
 
 // Auth token injection and request logging
@@ -115,13 +118,13 @@ export const keysAPI = {
 export const livenessAPI = {
   basic: (apiKey: string, image: string, sessionId?: string) =>
     axios.post(`${API_BASE}/liveness/basic`, { image, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
+      { headers: { 'X-API-Key': apiKey, 'Bypass-Tunnel-Reminder': 'true' } }),
   advanced: (apiKey: string, image: string, challengeType?: string, sessionId?: string) =>
     axios.post(`${API_BASE}/liveness/advanced`, { image, challenge_type: challengeType, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
+      { headers: { 'X-API-Key': apiKey, 'Bypass-Tunnel-Reminder': 'true' } }),
   identity: (apiKey: string, image: string, subjectId?: string, sessionId?: string) =>
     axios.post(`${API_BASE}/identity/verify`, { image, subject_id: subjectId, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
+      { headers: { 'X-API-Key': apiKey, 'Bypass-Tunnel-Reminder': 'true' } }),
   startSession: (apiType: string) =>
     api.post('/liveness/session/start', { api_type: apiType }),
   processDemoFrame: (image: string, sessionId?: string, challengeType?: string, enrolledEmbedding?: number[], apiType?: string) =>

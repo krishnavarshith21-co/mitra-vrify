@@ -98,6 +98,9 @@ export default function BasicDemoPage() {
   const wasBlinkingRef = useRef(false);
 
   // Debug HUD overlay additions
+  useEffect(() => {
+    console.log("NEXT_PUBLIC_API_URL =", process.env.NEXT_PUBLIC_API_URL);
+  }, []);
   const [cameraStatus, setCameraStatus] = useState<'Active' | 'Inactive'>('Inactive');
   const [modelStatus, setModelStatus] = useState<'Loading' | 'Loaded' | 'Failed'>('Loading');
   const searchingForFaceStartRef = useRef<number | null>(null);

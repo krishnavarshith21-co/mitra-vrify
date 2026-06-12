@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token
 from app.models.models import User, Session as UserSession, AuditLog
@@ -74,7 +74,8 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         ip_address=request.client.host if request.client else "unknown",
         user_agent=request.headers.get("user-agent", ""),
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        expires_at=datetime.utcnow() + timedelta(minutes=60)
     )
     db.add(session)
     # Add Audit log

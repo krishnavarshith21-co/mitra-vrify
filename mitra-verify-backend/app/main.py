@@ -10,11 +10,12 @@ from app.api.v1.liveness.router import router as liveness_router
 from app.api.v1.identity.router import router as identity_router
 from app.api.v1.analytics.router import router as analytics_router
 from app.api.v1.admin.router import router as admin_router
-from app.models.models import User, SystemLog, AuditLog
+from app.models.models import User, SystemLog, AuditLog, UserRole
 from app.core.security import hash_password
 from sqlalchemy import select
 from datetime import datetime, timedelta
 import uuid
+import traceback
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,7 +34,7 @@ async def lifespan(app: FastAPI):
                 email="admin@mitraverify.com",
                 password_hash=hash_password("admin123"),
                 full_name="System Administrator",
-                role="admin",
+                role=UserRole.admin,
                 email_verified=True,
                 is_active=True,
                 created_at=datetime.utcnow()
@@ -163,6 +164,12 @@ app.include_router(liveness_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    tb = traceback.format_exc()
+    print(f"[UNHANDLED ERROR] {request.method} {request.url}\n{tb}")
+    return JSONResponse(status_code=500, content={"detail": str(exc), "traceback": tb})
 
 @app.get("/telemetry")
 @app.get("/api/v1/telemetry")

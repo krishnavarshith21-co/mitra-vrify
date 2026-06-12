@@ -68,39 +68,24 @@ export default function LoginPage() {
       const res = await authAPI.login({ email, password });
       const token = res.data.access_token;
 
-      let userDetails = {
-        name: 'Developer',
+      const userDetails = {
+        name: res.data.full_name || email.split('@')[0] || 'Developer',
         email,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=Dev`,
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(email.split('@')[0] || 'Dev')}`,
         provider: 'credentials',
       };
 
-      try {
-        const userRes = await authAPI.me();
-        const fullName = userRes.data.full_name || 'Developer';
-        userDetails = {
-          name: fullName,
-          email,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fullName)}`,
-          provider: 'credentials',
-        };
-      } catch {
-        // Fallback to defaults
-      }
-
       login(token, userDetails);
       setSuccess('Sign in successful! Redirecting...');
-      setLoading(true); // Keep loading state active during redirect
 
-      console.log("[Face Enrollment] Sign-in successful. Token retrieved. Redirecting to /dashboard");
+      console.log("[Auth] Sign-in successful. Redirecting to /dashboard");
       setTimeout(() => {
         try {
           router.replace('/dashboard');
-        } catch (err) {
-          console.error("[Face Enrollment] Router replace redirect failed, falling back to window.location.href", err);
+        } catch {
           window.location.href = '/dashboard';
         }
-      }, 1000);
+      }, 100);
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { detail?: string } } };
       setError(apiErr?.response?.data?.detail || 'Login failed. Check your credentials.');

@@ -141,7 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionError(null);
   }
 
-  // ── login() — called after a successful FastAPI credentials login ──────────
   const login = (token: string, userDetails: User) => {
     localStorage.setItem('mv_access_token', token);
     localStorage.setItem('mv_user_name', userDetails.name);
@@ -149,8 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('mv_user_avatar', userDetails.avatar);
     localStorage.setItem('mv_user_provider', userDetails.provider);
     localStorage.setItem('mv_user_has_enrolled_face', String(!!userDetails.hasEnrolledFace));
+    // Directly set user — no refreshUser() to avoid race condition with dashboard auth guard
     setCredentialsUser(userDetails);
-    refreshUser();
+    setCredentialsLoading(false);
   };
 
   // ── logout() — clears credentials token ───────────────────────────────────

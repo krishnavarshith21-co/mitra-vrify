@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: mitra-verify-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: https://krishnavarshith21-co-mitra-vrify.vercel.app,https://krishnavarshith21-co-mitra-vrfiy.vercel.app
+    healthCheckPath: /health

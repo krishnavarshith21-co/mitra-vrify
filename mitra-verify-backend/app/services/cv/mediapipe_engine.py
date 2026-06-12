@@ -1107,7 +1107,8 @@ def process_demo_frame(
 
     # 11. Challenge validation (Support 15 different facial challenges)
     challenge_passed = False
-    if challenge_type and history:
+    face_confidence_check = _calculate_face_confidence(landmarks, w, h) if detected_faces > 0 else 0.0
+    if challenge_type and history and detected_faces == 1 and face_confidence_check > 0:
         if challenge_type == "face_centered":
             challenge_passed = abs(yaw) < 8.0 and abs(pitch) < 8.0 and 0.35 < (bbox["x"] + bbox["w"]/2) < 0.65
         elif challenge_type == "blink_once":
@@ -1211,13 +1212,18 @@ def process_demo_frame(
     if api_type == "enterprise" and history:
         if "first_face_embedding" not in history:
             history["first_face_embedding"] = current_signature
+            history["identity_changed_count"] = 0
         else:
             initial_similarity = _compute_cosine_similarity(current_signature, history["first_face_embedding"])
             if initial_similarity < 0.85:
-                return {
-                    "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
-                    "bbox": bbox, "status": "IDENTITY_CHANGED", "challenge_passed": False, "enrolled_matched": False
-                }
+                history["identity_changed_count"] = history.get("identity_changed_count", 0) + 1
+                if history["identity_changed_count"] >= 10:
+                    return {
+                        "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
+                        "bbox": bbox, "status": "IDENTITY_CHANGED", "challenge_passed": False, "enrolled_matched": False
+                    }
+            else:
+                history["identity_changed_count"] = 0
 
     similarity_score = 0.0
     enrolled_matched = False
@@ -1225,17 +1231,30 @@ def process_demo_frame(
     
     active_enrollment = enrolled_embedding if enrolled_embedding is not None else enrolled_signature
     if active_enrollment:
-        similarity_score = _compute_cosine_similarity(current_signature, active_enrollment)
-        # For enterprise API, similarity score must exceed 75%
+        raw_similarity = _compute_cosine_similarity(current_signature, active_enrollment)
+        
+        # Smooth similarity score over the last 15 frames using session history cache
+        if history:
+            if "similarity_scores" not in history:
+                history["similarity_scores"] = []
+            history["similarity_scores"].append(raw_similarity)
+            if len(history["similarity_scores"]) > 15:
+                history["similarity_scores"].pop(0)
+            similarity_score = sum(history["similarity_scores"]) / len(history["similarity_scores"])
+        else:
+            similarity_score = raw_similarity
+            
         required_threshold = 0.75 if api_type == "enterprise" else 0.85
         enrolled_matched = similarity_score >= required_threshold
         if enrolled_matched:
             print("MATCH_SUCCESS")
         elif api_type == "enterprise":
-            return {
-                "face_present": True, "detected_faces": detected_faces, "face_confidence": float(similarity_score), "landmark_count": landmark_count,
-                "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score)
-            }
+            # Only trigger UNAUTHORIZED_PERSON if we have at least 5 frames and the smoothed similarity is below threshold
+            if history and len(history.get("similarity_scores", [])) >= 5:
+                return {
+                    "face_present": True, "detected_faces": detected_faces, "face_confidence": float(similarity_score), "landmark_count": landmark_count,
+                    "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score)
+                }
     else:
         status = "no_enrolled_identity"
         

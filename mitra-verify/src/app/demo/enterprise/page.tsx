@@ -78,6 +78,7 @@ function cosineSimilarity(embA: number[], embB: number[]): number {
 }
 
 interface BiometricResponse {
+  status?: string;
   face_present: boolean;
   detected_faces: number;
   landmark_count: number;
@@ -405,6 +406,8 @@ export default function EnterpriseDemoPage() {
   const lastFaceSeenTimeRef = useRef<number | null>(null);
   const lostFramesRef = useRef<number>(0);
   const recoveredFramesRef = useRef<number>(0);
+  const faceDetectionHistoryRef = useRef<boolean[]>([]);
+  const similarityHistoryRef = useRef<number[]>([]);
   useEffect(() => {
     if (streaming) {
       stepStartTimeRef.current = Date.now();
@@ -568,7 +571,7 @@ export default function EnterpriseDemoPage() {
     }
 
     const handleFrameInvalid = (data: BiometricResponse | null) => {
-      const isFacePresent = !!(
+      const currentFaceDetected = !!(
         data &&
         data.face_present &&
         data.face_confidence > 0.50 &&
@@ -578,73 +581,29 @@ export default function EnterpriseDemoPage() {
         Math.abs(data.roll || 0) <= 30
       );
 
-      if (isFacePresent && data) {
-        // Face is actually present, just misalignment or mismatch
-        setFaceConfidenceMetric(data.face_confidence);
-        setTrackingConfidence(Math.min(1.0, data.face_confidence + 0.1));
-        
-        lostFramesRef.current = 0;
-        setLostFrames(0);
-        recoveredFramesRef.current += 1;
-        setRecoveredFrames(recoveredFramesRef.current);
-        lastFaceSeenTimeRef.current = Date.now();
-        setTimeSinceFaceSeen(0);
-
-        if (data.landmarks && data.landmarks.length > 0) {
-          const liveEmb = calculateFaceEmbedding(data.landmarks);
-          if (liveEmb && liveEmb.length > 0) {
-            setLiveEmbedding(liveEmb);
-            console.log("Live embedding generated");
-            console.log(liveEmb.length);
-            
-            if (enrolledEmbedding) {
-              const sim = cosineSimilarity(enrolledEmbedding, liveEmb);
-              console.log("Similarity:", sim);
-              setSimilarity(sim);
-              setLastMatchTime(Date.now());
-            }
-          }
-        }
-
-        if (recoveredFramesRef.current >= 5) {
-          if (prevTrackingStateRef.current === 'FACE_WARNING' || prevTrackingStateRef.current === 'FACE_RECOVERY') {
-            console.log("FACE_REACQUIRED: Restoring previous session automatically.");
-          }
-          setFaceTrackingState('FACE_PRESENT');
-          prevTrackingStateRef.current = 'FACE_PRESENT';
-        }
-
-        const box = data?.bbox;
-        setBbox(box || null);
-        if (data?.ear !== undefined) setEar(data.ear);
-        if (data?.mar !== undefined) setMar(data.mar);
-        const face_center_x = data?.landmarks && data.landmarks[1] ? data.landmarks[1][0] : (box ? box.x + box.w / 2 : 0.5);
-        const face_center_y = data?.landmarks && data.landmarks[1] ? data.landmarks[1][1] : (box ? box.y + box.h / 2 : 0.5);
-        const inside = !!(box &&
-                       Math.abs(face_center_x - 0.5) <= 0.15 &&
-                       Math.abs(face_center_y - 0.5) <= 0.15);
-
-        const isMismatch = data.detected_faces === 1 && inside && data.similarity_score !== undefined && data.similarity_score < 0.85;
-
-        if (isMismatch && hasFaceEnrolled) {
-          // Debounced mismatch increment
-          const mismatchNow = Date.now();
-          if (mismatchNow - lastMismatchIncrementRef.current >= 2500) {
-            lastMismatchIncrementRef.current = mismatchNow;
-            setMismatchCount(prev => {
-              const next = prev + 1;
-              console.log(`[Face Verification] Mismatch detected. Warn count: ${next}/3. Similarity: ${data?.similarity_score}`);
-              if (next >= 4) {
-                setTimeout(() => {
-                  triggerSessionTermination('Identity Verification Failed', true);
-                }, 100);
-              }
-              return next;
-            });
-          }
-        }
-        return;
+      // Maintain rolling history of last 15 frames for face detection
+      faceDetectionHistoryRef.current.push(currentFaceDetected);
+      if (faceDetectionHistoryRef.current.length > 15) {
+        faceDetectionHistoryRef.current.shift();
       }
+
+      // Smooth face presence: only mark face lost if majority of frames indicate no face (i.e. <= 7 / 15 detected)
+      const smoothFaceDetected = faceDetectionHistoryRef.current.filter(Boolean).length >= 8;
+
+      if (smoothFaceDetected) {
+        faceLostStartRef.current = null;
+        setFaceMissingDuration(0);
+      } else {
+        if (faceLostStartRef.current === null) {
+          faceLostStartRef.current = Date.now();
+        }
+      }
+
+      const faceLostDuration = faceLostStartRef.current ? (Date.now() - faceLostStartRef.current) / 1000 : 0;
+
+      // Log current tracking and confidence metrics
+      const currentConfidence = data?.face_confidence ?? 0.0;
+      console.log(`[Face Lost Tracker] Confidence: ${currentConfidence.toFixed(2)}, Detected: ${currentFaceDetected ? 'YES' : 'NO'}, SmoothDetected: ${smoothFaceDetected ? 'YES' : 'NO'}, FaceLostTimer: ${faceLostDuration.toFixed(1)}s, Reason: ${data?.status || 'No face detected'}`);
 
       // If we are not enrolled, face loss persistence rules don't apply for session termination
       if (!hasFaceEnrolled) {
@@ -673,45 +632,39 @@ export default function EnterpriseDemoPage() {
       setFaceConfidenceMetric(0);
       setTrackingConfidence(0.0);
 
-      if (lastFaceSeenTimeRef.current === null) {
-        lastFaceSeenTimeRef.current = Date.now();
-        setTimeSinceFaceSeen(0);
+      setTimeSinceFaceSeen(faceLostDuration);
+
+      let state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = 'FACE_WARNING';
+      if (faceLostDuration < 1.5) {
+        state = 'FACE_WARNING';
+      } else if (faceLostDuration >= 1.5 && faceLostDuration < 3.0) {
+        state = 'FACE_RECOVERY';
       } else {
-        const elapsed = (Date.now() - lastFaceSeenTimeRef.current) / 1000;
-        setTimeSinceFaceSeen(elapsed);
+        state = 'FACE_LOST';
+      }
+
+      setFaceTrackingState(state);
+      prevTrackingStateRef.current = state;
+
+      // Terminate ONLY after 3 continuous seconds of face lost
+      if (faceLostDuration > 3.0) {
+        setDetectedFaces(0);
+        setLandmarkCount(0);
+        setConfidence(0);
+        setGazeDirection(null);
+        setGazeAvailable(false);
+        setFaceInsideGuide(false);
+        faceVisibleStartRef.current = null;
+        setFaceVisibleDuration(0);
+        setSimilarity(0);
+        setConsecutiveValidFrames(0);
+        noseHistoryRef.current = [];
+        setDetectionStability(0.0);
         
-        let state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = 'FACE_WARNING';
-        if (elapsed < 2.0 && lostFramesRef.current < 150) {
-          state = 'FACE_WARNING';
-        } else if (elapsed >= 2.0 && elapsed < 5.0 && lostFramesRef.current < 150) {
-          state = 'FACE_RECOVERY';
-        } else {
-          state = 'FACE_LOST';
-        }
-
-        setFaceTrackingState(state);
-        prevTrackingStateRef.current = state;
-
-        if (state === 'FACE_LOST') {
-          // Apply resets and terminate ONLY after 5 continuous seconds or 150 lost frames
-          setDetectedFaces(0);
-          setLandmarkCount(0);
-          setConfidence(0);
-          setGazeDirection(null);
-          setGazeAvailable(false);
-          setFaceInsideGuide(false);
-          faceVisibleStartRef.current = null;
-          setFaceVisibleDuration(0);
-          setSimilarity(0);
-          setConsecutiveValidFrames(0);
-          noseHistoryRef.current = [];
-          setDetectionStability(0.0);
-          
-          setFaceTrackingState('SESSION_TERMINATED');
-          prevTrackingStateRef.current = 'SESSION_TERMINATED';
-          console.log(`[Face Verification] Face lost timer exceeded. Terminating session.`);
-          triggerSessionTermination('Face Lost', false);
-        }
+        setFaceTrackingState('SESSION_TERMINATED');
+        prevTrackingStateRef.current = 'SESSION_TERMINATED';
+        console.log(`[Face Verification] Face lost timer exceeded. Terminating session. Reason: Face Lost`);
+        triggerSessionTermination('Face Lost', false);
       }
     };
 
@@ -823,7 +776,14 @@ export default function EnterpriseDemoPage() {
             if (enrolledEmbedding) {
               const sim = cosineSimilarity(enrolledEmbedding, liveEmb);
               console.log("Similarity:", sim);
-              setSimilarity(sim);
+              
+              similarityHistoryRef.current.push(sim);
+              if (similarityHistoryRef.current.length > 15) {
+                similarityHistoryRef.current.shift();
+              }
+              const smoothedSim = similarityHistoryRef.current.reduce((a, b) => a + b, 0) / similarityHistoryRef.current.length;
+              
+              setSimilarity(smoothedSim);
               setLastMatchTime(Date.now());
             }
           }
@@ -1073,6 +1033,8 @@ export default function EnterpriseDemoPage() {
     setSessionTerminated(false);
     setTerminationReason('');
     setModelStatus('Loading');
+    faceDetectionHistoryRef.current = [];
+    similarityHistoryRef.current = [];
     
     // Reset mismatch count
     setMismatchCount(0);
@@ -1170,6 +1132,8 @@ export default function EnterpriseDemoPage() {
     setOverallResult(null);
     setConfidence(0);
     setSimilarity(0);
+    faceDetectionHistoryRef.current = [];
+    similarityHistoryRef.current = [];
     setGazeDirection(null);
     setGazeAvailable(false);
     setFaceInsideGuide(false);
@@ -1245,6 +1209,7 @@ export default function EnterpriseDemoPage() {
     localStorage.removeItem('enrolledEmbedding');
     localStorage.removeItem('mv_enrolled_signature');
     setSimilarity(0);
+    similarityHistoryRef.current = [];
     setConsecutiveValidFrames(0);
     console.log('[Face Enrollment] Face enrollment cleared. Refreshing user context...');
     await refreshUser();

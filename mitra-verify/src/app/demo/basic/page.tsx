@@ -375,7 +375,7 @@ export default function BasicDemoPage() {
             } else {
               const centeredDur = (Date.now() - centerTimerStartTimeRef.current) / 1000;
               setFaceVisibleDuration(centeredDur);
-              if (centeredDur >= 2.0 && continuousDur >= 500) {
+              if (centeredDur >= 0.5) {
                 console.log("CENTER_TIMER_COMPLETE");
                 console.log("FACE_CENTERED");
                 console.log("CHALLENGE_1_COMPLETE");
@@ -389,7 +389,7 @@ export default function BasicDemoPage() {
           }
         } else if (currentStep === 1) {
           // Blink Once Challenge
-          if (data.challenge_passed && continuousDur >= 500) {
+          if (data.challenge_passed) {
             console.log("BLINK_DETECTED");
             console.log("CHALLENGE_2_COMPLETE");
             setHasBlinked(true);
@@ -397,7 +397,7 @@ export default function BasicDemoPage() {
           }
         } else if (currentStep === 2) {
           // Open Mouth Challenge
-          if (data.challenge_passed && continuousDur >= 500) {
+          if (data.challenge_passed) {
             const mouthRatio = data.mar !== undefined ? data.mar : 0.0;
             const challengeState = "completed";
             console.log(
@@ -426,21 +426,13 @@ export default function BasicDemoPage() {
           console.log("Rotation:", rotationAmt);
           
           if (rotationAmt > 12) {
-            if (rotationStartTimeRef.current === null) {
-              rotationStartTimeRef.current = Date.now();
-              setRotationStatus('IN_PROGRESS');
-            } else if (Date.now() - rotationStartTimeRef.current >= 500 && continuousDur >= 500) {
-              setRotationStatus('PASS');
-              console.log("HEAD_ROTATION_DETECTED");
-              console.log("CHALLENGE_4_COMPLETE");
-              setHasRotatedHead(true);
-              setCurrentStep(4);
-              setEnrollmentSuccess(true);
-              console.log("LIVENESS_COMPLETE");
-            }
-          } else {
-            rotationStartTimeRef.current = null;
-            setRotationStatus('IN_PROGRESS');
+            setRotationStatus('PASS');
+            console.log("HEAD_ROTATION_DETECTED");
+            console.log("CHALLENGE_4_COMPLETE");
+            setHasRotatedHead(true);
+            setCurrentStep(4);
+            setEnrollmentSuccess(true);
+            console.log("LIVENESS_COMPLETE");
           }
         }
 

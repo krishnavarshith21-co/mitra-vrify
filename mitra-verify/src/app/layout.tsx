@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import Global3DBackground from '@/components/cyber/Global3DBackground';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {/* ErrorBoundary catches render-time crashes */}
           <ErrorBoundary>
+            <Global3DBackground />
             {children}
           </ErrorBoundary>
         </AuthProvider>

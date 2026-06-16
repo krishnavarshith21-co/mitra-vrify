@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import PageTransition from '@/components/cyber/PageTransition';
+import TiltCard from '@/components/cyber/TiltCard';
 
 interface ApiKey {
   id: string;
@@ -147,7 +149,8 @@ export default function DeveloperPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Header */}
@@ -313,73 +316,74 @@ export default function DeveloperPage() {
             {keys.map(key => {
               const meta = API_TYPE_META[key.api_type] || API_TYPE_META.basic;
               return (
-                <motion.div key={key.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  className="glass card-hover"
-                  style={{ padding: 24, borderRadius: 16, border: `1px solid ${key.is_active ? 'rgba(255,255,255,0.06)' : 'rgba(255,51,102,0.1)'}`, opacity: key.is_active ? 1 : 0.6 }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: `${meta.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <meta.icon size={18} color={meta.color} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>{key.name}</span>
-                        {!key.is_active && <span style={{ fontSize: 10, color: '#ff3366', background: 'rgba(255,51,102,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>REVOKED</span>}
+                <motion.div key={key.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                  <TiltCard
+                    style={{ padding: 24, borderRadius: 16, border: `1px solid ${key.is_active ? 'rgba(255,255,255,0.06)' : 'rgba(255,51,102,0.1)'}`, opacity: key.is_active ? 1 : 0.6 }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${meta.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <meta.icon size={18} color={meta.color} />
                       </div>
-                      <code style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{key.key_prefix}</code>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: meta.color }}>{key.request_count.toLocaleString()}</div>
-                        <div style={{ fontSize: 10, color: '#475569' }}>requests</div>
-                      </div>
-                      <div style={{ padding: '4px 10px', borderRadius: 6, background: `${meta.color}11`, border: `1px solid ${meta.color}30`, fontSize: 11, color: meta.color, fontWeight: 600 }}>
-                        {meta.label}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => { setSelectedKey(selectedKey?.id === key.id ? null : key); }}
-                          style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer' }}>
-                          <Code2 size={14} />
-                        </button>
-                        {key.is_active && (
-                          <button onClick={() => revokeKey(key.id)}
-                            style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,51,102,0.06)', border: '1px solid rgba(255,51,102,0.15)', color: '#ff3366', cursor: 'pointer' }}>
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Code example panel */}
-                  <AnimatePresence>
-                    {selectedKey?.id === key.id && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                        style={{ marginTop: 20, overflow: 'hidden' }}>
-                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
-                          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-                            {(['curl', 'python', 'javascript'] as const).map(tab => (
-                              <button key={tab} onClick={() => setCodeTab(tab)}
-                                style={{
-                                  padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                                  background: codeTab === tab ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.04)',
-                                  color: codeTab === tab ? '#00d4ff' : '#475569',
-                                }}>
-                                {tab === 'javascript' ? 'JavaScript' : tab === 'python' ? 'Python' : 'cURL'}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="terminal" style={{ position: 'relative' }}>
-                            <button onClick={() => copyToClipboard(SDK_EXAMPLES[codeTab](key.key_prefix, key.api_type), `code-${key.id}`)}
-                              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: copied === `code-${key.id}` ? '#00ff88' : '#475569' }}>
-                              {copied === `code-${key.id}` ? <CheckCircle size={14} /> : <Copy size={14} />}
-                            </button>
-                            <pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{SDK_EXAMPLES[codeTab](key.key_prefix, key.api_type)}</pre>
-                          </div>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>{key.name}</span>
+                          {!key.is_active && <span style={{ fontSize: 10, color: '#ff3366', background: 'rgba(255,51,102,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>REVOKED</span>}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <code style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{key.key_prefix}</code>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: meta.color }}>{key.request_count.toLocaleString()}</div>
+                          <div style={{ fontSize: 10, color: '#475569' }}>requests</div>
+                        </div>
+                        <div style={{ padding: '4px 10px', borderRadius: 6, background: `${meta.color}11`, border: `1px solid ${meta.color}30`, fontSize: 11, color: meta.color, fontWeight: 600 }}>
+                          {meta.label}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => { setSelectedKey(selectedKey?.id === key.id ? null : key); }}
+                            style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer' }}>
+                            <Code2 size={14} />
+                          </button>
+                          {key.is_active && (
+                            <button onClick={() => revokeKey(key.id)}
+                              style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,51,102,0.06)', border: '1px solid rgba(255,51,102,0.15)', color: '#ff3366', cursor: 'pointer' }}>
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Code example panel */}
+                    <AnimatePresence>
+                      {selectedKey?.id === key.id && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                          style={{ marginTop: 20, overflow: 'hidden' }}>
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
+                            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                              {(['curl', 'python', 'javascript'] as const).map(tab => (
+                                <button key={tab} onClick={() => setCodeTab(tab)}
+                                  style={{
+                                    padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                                    background: codeTab === tab ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.04)',
+                                    color: codeTab === tab ? '#00d4ff' : '#475569',
+                                  }}>
+                                  {tab === 'javascript' ? 'JavaScript' : tab === 'python' ? 'Python' : 'cURL'}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="terminal" style={{ position: 'relative' }}>
+                              <button onClick={() => copyToClipboard(SDK_EXAMPLES[codeTab](key.key_prefix, key.api_type), `code-${key.id}`)}
+                                style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: copied === `code-${key.id}` ? '#00ff88' : '#475569' }}>
+                                {copied === `code-${key.id}` ? <CheckCircle size={14} /> : <Copy size={14} />}
+                              </button>
+                              <pre style={{ margin: 0, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{SDK_EXAMPLES[codeTab](key.key_prefix, key.api_type)}</pre>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </TiltCard>
                 </motion.div>
               );
             })}
@@ -394,7 +398,7 @@ export default function DeveloperPage() {
             { href: '/compare', icon: Zap, label: 'Compare APIs', desc: 'Speed & accuracy comparison' },
           ].map(({ href, icon: Icon, label, desc }) => (
             <Link key={href} href={href} style={{ textDecoration: 'none' }}>
-              <div className="glass card-hover" style={{ padding: 20, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <TiltCard style={{ padding: 20, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(0,212,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon size={18} color="#00d4ff" />
                 </div>
@@ -403,11 +407,12 @@ export default function DeveloperPage() {
                   <div style={{ fontSize: 12, color: '#475569' }}>{desc}</div>
                 </div>
                 <ArrowRight size={14} color="#475569" style={{ marginLeft: 'auto' }} />
-              </div>
+              </TiltCard>
             </Link>
           ))}
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 }

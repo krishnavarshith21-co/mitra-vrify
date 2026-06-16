@@ -6,9 +6,12 @@ import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { analyticsAPI } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
-import Dashboard3DBackground from '@/components/Dashboard3DBackground';
 import { useRouter } from 'next/navigation';
 import { format, subDays } from 'date-fns';
+import TiltCard from '@/components/cyber/TiltCard';
+import AnimatedCounter from '@/components/cyber/AnimatedCounter';
+import ThreeGlobe from '@/components/cyber/ThreeGlobe';
+import PageTransition from '@/components/cyber/PageTransition';
 
 interface Overview {
   total_requests: number;
@@ -54,7 +57,7 @@ interface UsageDataItem {
 
 function KPICard({ label, value, unit, delta, icon: Icon, color = '#00d4ff' }: KPICardProps) {
   return (
-    <motion.div whileHover={{ scale: 1.01 }} className="glass card-hover" style={{ padding: 24, borderRadius: 16 }}>
+    <TiltCard style={{ padding: 24, borderRadius: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon size={18} color={color} />
@@ -66,11 +69,11 @@ function KPICard({ label, value, unit, delta, icon: Icon, color = '#00d4ff' }: K
         )}
       </div>
       <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
+        <AnimatedCounter value={value} />
         {unit && <span style={{ fontSize: 16, color: '#475569', marginLeft: 4 }}>{unit}</span>}
       </div>
       <div style={{ fontSize: 13, color: '#475569', marginTop: 6 }}>{label}</div>
-    </motion.div>
+    </TiltCard>
   );
 }
 
@@ -201,142 +204,150 @@ export default function DashboardPage() {
   ].filter(d => d.value > 0) : [];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', position: 'relative' }}>
-      <Dashboard3DBackground />
-      <Navbar />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '100px 24px 60px', position: 'relative', zIndex: 1 }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-          <div>
-            <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Dashboard</h1>
-            <p style={{ color: '#475569', fontSize: 14 }}>
-              Last updated {lastRefresh ? format(lastRefresh, 'HH:mm:ss') : '--:--:--'} ·
-              <span style={{ color: '#00d4ff' }}> Auto-refreshes every 30s</span>
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {isDemoMode && (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#ffb800',
-                background: 'rgba(255, 184, 0, 0.1)',
-                border: '1px solid rgba(255, 184, 0, 0.3)',
-                padding: '4px 10px',
-                borderRadius: 20,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4
-              }}>
-                ⚠️ Demo Mode (Server Offline)
-              </span>
-            )}
-            <button onClick={loadData} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <RefreshCw size={14} /> Refresh
-            </button>
-            <Link href="/developer" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Zap size={14} /> API Keys
-            </Link>
-          </div>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 80 }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-              <RefreshCw size={32} color="#00d4ff" />
-            </motion.div>
-            <p style={{ color: '#475569', marginTop: 16 }}>Loading analytics...</p>
-          </div>
-        ) : error ? (
-          <div className="glass" style={{ padding: 40, borderRadius: 16, textAlign: 'center', border: '1px solid rgba(255,51,102,0.2)' }}>
-            <AlertTriangle size={36} color="#ff3366" style={{ margin: '0 auto 16px' }} />
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#f8fafc', marginBottom: 8 }}>Unable to Load Analytics</h3>
-            <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 20 }}>{error}</p>
-            <button onClick={loadData} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <RefreshCw size={14} /> Retry
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* KPI Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-              <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
-              <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
-              <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
-              <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
+        <Navbar />
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '100px 24px 60px', position: 'relative', zIndex: 1 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
+            <div>
+              <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Dashboard</h1>
+              <p style={{ color: '#475569', fontSize: 14 }}>
+                Last updated {lastRefresh ? format(lastRefresh, 'HH:mm:ss') : '--:--:--'} ·
+                <span style={{ color: '#00d4ff' }}> Auto-refreshes every 30s</span>
+              </p>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }}>
-              <KPICard label="Success Rate" value={`${(overview?.success_rate || 0).toFixed(1)}`} unit="%" icon={TrendingUp} color="#00ff88" />
-              <KPICard label="Avg Processing Time" value={`${(overview?.avg_processing_time || 0).toFixed(0)}`} unit="ms" icon={Clock} color="#ffb800" />
-              <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {isDemoMode && (
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#ffb800',
+                  background: 'rgba(255, 184, 0, 0.1)',
+                  border: '1px solid rgba(255, 184, 0, 0.3)',
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  ⚠️ Demo Mode (Server Offline)
+                </span>
+              )}
+              <button onClick={loadData} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <RefreshCw size={14} /> Refresh
+              </button>
+              <Link href="/developer" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Zap size={14} /> API Keys
+              </Link>
             </div>
+          </div>
 
-            {/* Charts row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
-              {/* Usage Area Chart */}
-              <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Requests (Last 30 Days)</h3>
-                {usageData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={usageData.slice(-15)}>
-                      <defs>
-                        <linearGradient id="passGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#00ff88" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#00ff88" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="spoofGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#ff3366" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#ff3366" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} />
-                      <Area type="monotone" dataKey="pass" stroke="#00ff88" strokeWidth={2} fill="url(#passGrad)" name="Pass" />
-                      <Area type="monotone" dataKey="spoof" stroke="#ff3366" strokeWidth={2} fill="url(#spoofGrad)" name="Spoof" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>
-                    No usage data yet. Start making API calls to see analytics.
-                  </div>
-                )}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 80 }}>
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                <RefreshCw size={32} color="#00d4ff" />
+              </motion.div>
+              <p style={{ color: '#475569', marginTop: 16 }}>Loading analytics...</p>
+            </div>
+          ) : error ? (
+            <div className="glass" style={{ padding: 40, borderRadius: 16, textAlign: 'center', border: '1px solid rgba(255,51,102,0.2)' }}>
+              <AlertTriangle size={36} color="#ff3366" style={{ margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: '#f8fafc', marginBottom: 8 }}>Unable to Load Analytics</h3>
+              <p style={{ color: '#94a3b8', fontSize: 14, marginBottom: 20 }}>{error}</p>
+              <button onClick={loadData} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <RefreshCw size={14} /> Retry
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* KPI Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+                <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
+                <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
+                <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
+                <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
               </div>
 
-              {/* Result Distribution */}
-              <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Result Distribution</h3>
-                {pieData.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
-                          {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                        </Pie>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }}>
+                <KPICard label="Success Rate" value={`${(overview?.success_rate || 0).toFixed(1)}`} unit="%" icon={TrendingUp} color="#00ff88" />
+                <KPICard label="Avg Processing Time" value={`${(overview?.avg_processing_time || 0).toFixed(0)}`} unit="ms" icon={Clock} color="#ffb800" />
+                <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+              </div>
+
+              {/* Charts row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr', gap: 24, marginBottom: 24 }}>
+                {/* Usage Area Chart */}
+                <TiltCard style={{ padding: 24, borderRadius: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Requests (Last 30 Days)</h3>
+                  {usageData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <AreaChart data={usageData.slice(-15)}>
+                        <defs>
+                          <linearGradient id="passGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#00ff88" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#00ff88" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="spoofGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#ff3366" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#ff3366" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
                         <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} />
-                      </PieChart>
+                        <Area type="monotone" dataKey="pass" stroke="#00ff88" strokeWidth={2} fill="url(#passGrad)" name="Pass" />
+                        <Area type="monotone" dataKey="spoof" stroke="#ff3366" strokeWidth={2} fill="url(#spoofGrad)" name="Spoof" />
+                      </AreaChart>
                     </ResponsiveContainer>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-                      {pieData.map(d => (
-                        <div key={d.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: d.color }} />
-                            <span style={{ fontSize: 13, color: '#94a3b8' }}>{d.name}</span>
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: d.color }}>{d.value}</span>
-                        </div>
-                      ))}
+                  ) : (
+                    <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>
+                      No usage data yet. Start making API calls to see analytics.
                     </div>
-                  </>
-                ) : (
-                  <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13, textAlign: 'center' }}>
-                    Make API calls to see result distribution
+                  )}
+                </TiltCard>
+
+                {/* Holographic 3D Globe Vector */}
+                <TiltCard style={{ padding: 24, borderRadius: 16, display: 'flex', flexDirection: 'column' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Global Threat Vector</h3>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ThreeGlobe />
                   </div>
-                )}
+                </TiltCard>
+
+                {/* Result Distribution */}
+                <TiltCard style={{ padding: 24, borderRadius: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Result Distribution</h3>
+                  {pieData.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={120}>
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={3} dataKey="value">
+                            {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                        {pieData.map(d => (
+                          <div key={d.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: d.color }} />
+                              <span style={{ fontSize: 12, color: '#94a3b8' }}>{d.name}</span>
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: d.color }}>{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13, textAlign: 'center' }}>
+                      Make API calls to see result distribution
+                    </div>
+                  )}
+                </TiltCard>
               </div>
-            </div>
 
             {/* Threat Feed */}
             <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
@@ -382,5 +393,6 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+    </PageTransition>
   );
 }

@@ -10,6 +10,9 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import PageTransition from '@/components/cyber/PageTransition';
+import TiltCard from '@/components/cyber/TiltCard';
+import AnimatedCounter from '@/components/cyber/AnimatedCounter';
 
 interface AdminStats {
   users: { total: number; active: number; admin: number };
@@ -283,7 +286,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Title Header */}
@@ -366,52 +370,68 @@ export default function AdminPage() {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
                   {/* Stats Cards */}
-                  <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>TOTAL USERS</span>
-                      <Users size={18} color="var(--brand-cyan)" />
+                  <TiltCard>
+                    <div style={{ padding: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>TOTAL USERS</span>
+                        <Users size={18} color="var(--brand-cyan)" />
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+                        <AnimatedCounter value={stats?.users.total || 0} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span>Active: <strong style={{ color: 'var(--brand-green)' }}>{stats?.users.active}</strong></span>
+                        <span>Admins: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.users.admin}</strong></span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{stats?.users.total}</div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span>Active: <strong style={{ color: 'var(--brand-green)' }}>{stats?.users.active}</strong></span>
-                      <span>Admins: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.users.admin}</strong></span>
-                    </div>
-                  </div>
+                  </TiltCard>
 
-                  <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>API KEYS STATUS</span>
-                      <Key size={18} color="var(--brand-violet)" />
+                  <TiltCard>
+                    <div style={{ padding: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>API KEYS STATUS</span>
+                        <Key size={18} color="var(--brand-violet)" />
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+                        <AnimatedCounter value={stats?.keys.total || 0} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span>Active Keys: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.keys.active}</strong></span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{stats?.keys.total}</div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span>Active Keys: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.keys.active}</strong></span>
-                    </div>
-                  </div>
+                  </TiltCard>
 
-                  <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>VERIFICATIONS</span>
-                      <CheckCircle size={18} color="var(--brand-green)" />
+                  <TiltCard>
+                    <div style={{ padding: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>VERIFICATIONS</span>
+                        <CheckCircle size={18} color="var(--brand-green)" />
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+                        <AnimatedCounter value={stats?.requests.total || 0} />
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+                        <span>Pass: <strong style={{ color: 'var(--brand-green)' }}>{stats?.requests.passed}</strong></span>
+                        <span>Fail: <strong style={{ color: 'var(--brand-red)' }}>{stats?.requests.failed}</strong></span>
+                        <span>Spoof: <strong style={{ color: 'var(--brand-amber)' }}>{stats?.requests.spoof}</strong></span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{stats?.requests.total}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
-                      <span>Pass: <strong style={{ color: 'var(--brand-green)' }}>{stats?.requests.passed}</strong></span>
-                      <span>Fail: <strong style={{ color: 'var(--brand-red)' }}>{stats?.requests.failed}</strong></span>
-                      <span>Spoof: <strong style={{ color: 'var(--brand-amber)' }}>{stats?.requests.spoof}</strong></span>
-                    </div>
-                  </div>
+                  </TiltCard>
 
-                  <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>PERFORMANCE</span>
-                      <Activity size={18} color="var(--brand-cyan)" />
+                  <TiltCard>
+                    <div style={{ padding: 24 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>PERFORMANCE</span>
+                        <Activity size={18} color="var(--brand-cyan)" />
+                      </div>
+                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+                        <AnimatedCounter value={stats?.requests.success_rate || 0} />%
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span>Latency: <strong>{stats?.requests.avg_processing_time}s</strong></span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800 }}>{stats?.requests.success_rate}%</div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                      <span>Latency: <strong>{stats?.requests.avg_processing_time}s</strong></span>
-                    </div>
-                  </div>
+                  </TiltCard>
 
                   {/* Telemetry Monitor */}
                   <div className="glass" style={{ padding: 24, borderRadius: 16, gridColumn: 'span 2' }}>
@@ -707,5 +727,6 @@ export default function AdminPage() {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 }

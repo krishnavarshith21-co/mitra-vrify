@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Zap, Shield, Fingerprint, CheckCircle, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
+import PageTransition from '@/components/cyber/PageTransition';
+import TiltCard from '@/components/cyber/TiltCard';
 
 const radarData = [
   { subject: 'Speed', basic: 95, advanced: 75, enterprise: 60, fullMark: 100 },
@@ -16,7 +18,8 @@ const radarData = [
 
 export default function ComparePage() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px' }}>
@@ -237,8 +240,8 @@ export default function ComparePage() {
             </table>
           </div>
         </div>
-
       </div>
     </div>
+    </PageTransition>
   );
 }

@@ -60,18 +60,72 @@ body {
 
 /* ── Glass Card ─────────────────────────────────────────────── */
 .glass {
-  background: rgba(10, 15, 30, 0.7);
+  background: rgba(5, 8, 16, 0.65);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7),
+              inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 .glass-bright {
-  background: rgba(0, 212, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(0, 212, 255, 0.02);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 
+              0 0 40px rgba(0, 212, 255, 0.08);
+}
+
+/* ── Aurora Background Effects ────────────────────────────── */
+@keyframes drift-aurora-cyan {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10%, -8%) scale(1.15); }
+}
+@keyframes drift-aurora-blue {
+  0%, 100% { transform: translate(0, 0) scale(1.15); }
+  50% { transform: translate(-8%, 10%) scale(0.95); }
+}
+@keyframes drift-aurora-violet {
+  0%, 100% { transform: translate(0, 0) scale(0.95); }
+  50% { transform: translate(8%, -10%) scale(1.1); }
+}
+.aurora-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.12;
+  pointer-events: none;
+}
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  pointer-events: none;
+}
+.aurora-cyan {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.35) 0%, transparent 70%);
+  top: -150px;
+  left: -150px;
+  animation: drift-aurora-cyan 22s infinite ease-in-out;
+}
+.aurora-blue {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(0, 102, 255, 0.3) 0%, transparent 70%);
+  bottom: -200px;
+  right: -150px;
+  animation: drift-aurora-blue 26s infinite ease-in-out;
+}
+.aurora-violet {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, transparent 70%);
+  top: 25%;
+  left: 35%;
+  animation: drift-aurora-violet 20s infinite ease-in-out;
 }
 
 /* ── Glow Text ──────────────────────────────────────────────── */
@@ -104,9 +158,9 @@ body {
 /* ── Grid Background ────────────────────────────────────────── */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
 /* ── Noise Texture ──────────────────────────────────────────── */

@@ -6,6 +6,9 @@ import { ArrowLeft, Camera, AlertCircle, CheckCircle, Eye, Activity, Clock, Zap,
 import Navbar from '@/components/Navbar';
 import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
 import { processHeadPose } from '@/lib/headPose';
+import PageTransition from '@/components/cyber/PageTransition';
+import TiltCard from '@/components/cyber/TiltCard';
+import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay';
 
 
 
@@ -684,7 +687,8 @@ export default function BasicDemoPage() {
   // Duplicate variables/hooks removed.
   const challengeProgress = Math.min(100, Math.round((currentStep / 3) * 100));
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Header */}
@@ -806,54 +810,23 @@ export default function BasicDemoPage() {
 
               {/* Guide Oval & Tracking indicators in overlay */}
               {streaming && (
-                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                  {/* Guideline Oval */}
-                  <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '50%', height: '70%',
-                    borderRadius: '50%',
-                    border: `2px dashed ${faceInsideGuide ? 'var(--brand-green)' : 'var(--brand-cyan)'}`,
-                    boxShadow: faceInsideGuide ? '0 0 20px rgba(0, 255, 136, 0.2)' : 'none',
-                    transition: 'all 0.3s ease'
-                  }} />
-
-                  {/* Face box tracker box */}
-                  {bbox && (
-                    <div style={{
-                      position: 'absolute',
-                      left: `${(1.0 - bbox.x - bbox.w) * 100}%`,
-                      top: `${bbox.y * 100}%`,
-                      width: `${bbox.w * 100}%`,
-                      height: `${bbox.h * 100}%`,
-                      border: `2px solid ${isFacePrepared ? 'var(--brand-green)' : 'rgba(0, 212, 255, 0.4)'}`,
-                      borderRadius: 12,
-                      transition: 'all 0.1s ease'
-                    }} />
-                  )}
-
-                  {/* HUD Indicator Status */}
-                  <div style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center' }}>
-                    <div style={{
-                      display: 'inline-block', padding: '8px 16px', borderRadius: 20,
-                      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: detectedFaces > 1 ? 'var(--brand-red)' :
-                             landmarkCount === 0 ? 'var(--brand-amber)' :
-                             confidence < 0.90 ? 'var(--brand-amber)' :
-                             !faceInsideGuide ? 'var(--brand-amber)' :
-                             faceVisibleDuration < 2.0 ? 'var(--brand-cyan)' : 'var(--brand-green)',
-                      fontSize: 13, fontWeight: 700, fontFamily: 'monospace'
-                    }}>
-                      {detectedFaces > 1 ? 'MULTIPLE FACES DETECTED' :
-                       landmarkCount === 0 ? 'SEARCHING FOR FACE' :
-                       confidence < 0.90 ? 'FACE DETECTED (CONFIDENCE LOW)' :
-                       !faceInsideGuide ? 'ALIGN FACE INSIDE OVAL' :
-                       faceVisibleDuration < 2.0 ? `FACE DETECTED (STABILIZING ${Math.min(100, Math.round(faceVisibleDuration * 50))}%)` :
-                       'FACE DETECTED'}
-                    </div>
-                  </div>
-                </div>
+                <BiometricScannerOverlay
+                  faceInside={faceInsideGuide}
+                  confidence={confidence}
+                  detectedFaces={detectedFaces}
+                  bbox={bbox}
+                  ear={ear}
+                  mar={mar}
+                  challengeLabel={
+                    detectedFaces > 1 ? 'MULTIPLE FACES' :
+                    landmarkCount === 0 ? 'SEARCHING FOR FACE' :
+                    confidence < 0.90 ? 'CONFIDENCE LOW' :
+                    !faceInsideGuide ? 'ALIGN FACE INSIDE OVAL' :
+                    faceVisibleDuration < 2.0 ? `STABILIZING ${Math.min(100, Math.round(faceVisibleDuration * 50))}%` :
+                    `FAST SCAN: STEP ${currentStep + 1}/4`
+                  }
+                  themeColor="#00d4ff"
+                />
               )}
 
               {!streaming && (
@@ -1090,5 +1063,6 @@ export default function BasicDemoPage() {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 }

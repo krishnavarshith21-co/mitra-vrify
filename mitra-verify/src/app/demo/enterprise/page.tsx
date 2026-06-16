@@ -3,12 +3,15 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, Fingerprint, AlertTriangle, Users, Brain, Activity, RotateCcw, CheckCircle, Terminal, Lock, XCircle, Shield, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Camera, Fingerprint, AlertTriangle, Users, Brain, Activity, RotateCcw, CheckCircle, Terminal, Lock, XCircle, Shield, AlertCircle, RefreshCw } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { processHeadPose } from '@/lib/headPose';
 import dynamic from 'next/dynamic';
+import PageTransition from '@/components/cyber/PageTransition';
+import TiltCard from '@/components/cyber/TiltCard';
+import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay';
 
 const Biometric3DOverlay = dynamic(() => import('@/components/Biometric3DOverlay'), { ssr: false });
 const HeadPose3DWidget = dynamic(() => import('@/components/HeadPose3DWidget'), { ssr: false });
@@ -1313,7 +1316,8 @@ export default function EnterpriseDemoPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <PageTransition>
+      <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Header */}
@@ -1469,76 +1473,50 @@ export default function EnterpriseDemoPage() {
                 />
               )}
 
-              {/* Glowing Framer Motion Scanning Beam */}
+              {/* Biometric Scanner Overlay */}
               {streaming && !overallResult && (
-                <motion.div
-                  initial={{ top: '0%' }}
-                  animate={{ top: ['0%', '100%', '0%'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: `linear-gradient(90deg, transparent, ${detectedFaces > 1 ? 'var(--brand-red)' : isVerified ? 'var(--brand-green)' : 'var(--brand-cyan)'}, transparent)`,
-                    boxShadow: `0 0 15px ${detectedFaces > 1 ? 'var(--brand-red)' : isVerified ? 'var(--brand-green)' : 'var(--brand-cyan)'}`,
-                    opacity: 0.8,
-                    pointerEvents: 'none',
-                    zIndex: 5
-                  }}
+                <BiometricScannerOverlay
+                  faceInside={faceInsideGuide}
+                  confidence={confidence}
+                  detectedFaces={detectedFaces}
+                  bbox={bbox}
+                  ear={ear}
+                  mar={mar}
+                  challengeLabel={
+                    detectedFaces > 1 ? 'MULTIPLE FACES' :
+                    faceTrackingState === 'FACE_WARNING' ? 'TEMPORARILY LOST' :
+                    faceTrackingState === 'FACE_RECOVERY' ? 'SEARCHING FOR FACE' :
+                    landmarkCount === 0 ? 'SEARCHING FOR FACE' :
+                    confidence < 0.50 ? 'CONFIDENCE LOW' :
+                    !faceInsideGuide ? 'ALIGN FACE INSIDE OVAL' :
+                    faceVisibleDuration < 2.0 ? `ACQUIRING SIGNAL (${Math.min(100, Math.round(faceVisibleDuration * 50))}%)` :
+                    !hasFaceEnrolled ? 'READY TO ENROLL' :
+                    `ENTERPRISE SCAN: CHALLENGE TIMER ${challengeTimer}s`
+                  }
+                  themeColor="#00ff88"
                 />
               )}
 
-              {/* HUD guides and tracking overlay */}
-              {streaming && !overallResult && (
-                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
-                  {/* Gaze crosshair dot */}
-                  {gazeAvailable && gazeDirection && (
-                    <motion.div
-                      animate={{
-                        left: `${(1.0 - gazeDirection.x) * 100}%`,
-                        top: `${gazeDirection.y * 100}%`
-                      }}
-                      style={{
-                        position: 'absolute',
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: 'rgba(0, 212, 255, 0.85)',
-                        border: '2px solid #ffffff',
-                        boxShadow: '0 0 12px rgba(0, 212, 255, 1)',
-                        transform: 'translate(-50%, -50%)',
-                        transition: 'all 0.1s ease',
-                      }}
-                    />
-                  )}
-
-                  {/* HUD Indicator Status */}
-                  <div style={{ position: 'absolute', bottom: 48, left: 0, right: 0, textAlign: 'center' }}>
-                    <div style={{
-                      display: 'inline-block', padding: '8px 16px', borderRadius: 20,
-                      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: detectedFaces > 1 ? 'var(--brand-red)' :
-                             faceTrackingState === 'FACE_WARNING' ? 'var(--brand-amber)' :
-                             faceTrackingState === 'FACE_RECOVERY' ? 'var(--brand-amber)' :
-                             landmarkCount === 0 ? 'var(--brand-amber)' :
-                             confidence < 0.50 ? 'var(--brand-amber)' :
-                             !faceInsideGuide ? 'var(--brand-amber)' :
-                             faceVisibleDuration < 2.0 ? 'var(--brand-cyan)' : 'var(--brand-green)',
-                      fontSize: 13, fontWeight: 700, fontFamily: 'monospace'
-                    }}>
-                      {detectedFaces > 1 ? 'MULTIPLE FACES DETECTED' :
-                       faceTrackingState === 'FACE_WARNING' ? 'FACE TEMPORARILY LOST' :
-                       faceTrackingState === 'FACE_RECOVERY' ? 'SEARCHING FOR FACE' :
-                       landmarkCount === 0 ? 'SEARCHING FOR FACE' :
-                       confidence < 0.50 ? 'FACE DETECTED (CONFIDENCE LOW)' :
-                       !faceInsideGuide ? 'ALIGN FACE INSIDE OVAL' :
-                       faceVisibleDuration < 2.0 ? `ACQUIRING SIGNAL (${Math.min(100, Math.round(faceVisibleDuration * 50))}%)` :
-                       !hasFaceEnrolled ? 'READY TO ENROLL' :
-                       `CHALLENGE STEP TIMER: ${challengeTimer}s`}
-                    </div>
-                  </div>
+              {/* Gaze crosshair dot overlay */}
+              {streaming && !overallResult && gazeAvailable && gazeDirection && (
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 12 }}>
+                  <motion.div
+                    animate={{
+                      left: `${(1.0 - gazeDirection.x) * 100}%`,
+                      top: `${gazeDirection.y * 100}%`
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: 'rgba(0, 255, 136, 0.85)',
+                      border: '2px solid #ffffff',
+                      boxShadow: '0 0 12px rgba(0, 255, 136, 1)',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.1s ease',
+                    }}
+                  />
                 </div>
               )}
 
@@ -2104,5 +2082,6 @@ export default function EnterpriseDemoPage() {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 }

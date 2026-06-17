@@ -6,23 +6,23 @@ import base64
 import time
 import uuid
 import math
-import numpy as np
+import numpy as np  # pyrefly: ignore [missing-import]
 from typing import Optional
 from datetime import datetime
 from io import BytesIO
-from PIL import Image
+from PIL import Image  # pyrefly: ignore [missing-import]
 
 # Try importing CV libs; graceful fallback if not installed
 try:
-    import cv2
+    import cv2  # pyrefly: ignore [missing-import]
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
 
 try:
-    import mediapipe as mp
-    import cv2
-    import numpy as np
+    import mediapipe as mp  # pyrefly: ignore [missing-import]
+    import cv2  # pyrefly: ignore [missing-import]
+    import numpy as np  # pyrefly: ignore [missing-import]
     
     # In some environments, solutions might be nested
     if hasattr(mp, 'solutions'):
@@ -578,7 +578,7 @@ def update_session_history(session_id: Optional[str], landmarks: list, ear: floa
         elapsed = time.time() - cache["created_at"]
         if elapsed >= 2.0:
             if cache["eyebrow_ratios"]:
-                import numpy as np
+                import numpy as np  # pyrefly: ignore [missing-import]
                 cache["baseline_eyebrow_ratio"] = float(np.median(cache["eyebrow_ratios"]))
             else:
                 cache["baseline_eyebrow_ratio"] = 0.18

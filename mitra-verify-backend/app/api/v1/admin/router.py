@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.core.database import get_db
-from app.models.models import User, ApiKey, VerificationLog, SystemLog, AuditLog
+from app.models.models import User, ApiKey, VerificationLog, SystemLog, AuditLog, LivenessLog, ApiUsage, Organization, Session
 from app.api.v1.auth.router import get_current_user
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -298,3 +298,57 @@ async def clear_audit_logs(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to clear audit logs: {str(e)}")
+
+@router.post("/reset-db")
+async def reset_database(
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Delete dependent liveness logs
+        await db.execute(delete(LivenessLog))
+        
+        # Delete verification logs
+        await db.execute(delete(VerificationLog))
+        
+        # Delete API usage logs
+        await db.execute(delete(ApiUsage))
+        
+        # Delete API keys
+        await db.execute(delete(ApiKey))
+        
+        # Delete sessions (except for current admin's sessions if we want to keep them logged in, or delete all sessions)
+        # Deleting all other sessions is safer. Let's delete all sessions.
+        await db.execute(delete(Session))
+        
+        # Delete audit logs (except for this reset action, which we will add next)
+        await db.execute(delete(AuditLog))
+        
+        # Delete organizations
+        await db.execute(delete(Organization))
+        
+        # Delete all users EXCEPT the default admin user
+        await db.execute(delete(User).where(User.email != "admin@mitraverify.com"))
+        
+        # Add a new audit log for the reset action
+        reset_audit = AuditLog(
+            id=str(uuid.uuid4()),
+            user_id=current_admin.id,
+            action="reset_database",
+            resource_type="database",
+            meta_data={"reset_by": current_admin.email},
+            ip_address="internal",
+            created_at=datetime.utcnow()
+        )
+        db.add(reset_audit)
+        
+        # Re-verify admin role and active status
+        current_admin.role = "admin"
+        current_admin.is_active = True
+        
+        await db.commit()
+        return {"message": "Database reset completed successfully. All logs, API keys, organizations, and non-admin users have been cleared."}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset database: {str(e)}")
+

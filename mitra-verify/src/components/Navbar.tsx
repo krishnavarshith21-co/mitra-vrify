@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import {
   Shield, Zap, Menu, X, ChevronDown,
-  Eye, Fingerprint, GitBranch
+  Eye, Fingerprint
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -185,18 +185,6 @@ export default function Navbar() {
 
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
-                textDecoration: 'none', fontSize: 13, fontWeight: 500, color: '#94a3b8',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,212,255,0.3)'; e.currentTarget.style.color = '#f8fafc'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
-            >
-              <GitBranch size={14} /> GitBranch
-            </a>
             {isAuthenticated ? (
               <div style={{ position: 'relative' }} id="user-profile-menu">
                 <button

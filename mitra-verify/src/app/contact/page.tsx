@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { GitBranch, BookOpen, Send, CheckCircle } from 'lucide-react';
+import { BookOpen, Send, CheckCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
@@ -54,17 +54,7 @@ export default function ContactPage() {
               </div>
             </Link>
 
-            <a href="https://GitBranch.com" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-              <div className="glass card-hover" style={{ padding: 20, borderRadius: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <GitBranch size={20} color="#f8fafc" />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, color: '#f8fafc', marginBottom: 4 }}>Open Source</h3>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Report issues or contribute on GitBranch</p>
-                </div>
-              </div>
-            </a>
+            {/* Card removed */}
           </div>
         </motion.div>
 

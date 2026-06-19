@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, Suspense, lazy, Component } from 'react';
 import Link from 'next/link';
 import {
   Zap, Shield, Fingerprint, ArrowRight, CheckCircle, Code2,
-  Activity, Eye, Lock, Globe, GitBranch, Star, ChevronRight
+  Activity, Eye, Lock, Globe, Star, ChevronRight
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -644,9 +644,6 @@ export default function HomePage() {
                   <Link href="/auth/signup" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
                     Create Free Account <ArrowRight size={16} />
                   </Link>
-                  <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    <GitBranch size={16} /> Star on GitHub
-                  </a>
                 </div>
               </>
             ) : (

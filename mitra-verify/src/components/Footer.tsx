@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { GitBranch, MessageCircle, Briefcase, Eye, ArrowUpRight } from 'lucide-react';
+import { MessageCircle, Briefcase, Eye, ArrowUpRight } from 'lucide-react';
 
 const footerLinks = {
   Platform: [
@@ -21,7 +21,6 @@ const footerLinks = {
     { label: 'Enterprise Demo', href: '/demo/enterprise' },
   ],
   Project: [
-    { label: 'GitBranch', href: 'https://GitBranch.com', external: true },
     { label: 'MIT License', href: '/license' },
     { label: 'Contact', href: '/contact' },
     { label: 'Admin', href: '/admin' },
@@ -58,7 +57,6 @@ export default function Footer() {
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { icon: GitBranch, href: 'https://GitBranch.com' },
                 { icon: MessageCircle, href: 'https://MessageCircle.com' },
                 { icon: Briefcase, href: 'https://Briefcase.com' },
               ].map(({ icon: Icon, href }) => (

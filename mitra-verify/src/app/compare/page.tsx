@@ -22,7 +22,7 @@ export default function ComparePage() {
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px' }}>
+      <div className="w-full max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 md:pt-32">
         <div style={{ textAlign: 'center', marginBottom: 60 }}>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -42,151 +42,157 @@ export default function ComparePage() {
         </div>
 
         {/* Product Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 60 }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {/* Fast Liveness (Basic) */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="glass card-hover" 
-            style={{ padding: 32, borderRadius: 24, borderTop: '4px solid #00ff88', position: 'relative', overflow: 'hidden' }}
+            style={{ padding: 28, borderRadius: 20, borderTop: '4px solid #00ff88', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}
           >
-            <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,255,136,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap size={24} color="#00ff88" />
+            <div>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(0,255,136,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(0,255,136,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={22} color="#00ff88" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: '#f8fafc' }}>Fast Liveness</h2>
+                  <div style={{ fontSize: 12, color: '#00ff88', fontFamily: 'monospace' }}>/api/v1/liveness/basic</div>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc' }}>Fast Liveness</h2>
-                <div style={{ fontSize: 13, color: '#00ff88', fontFamily: 'monospace' }}>/api/v1/liveness/basic</div>
+              
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, minHeight: 60 }}>
+                Ultra-fast passive liveness detection. Perfect for low-friction user experiences like quick logins.
+              </p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, padding: '14px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Speed Target</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#00ff88' }}>&lt; 1s</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Accuracy</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#00ff88' }}>90%</div>
+                </div>
               </div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Face Presence</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Face Centered (2s)</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Blink Once</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Open Mouth</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}><X size={15} color="#ff3366" /> No Identity Storage</li>
+              </ul>
             </div>
-            
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, minHeight: 60 }}>
-              Ultra-fast passive liveness detection. Perfect for low-friction user experiences like quick logins.
-            </p>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, padding: '16px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Speed Target</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#00ff88' }}>&lt; 1s</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Accuracy</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#00ff88' }}>90%</div>
-              </div>
-            </div>
- 
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Face Presence</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Face Centered (2s)</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Blink Once</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Open Mouth</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-muted)' }}><X size={16} color="#ff3366" /> No Identity Storage</li>
-            </ul>
- 
-            <Link href="/demo/basic" className="btn-ghost" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none' }}>
+
+            <Link href="/demo/basic" className="btn-ghost" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 13 }}>
               View Demo
             </Link>
           </motion.div>
- 
+
           {/* Advanced Anti-Spoof */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="glass card-hover" 
-            style={{ padding: 32, borderRadius: 24, borderTop: '4px solid #7c3aed', position: 'relative', overflow: 'hidden' }}
+            style={{ padding: 28, borderRadius: 20, borderTop: '4px solid #7c3aed', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}
           >
-            <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(124,58,237,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={24} color="#7c3aed" />
+            <div>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(124,58,237,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Shield size={22} color="#7c3aed" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: '#f8fafc' }}>Anti-Spoof</h2>
+                  <div style={{ fontSize: 12, color: '#7c3aed', fontFamily: 'monospace' }}>/api/v1/liveness/advanced</div>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc' }}>Anti-Spoof</h2>
-                <div style={{ fontSize: 13, color: '#7c3aed', fontFamily: 'monospace' }}>/api/v1/liveness/advanced</div>
+              
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, minHeight: 60 }}>
+                Active challenge-response system with texture analysis to prevent replay and presentation attacks.
+              </p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, padding: '14px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Speed Target</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#7c3aed' }}>2-4s</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Accuracy</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#7c3aed' }}>97%</div>
+                </div>
               </div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Shuffled Challenges</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Replay Detection</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Texture Analysis</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Risk Scoring</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}><X size={15} color="#ff3366" /> No Identity Storage</li>
+              </ul>
             </div>
-            
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, minHeight: 60 }}>
-              Active challenge-response system with texture analysis to prevent replay and presentation attacks.
-            </p>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, padding: '16px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Speed Target</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#7c3aed' }}>2-4s</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Accuracy</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#7c3aed' }}>97%</div>
-              </div>
-            </div>
- 
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Shuffled Challenges</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Replay Detection</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Texture Analysis</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Risk Scoring</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-muted)' }}><X size={16} color="#ff3366" /> No Identity Storage</li>
-            </ul>
- 
-            <Link href="/demo/advanced" className="btn-ghost" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none' }}>
+
+            <Link href="/demo/advanced" className="btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 13 }}>
               View Demo
             </Link>
           </motion.div>
- 
+
           {/* Enterprise Identity */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="glass card-hover" 
-            style={{ padding: 32, borderRadius: 24, borderTop: '4px solid #00d4ff', position: 'relative', overflow: 'hidden' }}
+            style={{ padding: 28, borderRadius: 20, borderTop: '4px solid #00d4ff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}
           >
-            <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(0,212,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Fingerprint size={24} color="#00d4ff" />
+            <div>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(0,212,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Fingerprint size={22} color="#00d4ff" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, color: '#f8fafc' }}>Enterprise</h2>
+                  <div style={{ fontSize: 12, color: '#00d4ff', fontFamily: 'monospace' }}>/api/v1/identity/verify</div>
+                </div>
               </div>
-              <div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc' }}>Enterprise</h2>
-                <div style={{ fontSize: 13, color: '#00d4ff', fontFamily: 'monospace' }}>/api/v1/identity/verify</div>
+              
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, minHeight: 60 }}>
+                Full identity verification with continuous monitoring, gaze tracking, and multiple face detection.
+              </p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, padding: '14px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Speed Target</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#00d4ff' }}>3-6s</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Accuracy</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#00d4ff' }}>99%</div>
+                </div>
               </div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> All Advanced Features</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Face Enrollment & Match</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Gaze & Attention Track</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Continuous Session Auth</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-primary)' }}><CheckCircle size={15} color="#00ff88" /> Multiple Face Protection</li>
+              </ul>
             </div>
-            
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, minHeight: 60 }}>
-              Full identity verification with continuous monitoring, gaze tracking, and multiple face detection.
-            </p>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, padding: '16px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Speed Target</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#00d4ff' }}>3-6s</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Accuracy</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#00d4ff' }}>99%</div>
-              </div>
-            </div>
- 
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> All Advanced Features</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Face Enrollment & Match</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Gaze & Attention Track</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Continuous Session Auth</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-primary)' }}><CheckCircle size={16} color="#00ff88" /> Multiple Face Protection</li>
-            </ul>
- 
-            <Link href="/demo/enterprise" className="btn-ghost" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none' }}>
+
+            <Link href="/demo/enterprise" className="btn-ghost" style={{ width: '100%', display: 'flex', justifyContent: 'center', textDecoration: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 13 }}>
               View Demo
             </Link>
           </motion.div>
         </div>
 
         {/* Radar Chart */}
-        <div className="glass" style={{ padding: 40, borderRadius: 24, marginBottom: 60 }}>
+        <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-16">
           <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>Capabilities Comparison</h3>
           <div style={{ height: 500, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -204,7 +210,7 @@ export default function ComparePage() {
         </div>
  
         {/* Feature Matrix */}
-        <div className="glass" style={{ padding: 40, borderRadius: 24 }}>
+        <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-8">
           <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Feature Matrix</h3>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

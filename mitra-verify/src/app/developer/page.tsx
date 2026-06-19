@@ -83,7 +83,7 @@ export default function DeveloperPage() {
         setKeys(res.data);
         setError(null);
       } catch (err: unknown) {
-        console.error(err);
+        console.warn(err);
         setError('Failed to load API keys. The request timed out or the server is unavailable.');
         const apiErr = err as { response?: { status?: number } };
         if (apiErr?.response?.status === 401) {
@@ -152,19 +152,19 @@ export default function DeveloperPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
+      <div className="w-full max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 md:pt-32">
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 48 }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <Key size={20} color="#00d4ff" />
               <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00d4ff', fontWeight: 600 }}>DEVELOPER PORTAL</span>
             </div>
-            <h1 style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>API Keys</h1>
+            <h1 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>API Keys</h1>
             <p style={{ fontSize: 15, color: '#94a3b8' }}>Generate and manage API keys for all three verification APIs</p>
           </div>
-          <button className="btn-primary" onClick={() => setShowCreate(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button className="btn-primary w-full sm:w-auto" onClick={() => setShowCreate(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
             <Plus size={16} /> Generate API Key
           </button>
         </div>
@@ -225,8 +225,8 @@ export default function DeveloperPage() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="glass"
-                style={{ width: 480, padding: 36, borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)' }}
+                className="glass w-full max-w-[480px] mx-4 p-6 md:p-9"
+                style={{ borderRadius: 24, border: '1px solid rgba(255,255,255,0.1)' }}
               >
                 <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Generate API Key</h2>
                 <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 28 }}>The key will be shown once after creation.</p>
@@ -293,7 +293,30 @@ export default function DeveloperPage() {
 
         {/* Keys List */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80, color: '#475569' }}>Loading API keys...</div>
+          <div className="flex flex-col gap-4 w-full">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="glass p-[14px] px-[18px] rounded-xl border border-white/5 animate-pulse flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-3.5 w-24 bg-slate-800 rounded mb-1.5" />
+                    <div className="h-2.5 w-36 bg-slate-800 rounded" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="h-4 w-10 bg-slate-800 rounded" />
+                    <div className="h-2.5 w-12 bg-slate-800 rounded" />
+                  </div>
+                  <div className="h-5 w-20 bg-slate-800 rounded-full" />
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-slate-800" />
+                    <div className="w-8 h-8 rounded-lg bg-slate-800" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : error && keys.length === 0 ? (
           <div className="glass" style={{ padding: 40, borderRadius: 16, textAlign: 'center', border: '1px solid rgba(255,51,102,0.2)' }}>
             <p style={{ color: '#ff3366', fontSize: 14, marginBottom: 20 }}>{error}</p>
@@ -313,41 +336,49 @@ export default function DeveloperPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {keys.map(key => {
-              const meta = API_TYPE_META[key.api_type] || API_TYPE_META.basic;
-              return (
-                <motion.div key={key.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                  <TiltCard
-                    style={{ padding: 24, borderRadius: 16, border: `1px solid ${key.is_active ? 'rgba(255,255,255,0.06)' : 'rgba(255,51,102,0.1)'}`, opacity: key.is_active ? 1 : 0.6 }}
+            <AnimatePresence initial={false}>
+              {keys.map(key => {
+                const meta = API_TYPE_META[key.api_type] || API_TYPE_META.basic;
+                return (
+                  <motion.div
+                    key={key.id}
+                    initial={{ opacity: 0, height: 0, y: 15 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -15 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                    style={{ overflow: 'hidden' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${meta.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <meta.icon size={18} color={meta.color} />
+                    <TiltCard
+                      style={{ padding: '14px 18px', borderRadius: 12, border: `1px solid ${key.is_active ? 'rgba(255,255,255,0.06)' : 'rgba(255,51,102,0.1)'}`, opacity: key.is_active ? 1 : 0.6 }}
+                    >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: `${meta.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <meta.icon size={15} color={meta.color} />
                       </div>
                       <div style={{ flex: 1, minWidth: 200 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 15, fontWeight: 600 }}>{key.name}</span>
-                          {!key.is_active && <span style={{ fontSize: 10, color: '#ff3366', background: 'rgba(255,51,102,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>REVOKED</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>{key.name}</span>
+                          {!key.is_active && <span style={{ fontSize: 9, color: '#ff3366', background: 'rgba(255,51,102,0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>REVOKED</span>}
                         </div>
-                        <code style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{key.key_prefix}</code>
+                        <code style={{ fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>{key.key_prefix}</code>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: meta.color }}>{key.request_count.toLocaleString()}</div>
-                          <div style={{ fontSize: 10, color: '#475569' }}>requests</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: meta.color }}>{key.request_count.toLocaleString()}</div>
+                          <div style={{ fontSize: 9, color: '#475569' }}>requests</div>
                         </div>
-                        <div style={{ padding: '4px 10px', borderRadius: 6, background: `${meta.color}11`, border: `1px solid ${meta.color}30`, fontSize: 11, color: meta.color, fontWeight: 600 }}>
+                        <div style={{ padding: '3px 8px', borderRadius: 6, background: `${meta.color}11`, border: `1px solid ${meta.color}30`, fontSize: 10, color: meta.color, fontWeight: 600 }}>
                           {meta.label}
                         </div>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
                           <button onClick={() => { setSelectedKey(selectedKey?.id === key.id ? null : key); }}
-                            style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer' }}>
-                            <Code2 size={14} />
+                            style={{ padding: '6px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#94a3b8', cursor: 'pointer' }}>
+                            <Code2 size={13} />
                           </button>
                           {key.is_active && (
                             <button onClick={() => revokeKey(key.id)}
-                              style={{ padding: '8px', borderRadius: 8, background: 'rgba(255,51,102,0.06)', border: '1px solid rgba(255,51,102,0.15)', color: '#ff3366', cursor: 'pointer' }}>
-                              <Trash2 size={14} />
+                              style={{ padding: '6px', borderRadius: 8, background: 'rgba(255,51,102,0.06)', border: '1px solid rgba(255,51,102,0.15)', color: '#ff3366', cursor: 'pointer' }}>
+                              <Trash2 size={13} />
                             </button>
                           )}
                         </div>
@@ -387,11 +418,12 @@ export default function DeveloperPage() {
                 </motion.div>
               );
             })}
+            </AnimatePresence>
           </div>
         )}
 
         {/* Quick Links */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 40 }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
           {[
             { href: '/docs', icon: BookOpen, label: 'Documentation', desc: 'API reference and guides' },
             { href: '/dashboard', icon: Activity, label: 'Analytics', desc: 'Usage stats and metrics' },

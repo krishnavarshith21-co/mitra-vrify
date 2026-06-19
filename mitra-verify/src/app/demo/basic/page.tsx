@@ -14,7 +14,7 @@ import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay'
 
 function MetricCard({ label, value, unit, color = '#00d4ff', icon: Icon }: { label: string; value: string | number; unit?: string; color?: string; icon: React.ComponentType<{ size?: number; color?: string }> }) {
   return (
-    <div className="glass" style={{ padding: '16px 20px', borderRadius: 12, flex: 1 }}>
+    <div className="glass" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Icon size={14} color={color} />
         <span style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>{label}</span>
@@ -123,7 +123,7 @@ export default function BasicDemoPage() {
           });
         }
       } catch (err: any) {
-        console.error('Backend health check failed', err);
+        console.warn('Backend health check failed', err);
         setBackendHealthy(false);
         setDiagnosticInfo({
           url: `${API_BASE}/health`,
@@ -604,7 +604,7 @@ export default function BasicDemoPage() {
       setProcessingTime(elapsed);
 
     } catch (err: any) {
-      console.error('Frame processing failed', err);
+      console.warn('Frame processing failed', err);
       setModelStatus("Failed");
       const errorMsg = err.response ? `Backend returned status ${err.response.status}: ${JSON.stringify(err.response.data)}` : (err.message || 'Unknown network error');
       setError(`Failed to connect to backend biometric services. Reason: ${errorMsg}`);
@@ -789,13 +789,13 @@ export default function BasicDemoPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
+      <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', padding: '112px 16px 48px' }}>
         {/* Header */}
-        <div style={{ marginBottom: 40 }}>
+        <div style={{ marginBottom: 32 }}>
           <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#475569', textDecoration: 'none', fontSize: 13, marginBottom: 24 }}>
             <ArrowLeft size={14} /> Back to Home
           </Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.2)' }}>
@@ -803,25 +803,25 @@ export default function BasicDemoPage() {
                 </div>
                 <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>POST /api/v1/liveness/basic</div>
               </div>
-              <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
+              <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
                 Fast Liveness <span className="gradient-text-cyan">Demo</span>
               </h1>
               <p style={{ fontSize: 15, color: '#94a3b8', maxWidth: 500 }}>
                 Real-time face liveness detection using actual MediaPipe mesh outputs. Complete 4 verification checks below to pass.
               </p>
             </div>
-            <div style={{ textAlign: 'right' }}>
+            <div className="text-left sm:text-right">
               <div style={{ fontSize: 32, fontWeight: 700, color: '#00d4ff' }}>90%</div>
               <div style={{ fontSize: 12, color: '#475569' }}>Accuracy</div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Camera + Overlay Canvas */}
-          <div>
+          <div className="lg:col-span-8">
             <div style={{
-              position: 'relative', borderRadius: 20, overflow: 'hidden',
+              position: 'relative', borderRadius: 'var(--radius-xl)', overflow: 'hidden',
               background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)',
               aspectRatio: '4/3',
             }}>
@@ -1097,13 +1097,13 @@ export default function BasicDemoPage() {
           </div>
 
           {/* Metrics Panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Score cards */}
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="grid grid-cols-2 gap-3">
               <MetricCard label="Confidence" value={streaming ? `${(confidence * 100).toFixed(0)}` : '0'} unit="%" color="#00d4ff" icon={Activity} />
               <MetricCard label="Liveness" value={streaming ? `${(livenessScore * 100).toFixed(0)}` : '0'} unit="%" color="#00ff88" icon={Eye} />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="grid grid-cols-2 gap-3">
               <MetricCard label="Proc. Time" value={streaming ? `${processingTime.toFixed(0)}` : '0'} unit="ms" color="#ffb800" icon={Clock} />
               <MetricCard label="Face Visible" value={streaming ? `${faceVisibleDuration.toFixed(1)}` : '0.0'} unit="s" color="#7c3aed" icon={Zap} />
             </div>
@@ -1144,7 +1144,7 @@ export default function BasicDemoPage() {
             )}
 
             {/* Checks */}
-            <div className="glass" style={{ padding: 20, borderRadius: 16 }}>
+            <div className="glass" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-lg)' }}>
               <h3 style={{ fontSize: 13, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                 REQUIRED LIVENESS CHECKS
               </h3>

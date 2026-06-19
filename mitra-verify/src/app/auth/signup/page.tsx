@@ -116,7 +116,7 @@ export default function SignupPage() {
         </Link>
 
         {/* Card */}
-        <div className="glass" style={{ padding: '36px 40px', borderRadius: 24, border: '1px solid rgba(0,212,255,0.15)', boxShadow: '0 20px 50px rgba(0,0,0,0.3), 0 0 30px rgba(0,212,255,0.05)' }}>
+        <div className="glass px-6 sm:px-10 py-9 sm:py-10" style={{ borderRadius: 24, border: '1px solid rgba(0,212,255,0.15)', boxShadow: '0 20px 50px rgba(0,0,0,0.3), 0 0 30px rgba(0,212,255,0.05)' }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8, textAlign: 'center', color: '#f8fafc' }}>Create Account</h1>
           <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', marginBottom: 28 }}>Free developer account · Access all APIs</p>
 

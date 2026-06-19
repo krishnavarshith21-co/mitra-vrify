@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Terminal, Code2, Shield, Zap, Fingerprint, ChevronRight, Copy, CheckCircle, Lock } from 'lucide-react';
+import { BookOpen, Terminal, Code2, Shield, Zap, Fingerprint, ChevronRight, Copy, CheckCircle, Lock, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
@@ -76,6 +76,7 @@ const CodeBlock = ({ code, language }: { code: string, language: string, id?: st
 export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('getting-started');
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const handleSectionChange = (sectionId: string) => {
     setLoadingDocs(true);
@@ -90,9 +91,80 @@ export default function DocsPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <Navbar />
       
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 80px', display: 'flex', gap: 40 }}>
-        {/* Sidebar */}
-        <div style={{ width: 280, flexShrink: 0 }}>
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 w-full max-w-7xl mx-auto px-4 md:px-6 pt-28 pb-20 md:pt-32 md:pb-24">
+        {/* Mobile Sidebar Trigger */}
+        <div className="lg:hidden flex items-center justify-between border-b border-slate-800/40 pb-4 mb-4">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="btn-ghost flex items-center gap-2 px-4 py-2"
+            style={{ fontSize: 13, border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <BookOpen size={16} color="#00d4ff" /> View Sections
+          </button>
+          <span style={{ fontSize: 12, color: '#475569', textTransform: 'uppercase', fontWeight: 600 }}>
+            {SECTIONS.find(s => s.id === activeSection)?.title}
+          </span>
+        </div>
+
+        {/* Mobile Drawer Sidebar */}
+        <AnimatePresence>
+          {mobileSidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1100] bg-black/70 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <motion.div
+                initial={{ x: -280 }}
+                animate={{ x: 0 }}
+                exit={{ x: -280 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="w-[280px] h-full bg-[#030712] border-r border-slate-800/80 p-6 flex flex-col gap-6"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 style={{ fontSize: 12, fontWeight: 600, color: '#475569', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Documentation
+                  </h3>
+                  <button onClick={() => setMobileSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {SECTIONS.map(section => {
+                    const isActive = activeSection === section.id;
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => {
+                          handleSectionChange(section.id);
+                          setMobileSidebarOpen(false);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+                          borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
+                          background: isActive ? 'rgba(0,212,255,0.08)' : 'transparent',
+                          color: isActive ? '#00d4ff' : 'var(--text-secondary)',
+                          fontWeight: isActive ? 600 : 500,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <section.icon size={16} color={isActive ? '#00d4ff' : '#475569'} />
+                        <span style={{ flex: 1 }}>{section.title}</span>
+                        {isActive && <ChevronRight size={14} />}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block w-[280px] shrink-0">
           <div style={{ position: 'sticky', top: 100 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, paddingLeft: 16 }}>
               Documentation
@@ -124,7 +196,7 @@ export default function DocsPage() {
         </div>
 
         {/* Content Area */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
             {loadingDocs ? (
               <SkeletonLoader key="skeleton" />
@@ -407,7 +479,7 @@ for step in challenges:
                     </p>
 
                     <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: '#f8fafc' }}>Installation Commands</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                       <div className="glass" style={{ padding: 16, borderRadius: 10 }}>
                         <div style={{ fontSize: 12, color: '#475569', fontWeight: 600, marginBottom: 8 }}>NPM / YARN</div>
                         <code style={{ fontSize: 13, color: '#00d4ff', fontFamily: 'monospace' }}>npm install @mitraverify/sdk</code>
@@ -486,59 +558,61 @@ export function AuthScreen() {
                       MITRA VERIFY returns standard HTTP response status codes. The response bodies are JSON objects containing descriptive detail blocks to help you troubleshoot API requests.
                     </p>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: 24 }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                          <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>HTTP Status</th>
-                          <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>Error Code Name</th>
-                          <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>Description and Remedy</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>400</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>invalid_request</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Invalid Request</strong>. The base64 file string is malformed, has invalid padding, or is empty. Confirm image file conversion parameters.
-                          </td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>401</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>unauthorized</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Unauthorized</strong>. The API key in the request header is missing, is revoked, or has expired. Make sure the X-API-Key value matches the portal string.
-                          </td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>403</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>forbidden</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Forbidden</strong>. The API key is valid but lack access scopes to perform the requested endpoint action (e.g. calling /identity with basic keys).
-                          </td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>404</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>not_found</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Not Found</strong>. The specified subject_id or user record could not be located in the backend database.
-                          </td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                          <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>429</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>rate_limit_exceeded</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Rate Limited</strong>. The monthly volume quota allocated to this key organization plan has been exceeded. Upgrade plan in developer settings.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>500</td>
-                          <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>internal_error</code></td>
-                          <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
-                            <strong>Internal Server Error</strong>. An unexpected server runtime error occurred, such as model inference crashes. Contact technical support.
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto w-full border border-slate-800/40 rounded-xl mb-8">
+                      <table style={{ width: '100%', minWidth: 600, borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>HTTP Status</th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>Error Code Name</th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>Description and Remedy</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>400</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>invalid_request</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Invalid Request</strong>. The base64 file string is malformed, has invalid padding, or is empty. Confirm image file conversion parameters.
+                            </td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>401</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>unauthorized</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Unauthorized</strong>. The API key in the request header is missing, is revoked, or has expired. Make sure the X-API-Key value matches the portal string.
+                            </td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>403</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>forbidden</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Forbidden</strong>. The API key is valid but lack access scopes to perform the requested endpoint action (e.g. calling /identity with basic keys).
+                            </td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>404</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>not_found</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Not Found</strong>. The specified subject_id or user record could not be located in the backend database.
+                            </td>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '16px', color: '#ffb800', fontWeight: 600 }}>429</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>rate_limit_exceeded</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Rate Limited</strong>. The monthly volume quota allocated to this key organization plan has been exceeded. Upgrade plan in developer settings.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '16px', color: '#ff3366', fontWeight: 600 }}>500</td>
+                            <td style={{ padding: '16px' }}><code className="mono" style={{ background: 'rgba(255,255,255,0.04)', padding: '4px 8px', borderRadius: 4 }}>internal_error</code></td>
+                            <td style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: 14 }}>
+                              <strong>Internal Server Error</strong>. An unexpected server runtime error occurred, such as model inference crashes. Contact technical support.
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 

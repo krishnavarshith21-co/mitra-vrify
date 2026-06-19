@@ -208,6 +208,8 @@ export default function Global3DBackground() {
         pointerEvents: 'none',
         zIndex: 0,
         overflow: 'hidden',
+        opacity: 0.05,
+        filter: 'blur(4px)',
       }}
     >
       <div className="aurora-container">

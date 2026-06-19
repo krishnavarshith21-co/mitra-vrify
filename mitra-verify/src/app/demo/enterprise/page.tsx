@@ -302,7 +302,7 @@ export default function EnterpriseDemoPage() {
           });
         }
       } catch (err: any) {
-        console.error('Backend health check failed', err);
+        console.warn('Backend health check failed', err);
         setBackendHealthy(false);
         setDiagnosticInfo({
           url: `${API_BASE}/health`,
@@ -552,7 +552,7 @@ export default function EnterpriseDemoPage() {
           return;
         }
       } catch (e) {
-        console.error('Failed to fetch enrolled face from backend', e);
+        console.warn('Failed to fetch enrolled face from backend', e);
       }
 
       if (typeof window !== 'undefined') {
@@ -564,7 +564,7 @@ export default function EnterpriseDemoPage() {
             console.log("Enrollment embedding generated");
             console.log(parsed.length);
           } catch (e) {
-            console.error('Failed to parse enrolled signature', e);
+            console.warn('Failed to parse enrolled signature', e);
           }
         }
       }
@@ -975,7 +975,7 @@ export default function EnterpriseDemoPage() {
         handleFrameInvalid(data);
       }
     } catch (err: any) {
-      console.error('Frame processing failed', err);
+      console.warn('Frame processing failed', err);
       setModelStatus("Failed");
       const errorMsg = err.response ? `Backend returned status ${err.response.status}: ${JSON.stringify(err.response.data)}` : (err.message || 'Unknown network error');
       setError(`Failed to connect to backend biometric services. Reason: ${errorMsg}`);
@@ -1117,7 +1117,7 @@ export default function EnterpriseDemoPage() {
       setCurrentChallenge(0);
       setChallengeTimer(30);
     } catch (e: any) {
-      console.error("Failed to start session on backend", e);
+      console.warn("Failed to start session on backend", e);
       const errorMsg = e.response ? `Backend returned status ${e.response.status}: ${JSON.stringify(e.response.data)}` : (e.message || 'Unknown network error');
       setError(`Failed to initialize secure verification session with backend. Reason: ${errorMsg}`);
       setModelStatus('Failed');
@@ -1235,7 +1235,7 @@ export default function EnterpriseDemoPage() {
         alert("Failed to enroll face: Invalid response from backend");
       }
     } catch (err: unknown) {
-      console.error(err);
+      console.warn(err);
       const apiErr = err as { response?: { data?: { detail?: string } } };
       alert(apiErr.response?.data?.detail || "Failed to enroll face due to network/server error");
     } finally {
@@ -1319,31 +1319,25 @@ export default function EnterpriseDemoPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#475569', textDecoration: 'none', fontSize: 13, marginBottom: 24 }}>
-            <ArrowLeft size={14} /> Back to Home
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)' }}>
-                  <span style={{ fontSize: 11, color: '#00ff88', fontWeight: 600, letterSpacing: '0.08em' }}>ENTERPRISE IDENTITY API</span>
-                </div>
-                <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>POST /api/v1/identity/verify</div>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '128px 24px 60px' }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)' }}>
+                <span style={{ fontSize: 11, color: '#00ff88', fontWeight: 600, letterSpacing: '0.08em' }}>ENTERPRISE IDENTITY API</span>
               </div>
-              <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
-                Enterprise Identity <span className="gradient-text-green">Demo</span>
-              </h1>
-              <p style={{ fontSize: 15, color: '#94a3b8', maxWidth: 500 }}>
-                High-security dynamic challenge verification sequence combining embedding matches, gaze analysis, and continuous monitoring.
-              </p>
+              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>POST /api/v1/identity/verify</div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 32, fontWeight: 700, color: '#00ff88' }}>99.2%</div>
-              <div style={{ fontSize: 12, color: '#475569' }}>Accuracy</div>
-            </div>
+            <h1 style={{ fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
+              Enterprise Identity <span className="gradient-text-green">Demo</span>
+            </h1>
+            <p style={{ fontSize: 15, color: '#94a3b8', maxWidth: 500 }}>
+              High-security dynamic challenge verification sequence combining embedding matches, gaze analysis, and continuous monitoring.
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <div style={{ fontSize: 32, fontWeight: 700, color: '#00ff88' }}>99.2%</div>
+            <div style={{ fontSize: 12, color: '#475569' }}>Accuracy</div>
           </div>
         </div>
 
@@ -1362,9 +1356,9 @@ export default function EnterpriseDemoPage() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Camera Frame */}
-          <div>
+          <div className="lg:col-span-8">
             <div style={{
               position: 'relative', borderRadius: 20, overflow: 'hidden',
               background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)',
@@ -1751,7 +1745,7 @@ export default function EnterpriseDemoPage() {
           </div>
 
           {/* Controls Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Identity Similarity Card */}
             <div className="glass" style={{ padding: 20, borderRadius: 16, position: 'relative' }}>
               <div style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 12 }}>BIOMETRIC IDENTITY MATCH</div>
@@ -1935,7 +1929,7 @@ export default function EnterpriseDemoPage() {
                   />
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Yaw', value: yaw, max: 30 },
                   { label: 'Pitch', value: pitch, max: 20 },

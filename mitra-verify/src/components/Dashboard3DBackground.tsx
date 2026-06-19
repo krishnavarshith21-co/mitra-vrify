@@ -283,6 +283,8 @@ export default function Dashboard3DBackground() {
         pointerEvents: 'none',
         zIndex: 0,
         overflow: 'hidden',
+        opacity: 0.05,
+        filter: 'blur(4px)',
       }}
     >
       {/* Aurora Layer 5 - Drifting glows */}

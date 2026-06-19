@@ -92,7 +92,7 @@ export default function AdminPage() {
       const res = await adminAPI.stats();
       setStats(res.data);
     } catch (err) {
-      console.error('Failed to load admin stats', err);
+      console.warn('Failed to load admin stats', err);
     } finally {
       setLoadingStats(false);
     }
@@ -104,7 +104,7 @@ export default function AdminPage() {
       const res = await adminAPI.users();
       setUsers(res.data);
     } catch (err) {
-      console.error('Failed to fetch users', err);
+      console.warn('Failed to fetch users', err);
     } finally {
       setLoadingUsers(false);
     }
@@ -117,7 +117,7 @@ export default function AdminPage() {
       const res = await adminAPI.systemLogs(50, filter);
       setSyslogs(res.data);
     } catch (err) {
-      console.error('Failed to fetch system logs', err);
+      console.warn('Failed to fetch system logs', err);
     } finally {
       setLoadingLogs(false);
     }
@@ -129,7 +129,7 @@ export default function AdminPage() {
       const res = await adminAPI.auditLogs(50);
       setAuditLogs(res.data);
     } catch (err) {
-      console.error('Failed to fetch audit logs', err);
+      console.warn('Failed to fetch audit logs', err);
     } finally {
       setLoadingLogs(false);
     }
@@ -289,15 +289,15 @@ export default function AdminPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '100px 24px 60px' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '128px 24px 60px' }}>
         {/* Title Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 36 }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <Shield size={20} color="var(--brand-cyan)" />
               <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--brand-cyan)', fontWeight: 600 }}>CONTROL HUB</span>
             </div>
-            <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>Admin Dashboard</h1>
+            <h1 style={{ fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>Admin Dashboard</h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>System oversight, database stats, audit streams and role managers.</p>
           </div>
           <button 
@@ -307,8 +307,8 @@ export default function AdminPage() {
               else if (activeTab === 'syslogs') loadSystemLogs();
               else loadAuditLogs();
             }} 
-            className="btn-ghost" 
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', fontSize: 13 }}
+            className="btn-ghost w-full sm:w-auto" 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', fontSize: 13 }}
           >
             <RefreshCw size={14} /> Refresh Data
           </button>
@@ -331,7 +331,7 @@ export default function AdminPage() {
         </AnimatePresence>
 
         {/* Sub-navigation Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 32, gap: 8 }}>
+        <div className="flex flex-nowrap overflow-x-auto border-b border-[var(--border-subtle)] pb-1 mb-8 gap-2 scrollbar-none">
           {[
             { id: 'overview', label: 'System Overview', icon: Activity },
             { id: 'users', label: 'User Directory', icon: Users },
@@ -346,12 +346,14 @@ export default function AdminPage() {
                 onClick={() => { setActiveTab(tab.id as 'overview' | 'users' | 'syslogs' | 'audit'); setActionError(null); setActionSuccess(null); }}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '12px 20px', fontSize: 14, fontWeight: 600,
+                  padding: '12px 16px', fontSize: 14, fontWeight: 600,
                   display: 'flex', alignItems: 'center', gap: 8,
                   color: isSelected ? 'var(--brand-cyan)' : 'var(--text-secondary)',
                   borderBottom: `2px solid ${isSelected ? 'var(--brand-cyan)' : 'transparent'}`,
                   transition: 'all 0.2s',
-                  marginBottom: -1
+                  marginBottom: -1,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
                 <Icon size={16} /> {tab.label}
@@ -370,66 +372,102 @@ export default function AdminPage() {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
                   {/* Stats Cards */}
-                  <TiltCard>
-                    <div style={{ padding: 24 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>TOTAL USERS</span>
-                        <Users size={18} color="var(--brand-cyan)" />
+                  <TiltCard style={{ padding: '14px 18px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Users size={15} color="var(--brand-cyan)" />
                       </div>
-                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
-                        <AnimatedCounter value={stats?.users.total || 0} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: '#475569', fontWeight: 600, letterSpacing: '0.05em' }}>LIVE</span>
+                        <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
                       </div>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                        <span>Active: <strong style={{ color: 'var(--brand-green)' }}>{stats?.users.active}</strong></span>
-                        <span>Admins: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.users.admin}</strong></span>
-                      </div>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
+                      <AnimatedCounter value={stats?.users.total || 0} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500, letterSpacing: '0.02em' }}>TOTAL USERS</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                      <span>Active: <strong style={{ color: 'var(--brand-green)' }}>{stats?.users.active}</strong></span>
+                      <span>Admins: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.users.admin}</strong></span>
                     </div>
                   </TiltCard>
 
-                  <TiltCard>
-                    <div style={{ padding: 24 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>API KEYS STATUS</span>
-                        <Key size={18} color="var(--brand-violet)" />
+                  <TiltCard style={{ padding: '14px 18px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'rgba(124, 58, 237, 0.08)', border: '1px solid rgba(124, 58, 237, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Key size={15} color="var(--brand-violet)" />
                       </div>
-                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
-                        <AnimatedCounter value={stats?.keys.total || 0} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: '#475569', fontWeight: 600, letterSpacing: '0.05em' }}>LIVE</span>
+                        <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
                       </div>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                        <span>Active Keys: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.keys.active}</strong></span>
-                      </div>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
+                      <AnimatedCounter value={stats?.keys.total || 0} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500, letterSpacing: '0.02em' }}>API KEYS STATUS</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                      <span>Active Keys: <strong style={{ color: 'var(--brand-cyan)' }}>{stats?.keys.active}</strong></span>
                     </div>
                   </TiltCard>
 
-                  <TiltCard>
-                    <div style={{ padding: 24 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>VERIFICATIONS</span>
-                        <CheckCircle size={18} color="var(--brand-green)" />
+                  <TiltCard style={{ padding: '14px 18px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'rgba(0, 255, 136, 0.08)', border: '1px solid rgba(0, 255, 136, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <CheckCircle size={15} color="var(--brand-green)" />
                       </div>
-                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
-                        <AnimatedCounter value={stats?.requests.total || 0} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: '#475569', fontWeight: 600, letterSpacing: '0.05em' }}>LIVE</span>
+                        <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <span>Pass: <strong style={{ color: 'var(--brand-green)' }}>{stats?.requests.passed}</strong></span>
-                        <span>Fail: <strong style={{ color: 'var(--brand-red)' }}>{stats?.requests.failed}</strong></span>
-                        <span>Spoof: <strong style={{ color: 'var(--brand-amber)' }}>{stats?.requests.spoof}</strong></span>
-                      </div>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
+                      <AnimatedCounter value={stats?.requests.total || 0} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500, letterSpacing: '0.02em' }}>VERIFICATIONS</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, fontSize: 10, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                      <span>Pass: <strong style={{ color: 'var(--brand-green)' }}>{stats?.requests.passed}</strong></span>
+                      <span>Fail: <strong style={{ color: 'var(--brand-red)' }}>{stats?.requests.failed}</strong></span>
+                      <span>Spoof: <strong style={{ color: 'var(--brand-amber)' }}>{stats?.requests.spoof}</strong></span>
                     </div>
                   </TiltCard>
 
-                  <TiltCard>
-                    <div style={{ padding: 24 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.05em' }}>PERFORMANCE</span>
-                        <Activity size={18} color="var(--brand-cyan)" />
+                  <TiltCard style={{ padding: '14px 18px', borderRadius: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'rgba(0, 212, 255, 0.08)', border: '1px solid rgba(0, 212, 255, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Activity size={15} color="var(--brand-cyan)" />
                       </div>
-                      <div style={{ fontSize: 32, fontWeight: 800, display: 'flex', alignItems: 'center' }}>
-                        <AnimatedCounter value={stats?.requests.success_rate || 0} />%
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: '#475569', fontWeight: 600, letterSpacing: '0.05em' }}>LIVE</span>
+                        <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
                       </div>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-                        <span>Latency: <strong>{stats?.requests.avg_processing_time}s</strong></span>
-                      </div>
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
+                      <AnimatedCounter value={stats?.requests.success_rate || 0} />%
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 500, letterSpacing: '0.02em' }}>PERFORMANCE</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
+                      <span>Latency: <strong>{stats?.requests.avg_processing_time}s</strong></span>
                     </div>
                   </TiltCard>
 
@@ -438,7 +476,7 @@ export default function AdminPage() {
                     <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Cpu size={16} color="var(--brand-cyan)" /> Telemetry & Infrastructure
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>DB Storage (SQLite)</div>
                         <div style={{ fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -476,10 +514,10 @@ export default function AdminPage() {
           {/* TAB 2: USER DIRECTORY */}
           {activeTab === 'users' && (
             <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20, alignItems: 'center' }}>
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6 sm:items-center">
                 <h3 style={{ fontSize: 16, fontWeight: 700 }}>Registered System Accounts</h3>
                 {/* Search Bar */}
-                <div style={{ position: 'relative', width: 300 }}>
+                <div className="relative w-full sm:w-[300px]">
                   <Search size={16} color="var(--text-secondary)" style={{ position: 'absolute', left: 12, top: 12 }} />
                   <input
                     value={searchQuery}
@@ -488,7 +526,7 @@ export default function AdminPage() {
                     style={{
                       width: '100%', padding: '10px 14px 10px 36px', borderRadius: 8,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
-                      color: 'var(--text-primary)', fontSize: 13, outline: 'none'
+                      color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -499,8 +537,8 @@ export default function AdminPage() {
               ) : filteredUsers.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No accounts match the criteria.</div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                <div className="overflow-x-auto w-full border border-slate-800/40 rounded-xl">
+                  <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
                         <th style={{ padding: 12 }}>Name / Email</th>
@@ -597,14 +635,15 @@ export default function AdminPage() {
                 </div>
                 
                 {/* Level filter & Clear logs */}
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="flex flex-wrap sm:flex-nowrap gap-3">
                   <select
                     value={logLevelFilter}
                     onChange={e => setLogLevelFilter(e.target.value)}
                     style={{
                       padding: '8px 12px', borderRadius: 8,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-default)',
-                      color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer', outline: 'none'
+                      color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer', outline: 'none',
+                      flex: 1
                     }}
                   >
                     <option value="ALL">All Levels</option>

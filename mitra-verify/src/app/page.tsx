@@ -215,154 +215,144 @@ export default function HomePage() {
       <motion.section
         ref={heroRef}
         style={mounted ? { opacity: heroOpacity } : {}}
-        className="grid-bg"
+        className="grid-bg relative min-h-[100vh] flex items-center pt-24 pb-16 lg:pt-0 lg:pb-0 overflow-hidden"
       >
+        {/* Gradient overlays */}
         <div style={{
-          position: 'relative', minHeight: '100vh', display: 'flex',
-          alignItems: 'center', overflow: 'hidden',
-        }}>
-          {/* 3D Canvas — wrapped in error boundary so WebGL crashes can't blank the page */}
-          <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            {mounted && (
-              <HeroSceneErrorBoundary>
-                <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0,212,255,0.03), transparent)' }} />}>
-                  <HeroScene phase={PHASES[currentPhase].id as ScanPhase} />
-                </Suspense>
-              </HeroSceneErrorBoundary>
-            )}
-          </div>
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse 80% 60% at 50% 50%, transparent, rgba(3,7,18,0.7))',
+          zIndex: 1, pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 200,
+          background: 'linear-gradient(to bottom, transparent, var(--bg-primary))',
+          zIndex: 2, pointerEvents: 'none',
+        }} />
 
-          {/* Gradient overlays */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, transparent, rgba(3,7,18,0.7))',
-            zIndex: 1, pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 200,
-            background: 'linear-gradient(to bottom, transparent, var(--bg-primary))',
-            zIndex: 2, pointerEvents: 'none',
-          }} />
-
-          {/* Hero Content */}
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '120px 24px 80px', position: 'relative', zIndex: 3, width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 80, alignItems: 'center' }}>
-              {/* Left: Text */}
-              <div>
-                {/* Open Source Badge */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  style={{ marginBottom: 24 }}
-                >
-                  <a href="https://github.com" target="_blank" rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                      padding: '6px 14px 6px 8px', borderRadius: 20,
-                      background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)',
-                      textDecoration: 'none',
-                    }}>
-                    <span style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, background: 'rgba(0,212,255,0.15)', color: '#00d4ff',
-                      padding: '2px 8px', borderRadius: 20, fontWeight: 600,
-                    }}>
-                      <Star size={10} fill="#00d4ff" /> Open Source
-                    </span>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Free forever · MIT License</span>
-                    <ArrowRight size={12} color="#94a3b8" />
-                  </a>
-                </motion.div>
-
-                <motion.h1
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  style={{
-                    fontSize: 'clamp(40px, 5vw, 72px)', fontWeight: 800,
-                    letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 24,
-                  }}
-                >
-                  Enterprise
-                  <br />
-                  <span className="gradient-text-cyan glow-cyan">Face Liveness</span>
-                  <br />
-                  & Identity APIs
-                </motion.h1>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35 }}
-                  style={{ fontSize: 18, color: '#94a3b8', lineHeight: 1.7, maxWidth: 520, marginBottom: 40 }}
-                >
-                  Production-ready biometric verification platform. Face liveness detection,
-                  anti-spoof, and continuous identity authentication — all open source.
-                </motion.p>
-
-                 {!isAuthenticated ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                    style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 48 }}
-                  >
-                    <Link href="/auth/signup" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      Start Building Free <ArrowRight size={16} />
-                    </Link>
-                    <Link href="/demo/basic" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <Eye size={16} /> Try Live Demo
-                    </Link>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                    style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 48 }}
-                  >
-                    <Link href="/dashboard" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      Go To Dashboard <ArrowRight size={16} />
-                    </Link>
-                    <Link href="/developer" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      Open API Console
-                    </Link>
-                    <Link href="/docs" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      View Documentation
-                    </Link>
-                  </motion.div>
-                )}
-
-                {/* Stats row */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  style={{ display: 'flex', gap: 40 }}
-                >
-                  {[
-                    { value: '99%', label: 'Max Accuracy' },
-                    { value: '< 1s', label: 'Fast Mode' },
-                    { value: '3 APIs', label: 'Products' },
-                    { value: 'MIT', label: 'License' },
-                  ].map(stat => (
-                    <div key={stat.label}>
-                      <div style={{ fontSize: 24, fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
-                        {stat.value}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{stat.label}</div>
-                    </div>
-                  ))}
-                </motion.div>
-              </div>
-
-              {/* Right: Phase Indicator HUD */}
+        {/* Hero Content */}
+        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', padding: '0 16px' }} className="relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left: Text & Stats */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              {/* Open Source Badge */}
               <motion.div
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                style={{ marginBottom: 8 }}
+              >
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '6px 14px 6px 8px', borderRadius: 20,
+                    background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)',
+                    textDecoration: 'none',
+                  }}>
+                  <span style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    fontSize: 11, background: 'rgba(0,212,255,0.15)', color: '#00d4ff',
+                    padding: '2px 8px', borderRadius: 20, fontWeight: 600,
+                  }}>
+                    <Star size={10} fill="#00d4ff" /> Open Source
+                  </span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>Free forever · MIT License</span>
+                  <ArrowRight size={12} color="#94a3b8" />
+                </a>
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  fontSize: 'var(--text-5xl)', fontWeight: 800,
+                  letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 16,
+                }}
+              >
+                Enterprise
+                <br />
+                <span className="gradient-text-cyan glow-cyan">Face Liveness</span>
+                <br />
+                & Identity APIs
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                style={{ fontSize: 'var(--text-base)', color: '#94a3b8', lineHeight: 1.7, maxWidth: 520, marginBottom: 16 }}
+              >
+                Production-ready biometric verification platform. Face liveness detection,
+                anti-spoof, and continuous identity authentication — all open source.
+              </motion.p>
+
+               {!isAuthenticated ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="flex flex-col sm:flex-row gap-4 mb-4 w-full lg:w-auto"
+                >
+                  <Link href="/auth/signup" className="btn-primary w-full sm:w-auto text-center justify-center" style={{ textDecoration: 'none' }}>
+                    Start Building Free <ArrowRight size={16} className="ml-2" />
+                  </Link>
+                  <Link href="/demo/basic" className="btn-ghost w-full sm:w-auto text-center justify-center" style={{ textDecoration: 'none' }}>
+                    <Eye size={16} className="mr-2" /> Try Live Demo
+                  </Link>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.45 }}
+                  className="flex flex-col sm:flex-row gap-4 mb-4 w-full lg:w-auto"
+                >
+                  <Link href="/dashboard" className="btn-primary w-full sm:w-auto text-center justify-center" style={{ textDecoration: 'none' }}>
+                    Go To Dashboard <ArrowRight size={16} className="ml-2" />
+                  </Link>
+                  <Link href="/developer" className="btn-ghost w-full sm:w-auto text-center justify-center" style={{ textDecoration: 'none' }}>
+                    Open API Console
+                  </Link>
+                  <Link href="/docs" className="btn-ghost w-full sm:w-auto text-center justify-center" style={{ textDecoration: 'none' }}>
+                    View Documentation
+                  </Link>
+                </motion.div>
+              )}
+
+              {/* Stats row */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 w-full"
+              >
+                {[
+                  { value: '99%', label: 'Max Accuracy', color: '#00ff88' },
+                  { value: '< 1s', label: 'Fast Mode', color: '#00d4ff' },
+                  { value: '3 APIs', label: 'Products', color: '#7c3aed' },
+                  { value: 'MIT', label: 'License', color: '#ffb800' },
+                ].map(stat => (
+                  <div key={stat.label} className="glass card-hover" style={{ padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span className="live-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: stat.color, boxShadow: `0 0 6px ${stat.color}` }} />
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-white tracking-tight" style={{ lineHeight: 1 }}>
+                      {stat.value}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 500 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Right: HUD & Globe Animation */}
+            <div className="lg:col-span-5 flex flex-col gap-6 items-center">
+              {/* HUD Panel */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="glass scan-line"
+                className="glass scan-line w-full"
                 style={{
                   padding: 24, borderRadius: 16,
                   border: '1px solid rgba(0,212,255,0.15)',
@@ -399,32 +389,43 @@ export default function HomePage() {
                   </motion.div>
                 </div>
               </motion.div>
+
+              {/* 3D Canvas Box */}
+              <div className="w-full h-[320px] sm:h-[380px] lg:h-[420px] relative">
+                {mounted && (
+                  <HeroSceneErrorBoundary>
+                    <Suspense fallback={<div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0,212,255,0.03), transparent)' }} />}>
+                      <HeroScene phase={PHASES[currentPhase].id as ScanPhase} />
+                    </Suspense>
+                  </HeroSceneErrorBoundary>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </motion.section>
 
       {/* ── API PRODUCTS ─────────────────────────────────── */}
-      <section style={{ padding: '100px 24px', background: 'var(--bg-secondary)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg-secondary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
+        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            style={{ textAlign: 'center', marginBottom: 64 }}
+            style={{ textAlign: 'center', marginBottom: 48 }}
           >
             <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00d4ff', fontWeight: 600, display: 'block', marginBottom: 16 }}>
               THREE POWERFUL APIs
             </span>
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
               Choose Your Verification Level
             </h2>
-            <p style={{ fontSize: 17, color: '#94a3b8', maxWidth: 560, margin: '0 auto' }}>
+            <p style={{ fontSize: 16, color: '#94a3b8', maxWidth: 560, margin: '0 auto' }}>
               From fast 1-second liveness checks to enterprise-grade continuous authentication
             </p>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {API_PRODUCTS.map((product, i) => (
               <motion.div
                 key={product.id}
@@ -434,10 +435,11 @@ export default function HomePage() {
                 transition={{ delay: i * 0.1 }}
                 className="card-hover"
                 style={{
-                  padding: 32, borderRadius: 20,
+                  padding: 'var(--space-4)', borderRadius: 'var(--radius-xl)',
                   background: product.gradient,
                   border: `1px solid ${product.border}`,
                   cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column' as const, height: '100%',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -500,9 +502,9 @@ export default function HomePage() {
       </section>
 
       {/* ── CODE EXAMPLE ─────────────────────────────────── */}
-      <section style={{ padding: '100px 24px', background: 'var(--bg-primary)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+      <section style={{ background: 'var(--bg-primary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
+        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -511,7 +513,7 @@ export default function HomePage() {
               <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00d4ff', fontWeight: 600, display: 'block', marginBottom: 16 }}>
                 DEVELOPER FIRST
               </span>
-              <h2 style={{ fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 24 }}>
                 Integrate in
                 <br />
                 <span className="gradient-text-green">minutes, not days</span>
@@ -570,23 +572,23 @@ export default function HomePage() {
       </section>
 
       {/* ── FEATURES GRID ────────────────────────────────── */}
-      <section style={{ padding: '100px 24px', background: 'var(--bg-secondary)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg-secondary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
+        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            style={{ textAlign: 'center', marginBottom: 64 }}
+            style={{ textAlign: 'center', marginBottom: 48 }}
           >
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
               Everything You Need
             </h2>
-            <p style={{ fontSize: 17, color: '#94a3b8' }}>
+            <p style={{ fontSize: 16, color: '#94a3b8' }}>
               Production-ready platform with zero compromises
             </p>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((feature, i) => (
               <motion.div
                 key={feature.title}
@@ -595,7 +597,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
                 className="glass card-hover"
-                style={{ padding: 28, borderRadius: 16 }}
+                style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', height: '100%' }}
               >
                 <div style={{
                   width: 44, height: 44, borderRadius: 12,
@@ -614,14 +616,13 @@ export default function HomePage() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
-      <section style={{ padding: '100px 24px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
+      <section style={{ padding: '48px 16px' }} className="md:py-16 md:px-8">
+        <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="glass-bright"
-            style={{ padding: '64px 48px', borderRadius: 24 }}
+            className="glass-bright px-6 py-12 md:px-12 md:py-16 rounded-3xl"
           >
             <div style={{
               width: 64, height: 64, borderRadius: 20, margin: '0 auto 24px',
@@ -633,7 +634,7 @@ export default function HomePage() {
             </div>
             {!isAuthenticated ? (
               <>
-                <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
                   Open Source & Free Forever
                 </h2>
                 <p style={{ fontSize: 17, color: '#94a3b8', lineHeight: 1.7, marginBottom: 40, maxWidth: 500, margin: '0 auto 40px' }}>
@@ -648,7 +649,7 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
                   Welcome Back, {user?.name || 'Developer'}
                 </h2>
                 <p style={{ fontSize: 17, color: '#94a3b8', lineHeight: 1.7, marginBottom: 40, maxWidth: 500, margin: '0 auto 40px' }}>

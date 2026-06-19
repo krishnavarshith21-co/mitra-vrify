@@ -58,9 +58,9 @@ function phaseColor(phase: ScanPhase): THREE.Color {
 }
 
 // ─── Face Particle Cloud (478 points in face-oval layout) ────────────────────
-function FaceParticles({ phase }: { phase: ScanPhase }) {
+function FaceParticles({ phase, isMobile }: { phase: ScanPhase; isMobile: boolean }) {
   const meshRef = useRef<THREE.Points>(null!);
-  const COUNT = 478;
+  const COUNT = isMobile ? 150 : 478;
 
   const { positions, colors } = useMemo(() => {
     const pos = new Float32Array(COUNT * 3);
@@ -97,7 +97,7 @@ function FaceParticles({ phase }: { phase: ScanPhase }) {
       col[i * 3 + 2] = 1.0;
     }
     return { positions: pos, colors: col };
-  }, []);
+  }, [COUNT]);
 
   const targetColor = useMemo(() => phaseColor(phase), [phase]);
   const currentColor = useRef(new THREE.Color(PHASE_COLORS['searching']));
@@ -393,8 +393,8 @@ function DataLine({ width, y, speed, delay, color }: DataLineProps) {
 }
 
 // ─── Floating Ambient Particles ───────────────────────────────────────────────
-function AmbientParticles() {
-  const COUNT = 300;
+function AmbientParticles({ isMobile }: { isMobile: boolean }) {
+  const COUNT = isMobile ? 80 : 300;
   const meshRef = useRef<THREE.Points>(null!);
 
   const { positions, speeds } = useMemo(() => {
@@ -412,7 +412,7 @@ function AmbientParticles() {
       sp[i] = 0.1 + lcg() * 0.3;
     }
     return { positions: pos, speeds: sp };
-  }, []);
+  }, [COUNT]);
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
@@ -491,7 +491,34 @@ function PhaseHUD({ phase }: { phase: ScanPhase }) {
 }
 
 // ─── Scene Root ───────────────────────────────────────────────────────────────
-function Scene({ phase }: { phase: ScanPhase }) {
+function Scene({ phase, isMobile }: { phase: ScanPhase; isMobile: boolean }) {
+  const [lowPerformance, setLowPerformance] = useState(false);
+  const frameTimes = useRef<number[]>([]);
+  const lastFrameTime = useRef(performance.now());
+
+  useFrame(() => {
+    const now = performance.now();
+    const delta = now - lastFrameTime.current;
+    lastFrameTime.current = now;
+
+    // Track deltas to calculate moving average FPS over last 60 frames
+    frameTimes.current.push(delta);
+    if (frameTimes.current.length > 60) {
+      frameTimes.current.shift();
+    }
+
+    if (frameTimes.current.length === 60) {
+      const avgDelta = frameTimes.current.reduce((a, b) => a + b, 0) / 60;
+      const currentFps = 1000 / avgDelta;
+      if (currentFps < 45 && !lowPerformance) {
+        setLowPerformance(true);
+        console.warn(`[HeroScene] Performance dropped below 45 FPS (${currentFps.toFixed(1)}). Disabling expensive Three.js bloom post-processing.`);
+      }
+    }
+  });
+
+  const isLowPerf = isMobile || lowPerformance;
+
   return (
     <>
       {/* Camera controls - subtle auto-rotate */}
@@ -520,7 +547,7 @@ function Scene({ phase }: { phase: ScanPhase }) {
       <Float speed={1.2} rotationIntensity={0.1} floatIntensity={0.15}>
         <group>
           <FaceSphere phase={phase} />
-          <FaceParticles phase={phase} />
+          <FaceParticles phase={phase} isMobile={isLowPerf} />
           <GrantedPulse visible={phase === 'granted'} />
           <ScanRing phase={phase} />
           <CornerBrackets phase={phase} />
@@ -549,23 +576,25 @@ function Scene({ phase }: { phase: ScanPhase }) {
       />
 
       {/* Floating ambient particles */}
-      <AmbientParticles />
+      <AmbientParticles isMobile={isLowPerf} />
 
       {/* Post-processing */}
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.3}
-          luminanceSmoothing={0.9}
-          intensity={2}
-          mipmapBlur
-        />
-        <ChromaticAberration
-          blendFunction={BlendFunction.NORMAL}
-          offset={new THREE.Vector2(0.0008, 0.0008)}
-          radialModulation={false}
-          modulationOffset={0}
-        />
-      </EffectComposer>
+      {!isLowPerf && (
+        <EffectComposer>
+          <Bloom
+            luminanceThreshold={0.3}
+            luminanceSmoothing={0.9}
+            intensity={2}
+            mipmapBlur
+          />
+          <ChromaticAberration
+            blendFunction={BlendFunction.NORMAL}
+            offset={new THREE.Vector2(0.0008, 0.0008)}
+            radialModulation={false}
+            modulationOffset={0}
+          />
+        </EffectComposer>
+      )}
     </>
   );
 }
@@ -590,6 +619,18 @@ export function PhaseLabel({ phase }: { phase: ScanPhase }) {
 export default function HeroScene({ phase: controlledPhase }: { phase?: ScanPhase }) {
   const [internalPhase, setInternalPhase] = useState<ScanPhase>('searching');
   const [phaseIndex, setPhaseIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Auto-advance phases every 2.5s, loop (only if not controlled)
   useEffect(() => {
@@ -616,11 +657,11 @@ export default function HeroScene({ phase: controlledPhase }: { phase?: ScanPhas
           alpha: true,
           powerPreference: 'high-performance',
         }}
-        dpr={[1, 2]}
+        dpr={isMobile ? 1 : [1, 2]}
         camera={{ position: [0, 0, 5], fov: 45, near: 0.1, far: 200 }}
         style={{ background: 'transparent' }}
       >
-        <Scene phase={activePhase} />
+        <Scene phase={activePhase} isMobile={isMobile} />
       </Canvas>
 
       {/* Phase label overlay (HTML) */}

@@ -58,9 +58,9 @@ api.interceptors.response.use(
     }
 
     if (status) {
-      console.error(`[API] ✗ ${status} ${url}`, err.response?.data);
+      console.warn(`[API] ✗ ${status} ${url}`, err.response?.data);
     } else {
-      console.error(`[API] ✗ Network error ${url}`, err.message);
+      console.warn(`[API] ✗ Network error ${url}`, err.message);
     }
 
     return Promise.reject(err);

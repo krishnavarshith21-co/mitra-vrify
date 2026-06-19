@@ -108,7 +108,7 @@ export default function AdvancedDemoPage() {
           });
         }
       } catch (err: any) {
-        console.error('Backend health check failed', err);
+        console.warn('Backend health check failed', err);
         setBackendHealthy(false);
         setDiagnosticInfo({
           url: `${API_BASE}/health`,
@@ -483,7 +483,7 @@ export default function AdvancedDemoPage() {
       }
 
     } catch (err: any) {
-      console.error('Frame processing failed', err);
+      console.warn('Frame processing failed', err);
       setModelStatus("Failed");
       const errorMsg = err.response ? `Backend returned status ${err.response.status}: ${JSON.stringify(err.response.data)}` : (err.message || 'Unknown network error');
       setError(`Failed to connect to backend biometric services. Reason: ${errorMsg}`);
@@ -571,7 +571,7 @@ export default function AdvancedDemoPage() {
       setChallenges(sessionRes.data.challenges);
       setChallengePassed(new Array(sessionRes.data.challenges.length).fill(false));
     } catch (e: any) {
-      console.error("Failed to start session on backend", e);
+      console.warn("Failed to start session on backend", e);
       const errorMsg = e.response ? `Backend returned status ${e.response.status}: ${JSON.stringify(e.response.data)}` : (e.message || 'Unknown network error');
       setError(`Failed to initialize secure verification session with backend. Reason: ${errorMsg}`);
       setModelStatus('Failed');
@@ -650,33 +650,33 @@ export default function AdvancedDemoPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 24px 60px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '128px 24px 60px' }}>
         <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#475569', textDecoration: 'none', fontSize: 13, marginBottom: 24 }}>
           <ArrowLeft size={14} /> Back to Home
         </Link>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 40 }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)' }}>
                 <span style={{ fontSize: 11, color: '#7c3aed', fontWeight: 600 }}>ADVANCED ANTI-SPOOF API</span>
               </div>
             </div>
-            <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
+            <h1 style={{ fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>
               Advanced Anti-Spoof <span className="gradient-text-violet">Demo</span>
             </h1>
             <p style={{ fontSize: 15, color: '#94a3b8', maxWidth: 500 }}>
               Complete the dynamic challenge sequence. Facial movements are verified in real time on the Python server.
             </p>
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="text-left sm:text-right">
             <div style={{ fontSize: 32, fontWeight: 700, color: '#7c3aed' }}>97%</div>
             <div style={{ fontSize: 12, color: '#475569' }}>Accuracy</div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Camera View */}
-          <div>
+          <div className="lg:col-span-8">
             <div style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', aspectRatio: '4/3' }}>
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -944,7 +944,7 @@ export default function AdvancedDemoPage() {
           </div>
 
           {/* Challenge Panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Liveness Verification Status Card */}
             {streaming && (
               <div className="glass" style={{ padding: 20, borderRadius: 16 }}>

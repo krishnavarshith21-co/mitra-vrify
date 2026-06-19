@@ -30,10 +30,10 @@ export default function ContactPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }} className="grid-bg">
       <Navbar />
       
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px', display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 60, alignItems: 'center' }}>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 md:pt-32 md:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
         
         {/* Left Side: Info */}
-        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
+        <motion.div className="lg:col-span-5" initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
           <h1 style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
             Get in touch
           </h1>
@@ -59,7 +59,7 @@ export default function ContactPage() {
         </motion.div>
 
         {/* Right Side: Form */}
-        <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}>
+        <motion.div className="lg:col-span-7" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}>
           <div className="glass" style={{ padding: 40, borderRadius: 24, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 4, background: 'linear-gradient(90deg, #00d4ff, #7c3aed, #00ff88)' }} />
             
@@ -72,7 +72,7 @@ export default function ContactPage() {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 500, color: '#94a3b8', display: 'block', marginBottom: 8 }}>Name</label>
                     <input type="text" required placeholder="John Doe" style={inputStyle} onFocus={e => (e.target.style.borderColor = 'rgba(0,212,255,0.4)')} onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')} />

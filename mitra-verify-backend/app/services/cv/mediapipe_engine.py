@@ -1208,9 +1208,9 @@ def process_demo_frame(
         elif challenge_type == "smile":
             challenge_passed = smile_score > 0.45
         elif challenge_type == "turn_left":
-            challenge_passed = yaw < -12.0
+            challenge_passed = yaw < -15.0
         elif challenge_type == "turn_right":
-            challenge_passed = yaw > 12.0
+            challenge_passed = yaw > 15.0
         elif challenge_type == "look_up":
             challenge_passed = pitch > 10.0
         elif challenge_type == "look_down":
@@ -1227,10 +1227,10 @@ def process_demo_frame(
                 challenge_passed = yaw_range > 12.0
         elif challenge_type == "look_left":
             if gaze_available and gaze_direction:
-                challenge_passed = gaze_direction["x"] < 0.40
+                challenge_passed = gaze_direction["x"] < 0.45
         elif challenge_type == "look_right":
             if gaze_available and gaze_direction:
-                challenge_passed = gaze_direction["x"] > 0.60
+                challenge_passed = gaze_direction["x"] > 0.55
         elif challenge_type == "hold_still":
             if len(history["yaw"]) >= 5:
                 last_yaw = history["yaw"][-15:]

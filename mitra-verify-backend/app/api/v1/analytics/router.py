@@ -19,7 +19,7 @@ async def get_overview(current_user: User = Depends(get_current_user), db: Async
     if not key_ids:
         return AnalyticsOverview(
             total_requests=0, successful_verifications=0, failed_verifications=0, spoof_attempts=0,
-            deepfake_attempts=0, identity_matches=0, success_rate=0.0, avg_processing_time=0.0, active_api_keys=0
+            deepfake_attempts=0, identity_matches=0, no_face_detected=0, success_rate=0.0, avg_processing_time=0.0, active_api_keys=0
         )
 
     # Fetch counts grouped by result and api_type to apply exact formulas
@@ -118,6 +118,7 @@ async def get_overview(current_user: User = Depends(get_current_user), db: Async
         spoof_attempts=spoof_attempts,
         deepfake_attempts=deepfake_attempts,
         identity_matches=identity_matches,
+        no_face_detected=counts["NO_FACE_DETECTED"],
         success_rate=round(success_rate, 2),
         avg_processing_time=round(float(avg_processing), 2),
         active_api_keys=active_count

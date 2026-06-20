@@ -26,6 +26,7 @@ interface Overview {
   success_rate: number;
   avg_processing_time: number;
   active_api_keys: number;
+  no_face_detected: number;
 }
 
 interface ActivityItem {
@@ -82,6 +83,7 @@ interface UsageDataItem {
   pass: number;
   fail: number;
   spoof: number;
+  noFace: number;
   total: number;
 }
 
@@ -119,10 +121,10 @@ export default function AuthenticatedDashboard() {
 
       // Process usage data into daily buckets
       const rawData: ActivityItem[] = usageRes.data.data || [];
-      const buckets: Record<string, { pass: number; fail: number; spoof: number }> = {};
+      const buckets: Record<string, { pass: number; fail: number; spoof: number; noFace: number }> = {};
       for (let i = 29; i >= 0; i--) {
         const d = format(subDays(new Date(), i), 'MMM d');
-        buckets[d] = { pass: 0, fail: 0, spoof: 0 };
+        buckets[d] = { pass: 0, fail: 0, spoof: 0, noFace: 0 };
       }
       rawData.forEach(item => {
         const d = format(new Date(item.date), 'MMM d');
@@ -130,13 +132,14 @@ export default function AuthenticatedDashboard() {
           const res = (item.result || '').toLowerCase();
           if (res === 'pass' || res === 'success' || res === 'identity_match_success') buckets[d].pass++;
           else if (res === 'spoof' || res === 'spoof_detected') buckets[d].spoof++;
+          else if (res === 'no_face_detected') buckets[d].noFace++;
           else buckets[d].fail++;
         }
       });
       setUsageData(Object.entries(buckets).map(([date, counts]) => ({
         date,
         ...counts,
-        total: counts.pass + counts.fail + counts.spoof
+        total: counts.pass + counts.fail + counts.spoof + counts.noFace
       })));
       setLastRefresh(new Date());
       setError(null);
@@ -147,6 +150,8 @@ export default function AuthenticatedDashboard() {
       const demoOverview = {
         total_requests: 12450,
         successful_verifications: 12180,
+        failed_verifications: 50,
+        no_face_detected: 35,
         spoof_attempts: 185,
         identity_matches: 9840,
         success_rate: 97.83,
@@ -168,12 +173,14 @@ export default function AuthenticatedDashboard() {
         const pass = Math.floor(Math.random() * 100) + 150;
         const spoof = Math.floor(Math.random() * 5);
         const fail = Math.floor(Math.random() * 10);
+        const noFace = Math.floor(Math.random() * 5);
         demoUsageData.push({
           date: dateStr,
           pass,
           spoof,
           fail,
-          total: pass + spoof + fail
+          noFace,
+          total: pass + spoof + fail + noFace
         });
       }
       setUsageData(demoUsageData);
@@ -187,7 +194,8 @@ export default function AuthenticatedDashboard() {
 
   const pieData = overview ? [
     { name: 'Pass', value: overview.successful_verifications, color: '#00ff88' },
-    { name: 'Fail', value: overview.total_requests - overview.successful_verifications - overview.spoof_attempts, color: '#ff3366' },
+    { name: 'Fail', value: overview.failed_verifications, color: '#ff3366' },
+    { name: 'No Face', value: overview.no_face_detected, color: '#94a3b8' },
     { name: 'Spoof', value: overview.spoof_attempts, color: '#ffb800' },
   ].filter(d => d.value > 0) : [];
 
@@ -307,8 +315,10 @@ export default function AuthenticatedDashboard() {
             <h3 className="text-label" style={{ marginBottom: 'var(--space-2)' }}>Key Metrics</h3>
             <div className="kpi-grid-primary">
               <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
-              <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
-              <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
+              <KPICard label="Passed Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
+              <KPICard label="Failed Verifications" value={overview?.failed_verifications || 0} icon={AlertTriangle} color="#ff3366" />
+              <KPICard label="No Face Detected" value={overview?.no_face_detected || 0} icon={Eye} color="#94a3b8" />
+              <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ffb800" />
               <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
             </div>
           </div>
@@ -343,6 +353,10 @@ export default function AuthenticatedDashboard() {
                         <stop offset="0%" stopColor="#ffb800" stopOpacity={0.25} />
                         <stop offset="100%" stopColor="#ffb800" stopOpacity={0} />
                       </linearGradient>
+                      <linearGradient id="noFaceGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
+                      </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                     <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -351,6 +365,7 @@ export default function AuthenticatedDashboard() {
                     <Area type="monotone" dataKey="pass" stroke="#00ff88" strokeWidth={2} fill="url(#passGrad)" name="Pass" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#00ff88' }} />
                     <Area type="monotone" dataKey="fail" stroke="#ff3366" strokeWidth={2} fill="url(#failGrad)" name="Fail" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#ff3366' }} />
                     <Area type="monotone" dataKey="spoof" stroke="#ffb800" strokeWidth={2} fill="url(#spoofGrad)" name="Spoof" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#ffb800' }} />
+                    <Area type="monotone" dataKey="noFace" stroke="#94a3b8" strokeWidth={2} fill="url(#noFaceGrad)" name="No Face" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (

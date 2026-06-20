@@ -689,9 +689,9 @@ export default function EnterpriseDemoPage() {
       setTimeSinceFaceSeen(faceLostDuration);
 
       let state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = 'FACE_WARNING';
-      if (faceLostDuration < 1.5) {
+      if (faceLostDuration < 2.0) {
         state = 'FACE_WARNING';
-      } else if (faceLostDuration >= 1.5 && faceLostDuration < 3.0) {
+      } else if (faceLostDuration >= 2.0 && faceLostDuration < 5.0) {
         state = 'FACE_RECOVERY';
       } else {
         state = 'FACE_LOST';
@@ -700,8 +700,8 @@ export default function EnterpriseDemoPage() {
       setFaceTrackingState(state);
       prevTrackingStateRef.current = state;
 
-      // Terminate ONLY after 3 continuous seconds of face lost
-      if (faceLostDuration > 3.0) {
+      // Terminate ONLY after 5 continuous seconds of face lost
+      if (faceLostDuration > 5.0) {
         setDetectedFaces(0);
         setLandmarkCount(0);
         setConfidence(0);
@@ -710,7 +710,6 @@ export default function EnterpriseDemoPage() {
         setFaceInsideGuide(false);
         faceVisibleStartRef.current = null;
         setFaceVisibleDuration(0);
-        setSimilarity(0);
         setConsecutiveValidFrames(0);
         noseHistoryRef.current = [];
         setDetectionStability(0.0);

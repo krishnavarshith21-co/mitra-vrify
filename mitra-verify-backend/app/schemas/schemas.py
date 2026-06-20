@@ -115,6 +115,7 @@ class AnalyticsOverview(BaseModel):
     spoof_attempts: int
     deepfake_attempts: int
     identity_matches: int
+    no_face_detected: int
     success_rate: float
     avg_processing_time: float
     active_api_keys: int

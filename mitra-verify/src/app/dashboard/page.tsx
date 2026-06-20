@@ -275,8 +275,10 @@ export default function DashboardPage() {
                 <h3 className="text-label" style={{ marginBottom: 'var(--space-2)' }}>Key Metrics</h3>
                 <div className="kpi-grid-primary">
                   <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
-                  <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
-                  <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
+                  <KPICard label="Passed Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
+                  <KPICard label="Failed Verifications" value={overview?.failed_verifications || 0} icon={AlertTriangle} color="#ff3366" />
+                  <KPICard label="No Face Detected" value={overview?.no_face_detected || 0} icon={Eye} color="#94a3b8" />
+                  <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ffb800" />
                   <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
                 </div>
               </div>

@@ -193,7 +193,7 @@ export default function AuthenticatedDashboard() {
   return (
     <div style={{ position: 'relative' }}>
       <Dashboard3DBackground />
-      <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', padding: '0 16px', paddingTop: 112, paddingBottom: 80, position: 'relative', zIndex: 10 }}>
+      <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '0 16px', paddingTop: 112, paddingBottom: 80, position: 'relative', zIndex: 10 }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
         <div>
@@ -301,19 +301,28 @@ export default function AuthenticatedDashboard() {
         </div>
       ) : (
         <>
-          {/* Unified KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
-            <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
-            <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
-            <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
-            <KPICard label="Success Rate" value={overview?.success_rate ? `${overview.success_rate.toFixed(1)}` : '0.0'} unit="%" icon={TrendingUp} color="#00ff88" />
-            <KPICard label="Avg Processing Time" value={overview?.avg_processing_time ? `${overview.avg_processing_time.toFixed(0)}` : '0'} unit="ms" icon={Clock} color="#ffb800" />
-            <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+          {/* Primary KPI Grid */}
+          <div style={{ marginBottom: 'var(--space-2)' }}>
+            <h3 className="text-label" style={{ marginBottom: 'var(--space-2)' }}>Key Metrics</h3>
+            <div className="kpi-grid-primary">
+              <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
+              <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
+              <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
+              <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
+            </div>
+          </div>
+
+          {/* Secondary KPI Grid */}
+          <div style={{ marginBottom: 'var(--space-4)' }}>
+            <div className="kpi-grid-secondary">
+              <KPICard label="Success Rate" value={overview?.success_rate ? `${overview.success_rate.toFixed(1)}` : '0.0'} unit="%" icon={TrendingUp} color="#00ff88" />
+              <KPICard label="Avg Processing Time" value={overview?.avg_processing_time ? `${overview.avg_processing_time.toFixed(0)}` : '0'} unit="ms" icon={Clock} color="#ffb800" />
+              <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+            </div>
           </div>
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="chart-row" style={{ marginBottom: 'var(--space-4)' }}>
             {/* Usage Chart */}
             <div className="glass lg:col-span-2" style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', marginBottom: 20 }}>Verification Activity (Last 30 Days)</h3>

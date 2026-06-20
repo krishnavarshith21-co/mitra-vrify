@@ -33,44 +33,33 @@ export default function Footer() {
       background: 'var(--bg-secondary)',
       borderTop: '1px solid var(--border-subtle)',
       marginTop: 'auto',
-      padding: '64px 16px',
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 1280,
-        margin: '0 auto',
-      }}>
-        {/* Top Section */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 40,
-          marginBottom: 64,
-        }}
-          className="sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
-        >
+      <div className="section-container" style={{ paddingTop: 'var(--space-6)', paddingBottom: 'var(--space-6)' }}>
+        {/* Top Section — responsive footer grid */}
+        <div className="footer-grid" style={{ marginBottom: 'var(--space-6)' }}>
           {/* Brand Column */}
-          <div className="col-span-2 lg:col-span-2" style={{ maxWidth: 320 }}>
+          <div style={{ maxWidth: 320 }}>
             <Link href="/" style={{
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              marginBottom: 16,
+              marginBottom: 'var(--space-2)',
             }}>
               <div style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
+                width: 38,
+                height: 38,
+                borderRadius: 12,
                 background: 'linear-gradient(135deg, #00d4ff, #0066ff)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
+                boxShadow: '0 0 20px rgba(0, 212, 255, 0.2)',
               }}>
-                <Eye size={17} color="#fff" />
+                <Eye size={18} color="#fff" />
               </div>
-              <span style={{ fontSize: 17, fontWeight: 700, color: '#f8fafc' }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
                 MITRA <span className="gradient-text-cyan">VERIFY</span>
               </span>
             </Link>
@@ -78,7 +67,7 @@ export default function Footer() {
               fontSize: 14,
               color: 'var(--text-secondary)',
               lineHeight: 1.7,
-              marginBottom: 24,
+              marginBottom: 'var(--space-3)',
             }}>
               Enterprise-grade biometric verification APIs. Open source, free for everyone, MIT licensed.
             </p>
@@ -89,9 +78,9 @@ export default function Footer() {
               ].map(({ icon: Icon, href }) => (
                 <a key={href} href={href} target="_blank" rel="noopener noreferrer"
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -104,13 +93,15 @@ export default function Footer() {
                   onMouseEnter={e => {
                     e.currentTarget.style.borderColor = 'rgba(0,212,255,0.25)';
                     e.currentTarget.style.color = '#00d4ff';
+                    e.currentTarget.style.background = 'rgba(0,212,255,0.04)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
                     e.currentTarget.style.color = '#94a3b8';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
                   }}
                 >
-                  <Icon size={15} />
+                  <Icon size={16} />
                 </a>
               ))}
             </div>
@@ -119,14 +110,7 @@ export default function Footer() {
           {/* Link Columns */}
           {Object.entries(footerLinks).map(([section, links]) => (
             <div key={section}>
-              <h4 style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#475569',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase' as const,
-                marginBottom: 16,
-              }}>
+              <h4 className="text-label" style={{ marginBottom: 'var(--space-2)' }}>
                 {section}
               </h4>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
@@ -172,15 +156,15 @@ export default function Footer() {
         {/* Bottom Section */}
         <div style={{
           borderTop: '1px solid var(--border-subtle)',
-          paddingTop: 32,
+          paddingTop: 'var(--space-4)',
           display: 'flex',
           flexWrap: 'wrap' as const,
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 16,
+          gap: 'var(--space-2)',
         }}>
           <p style={{ fontSize: 13, color: '#475569' }}>
-            © 2024 MITRA VERIFY. Open source under MIT License. No subscriptions. No fees. Free forever.
+            © {new Date().getFullYear()} MITRA VERIFY. Open source under MIT License. No subscriptions. No fees. Free forever.
           </p>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
             <span style={{

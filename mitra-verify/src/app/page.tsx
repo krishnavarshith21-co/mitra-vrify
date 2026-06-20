@@ -230,7 +230,7 @@ export default function HomePage() {
         }} />
 
         {/* Hero Content */}
-        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', padding: '0 16px' }} className="relative z-10">
+        <div className="section-container relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left: Text & Stats */}
             <div className="lg:col-span-7 flex flex-col gap-6">
@@ -332,7 +332,7 @@ export default function HomePage() {
                   { value: '3 APIs', label: 'Products', color: '#7c3aed' },
                   { value: 'MIT', label: 'License', color: '#ffb800' },
                 ].map(stat => (
-                  <div key={stat.label} className="glass card-hover" style={{ padding: '16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                  <div key={stat.label} className="glass card-hover" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span className="live-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: stat.color, boxShadow: `0 0 6px ${stat.color}` }} />
                     </div>
@@ -406,18 +406,18 @@ export default function HomePage() {
       </motion.section>
 
       {/* ── API PRODUCTS ─────────────────────────────────── */}
-      <section style={{ background: 'var(--bg-secondary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
-        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg-secondary)' }} className="section-padding">
+        <div className="section-container">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            style={{ textAlign: 'center', marginBottom: 48 }}
+            style={{ textAlign: 'center', marginBottom: 'var(--space-5)' }}
           >
-            <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00d4ff', fontWeight: 600, display: 'block', marginBottom: 16 }}>
+            <span className="text-label" style={{ color: '#00d4ff', display: 'block', marginBottom: 'var(--space-2)' }}>
               THREE POWERFUL APIs
             </span>
-            <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+            <h2 className="heading-section" style={{ marginBottom: 'var(--space-2)' }}>
               Choose Your Verification Level
             </h2>
             <p style={{ fontSize: 16, color: '#94a3b8', maxWidth: 560, margin: '0 auto' }}>
@@ -442,7 +442,7 @@ export default function HomePage() {
                   display: 'flex', flexDirection: 'column' as const, height: '100%',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
                   <div style={{
                     width: 48, height: 48, borderRadius: 14,
                     background: `${product.color}15`,
@@ -462,12 +462,12 @@ export default function HomePage() {
                 <div style={{
                   fontFamily: 'monospace', fontSize: 11, color: product.color,
                   background: `${product.color}0d`, padding: '6px 10px', borderRadius: 6,
-                  marginBottom: 20, display: 'inline-block',
+                  marginBottom: 'var(--space-2)', display: 'inline-block',
                 }}>
                   {product.endpoint}
                 </div>
 
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 'var(--space-3)' }}>
                   {product.checks.map(check => (
                     <div key={check} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <CheckCircle size={13} color={product.color} />
@@ -493,7 +493,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: 40 }}>
+          <div style={{ textAlign: 'center', marginTop: 'var(--space-5)' }}>
             <Link href="/compare" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               Full API Comparison <ArrowRight size={16} />
             </Link>
@@ -502,8 +502,8 @@ export default function HomePage() {
       </section>
 
       {/* ── CODE EXAMPLE ─────────────────────────────────── */}
-      <section style={{ background: 'var(--bg-primary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
-        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg-primary)' }} className="section-padding">
+        <div className="section-container">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
@@ -572,8 +572,8 @@ export default function HomePage() {
       </section>
 
       {/* ── FEATURES GRID ────────────────────────────────── */}
-      <section style={{ background: 'var(--bg-secondary)', padding: '48px 16px' }} className="md:py-16 md:px-8">
-        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg-secondary)' }} className="section-padding">
+        <div className="section-container">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -616,8 +616,8 @@ export default function HomePage() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
-      <section style={{ padding: '48px 16px' }} className="md:py-16 md:px-8">
-        <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+      <section className="section-padding">
+        <div className="section-container" style={{ maxWidth: 720, textAlign: 'center' }}>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}

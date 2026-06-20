@@ -11,6 +11,9 @@ export default function Global3DBackground() {
   useEffect(() => {
     if (typeof window === 'undefined' || !containerRef.current) return;
 
+    // Respect prefers-reduced-motion
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const container = containerRef.current;
     let width = window.innerWidth;
     let height = window.innerHeight;

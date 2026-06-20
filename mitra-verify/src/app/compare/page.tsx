@@ -22,12 +22,12 @@ export default function ComparePage() {
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
       
-      <div className="w-full max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 md:pt-32">
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
+      <div className="section-container" style={{ paddingTop: 112, paddingBottom: 64 }}>
+        <div style={{ textAlign: 'center', marginBottom: 'var(--space-6)' }}>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}
+            className="heading-page"
           >
             Compare API Products
           </motion.h1>
@@ -194,7 +194,7 @@ export default function ComparePage() {
         {/* Radar Chart */}
         <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-16">
           <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>Capabilities Comparison</h3>
-          <div style={{ height: 500, width: '100%' }}>
+          <div style={{ height: 'min(500px, 60vh)', width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                 <PolarGrid stroke="rgba(255,255,255,0.1)" />
@@ -211,9 +211,9 @@ export default function ComparePage() {
  
         {/* Feature Matrix */}
         <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-8">
-          <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Feature Matrix</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <h3 className="heading-section" style={{ fontSize: 24, marginBottom: 'var(--space-3)' }}>Feature Matrix</h3>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="table-zebra" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
                   <th style={{ padding: '16px', color: 'var(--text-secondary)', fontWeight: 600 }}>Feature</th>

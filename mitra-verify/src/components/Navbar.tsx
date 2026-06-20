@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Zap, Menu, X, ChevronDown,
   Eye, Fingerprint
@@ -66,6 +66,20 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
+  // Keyboard support
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setActiveDropdown(null);
+      setUserMenuOpen(false);
+      setMobileOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const visibleLinks = navLinks.filter(link => {
     if (link.href === '/dashboard' || link.href === '/developer') {
       return isAuthenticated;
@@ -87,6 +101,7 @@ export default function Navbar() {
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className={scrolled ? 'nav-scrolled' : ''}
         style={{
           position: 'fixed',
           top: 0,
@@ -100,15 +115,18 @@ export default function Navbar() {
           transition: 'background 0.3s ease, border-color 0.3s ease',
         }}
       >
+        {/* Animated glow line */}
+        <div className="nav-glow-line" />
+
         <div style={{
           width: '100%',
-          maxWidth: 1280,
+          maxWidth: 1440,
           margin: '0 auto',
           padding: '0 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: 64,
+          height: 72,
         }}>
           {/* Logo */}
           <Link href="/" style={{
@@ -119,19 +137,19 @@ export default function Navbar() {
             flexShrink: 0,
           }}>
             <div style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
+              width: 38,
+              height: 38,
+              borderRadius: 12,
               background: 'linear-gradient(135deg, #00d4ff, #0066ff)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 20px rgba(0, 212, 255, 0.25)',
+              boxShadow: '0 0 24px rgba(0, 212, 255, 0.3)',
             }}>
-              <Eye size={17} color="#fff" strokeWidth={2.5} />
+              <Eye size={18} color="#fff" strokeWidth={2.5} />
             </div>
             <span style={{
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: 700,
               letterSpacing: '-0.02em',
               color: '#f8fafc',
@@ -166,7 +184,7 @@ export default function Navbar() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: '8px 14px',
+                      padding: '8px 16px',
                       borderRadius: 8,
                       textDecoration: 'none',
                       fontSize: 13,
@@ -234,47 +252,55 @@ export default function Navbar() {
                             position: 'absolute',
                             top: '100%',
                             left: 0,
-                            marginTop: 6,
+                            marginTop: 8,
                             background: 'rgba(10, 15, 30, 0.95)',
                             border: '1px solid rgba(0, 212, 255, 0.12)',
-                            borderRadius: 12,
-                            padding: 6,
-                            width: 224,
+                            borderRadius: 14,
+                            padding: 8,
+                            width: 240,
                             backdropFilter: 'blur(24px)',
                             boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 24px rgba(0, 212, 255, 0.04)',
                             zIndex: 100,
                           }}
                         >
-                          {link.children.map(child => (
-                            <Link key={child.href} href={child.href} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 12,
-                              padding: '10px 12px',
-                              borderRadius: 8,
-                              textDecoration: 'none',
-                              transition: 'background 0.15s ease',
-                            }}
-                              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,212,255,0.06)')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          {link.children.map((child, idx) => (
+                            <motion.div
+                              key={child.href}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.05, duration: 0.2 }}
                             >
-                              <div style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                background: 'rgba(0,212,255,0.08)',
+                              <Link href={child.href} style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                              }}>
-                                <child.icon size={15} color="#00d4ff" />
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: '#f8fafc' }}>{child.label}</div>
-                                <div style={{ fontSize: 11, color: '#475569' }}>{child.desc}</div>
-                              </div>
-                            </Link>
+                                gap: 12,
+                                padding: '10px 12px',
+                                borderRadius: 10,
+                                textDecoration: 'none',
+                                transition: 'background 0.15s ease',
+                              }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,212,255,0.06)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                              >
+                                <div style={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 10,
+                                  background: 'rgba(0,212,255,0.08)',
+                                  border: '1px solid rgba(0,212,255,0.12)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <child.icon size={16} color="#00d4ff" />
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 500, color: '#f8fafc' }}>{child.label}</div>
+                                  <div style={{ fontSize: 11, color: '#475569' }}>{child.desc}</div>
+                                </div>
+                              </Link>
+                            </motion.div>
                           ))}
                         </motion.div>
                       )}
@@ -480,6 +506,7 @@ export default function Navbar() {
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="flex md:hidden"
+              aria-label="Toggle navigation menu"
               style={{
                 background: 'none',
                 border: 'none',
@@ -489,176 +516,212 @@ export default function Navbar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                width: 44,
+                height: 44,
               }}
               id="mobile-menu-btn"
             >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
       </motion.nav>
 
-      {/* Mobile Drawer Overlay */}
+      {/* ── FULL-SCREEN MOBILE NAV OVERLAY ──────────────────────── */}
       <AnimatePresence>
         {mobileOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.6 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileOpen(false)}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 1040,
-                background: '#000',
-              }}
-            />
-
-            {/* Drawer */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              style={{
-                position: 'fixed',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: 'min(300px, 85vw)',
-                zIndex: 1050,
-                background: 'rgba(5, 8, 16, 0.98)',
-                backdropFilter: 'blur(24px)',
-                borderLeft: '1px solid rgba(0, 212, 255, 0.1)',
-                boxShadow: '-10px 0 48px rgba(0,0,0,0.7)',
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mobile-nav-overlay"
+            style={{ zIndex: 1050 }}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px 24px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              height: 72,
+              flexShrink: 0,
+            }}>
+              <Link href="/" onClick={() => setMobileOpen(false)} style={{
+                textDecoration: 'none',
                 display: 'flex',
-                flexDirection: 'column' as const,
-                padding: 24,
-                overflowY: 'auto',
-              }}
-            >
-              {/* Drawer Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: 32,
-                paddingBottom: 16,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                gap: 10,
               }}>
-                <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc' }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #00d4ff, #0066ff)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 24px rgba(0, 212, 255, 0.3)',
+                }}>
+                  <Eye size={18} color="#fff" strokeWidth={2.5} />
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
                   MITRA <span className="gradient-text-cyan">VERIFY</span>
                 </span>
-                <button onClick={() => setMobileOpen(false)}
-                  style={{ background: 'none', border: 'none', color: '#f8fafc', cursor: 'pointer', padding: 4 }}>
-                  <X size={20} />
-                </button>
-              </div>
+              </Link>
+              <button
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#f8fafc',
+                  cursor: 'pointer',
+                  padding: 8,
+                  width: 44,
+                  height: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={22} />
+              </button>
+            </div>
 
-              {/* Links */}
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, flex: 1 }}>
-                {visibleLinks.map(link => {
-                  if (link.children) {
-                    return (
-                      <div key={link.label} style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-                        <div style={{
-                          padding: '10px 12px',
-                          fontSize: 11,
-                          color: '#475569',
-                          fontWeight: 600,
-                          textTransform: 'uppercase' as const,
-                          letterSpacing: '0.08em',
-                        }}>
-                          {link.label}
-                        </div>
-                        {link.children.map(child => (
-                          <Link key={child.href} href={child.href}
+            {/* Links — centered vertical layout */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column' as const,
+              justifyContent: 'center',
+              padding: '32px 24px',
+              gap: 4,
+            }}>
+              {visibleLinks.map((link, idx) => {
+                if (link.children) {
+                  return (
+                    <motion.div
+                      key={link.label}
+                      initial={{ opacity: 0, x: -24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.06, duration: 0.3 }}
+                      style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}
+                    >
+                      <div style={{
+                        padding: '8px 24px',
+                        fontSize: 12,
+                        color: '#475569',
+                        fontWeight: 600,
+                        textTransform: 'uppercase' as const,
+                        letterSpacing: '0.08em',
+                      }}>
+                        {link.label}
+                      </div>
+                      {link.children.map((child, childIdx) => (
+                        <motion.div
+                          key={child.href}
+                          initial={{ opacity: 0, x: -16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: (idx * 0.06) + (childIdx * 0.04) + 0.02, duration: 0.25 }}
+                        >
+                          <Link
+                            href={child.href}
                             onClick={() => setMobileOpen(false)}
+                            className={`mobile-nav-link ${isActive(child.href) ? 'active' : ''}`}
                             style={{
-                              padding: '10px 12px 10px 24px',
-                              borderRadius: 8,
-                              textDecoration: 'none',
-                              fontSize: 14,
-                              fontWeight: 500,
-                              color: isActive(child.href) ? '#00d4ff' : '#94a3b8',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 10,
-                              background: isActive(child.href) ? 'rgba(0, 212, 255, 0.04)' : 'transparent',
-                              transition: 'background 0.15s ease',
-                            }}>
-                            <child.icon size={14} color={isActive(child.href) ? '#00d4ff' : '#64748b'} />
+                              paddingLeft: 32,
+                              fontSize: 16,
+                              ...(isActive(child.href) ? {
+                                color: '#00d4ff',
+                                background: 'rgba(0, 212, 255, 0.04)',
+                                border: '1px solid rgba(0, 212, 255, 0.1)',
+                              } : {}),
+                            }}
+                          >
+                            <child.icon size={16} color={isActive(child.href) ? '#00d4ff' : '#64748b'} />
                             {child.label}
                           </Link>
-                        ))}
-                      </div>
-                    );
-                  }
-                  return (
-                    <Link key={link.label} href={link.href}
-                      onClick={() => setMobileOpen(false)}
-                      style={{
-                        padding: '12px 16px',
-                        borderRadius: 8,
-                        textDecoration: 'none',
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: isActive(link.href) ? '#00d4ff' : '#94a3b8',
-                        background: isActive(link.href) ? 'rgba(0, 212, 255, 0.04)' : 'transparent',
-                        border: isActive(link.href) ? '1px solid rgba(0, 212, 255, 0.1)' : '1px solid transparent',
-                        transition: 'all 0.15s ease',
-                      }}>
-                      {link.label}
-                    </Link>
+                        </motion.div>
+                      ))}
+                    </motion.div>
                   );
-                })}
-              </div>
-
-              {/* Drawer Footer */}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20, marginTop: 'auto' }}>
-                {isAuthenticated ? (
-                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '0 8px' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={user?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=Dev'}
-                        alt="Avatar"
-                        style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }}
-                      />
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'Developer'}</span>
-                        <span style={{ fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || 'dev@mitraverify.com'}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { logout(); setMobileOpen(false); }}
-                      className="btn-ghost"
+                }
+                return (
+                  <motion.div
+                    key={link.label}
+                    initial={{ opacity: 0, x: -24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.06, duration: 0.3 }}
+                  >
+                    <Link
+                      href={link.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={`mobile-nav-link ${isActive(link.href) ? 'active' : ''}`}
                       style={{
-                        width: '100%',
-                        color: '#ff3366',
-                        background: 'rgba(255,51,102,0.04)',
-                        borderColor: 'rgba(255,51,102,0.12)',
-                        justifyContent: 'center',
+                        fontSize: 20,
+                        fontWeight: 600,
+                        ...(isActive(link.href) ? {
+                          color: '#00d4ff',
+                          background: 'rgba(0, 212, 255, 0.04)',
+                          border: '1px solid rgba(0, 212, 255, 0.1)',
+                        } : {}),
                       }}
                     >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-                    <Link href="/auth/login" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
-                      <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>Sign In</button>
+                      {link.label}
                     </Link>
-                    <Link href="/auth/signup" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
-                      <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Get Started</button>
-                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              padding: '24px',
+              flexShrink: 0,
+            }}>
+              {isAuthenticated ? (
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '0 8px' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={user?.avatar || 'https://api.dicebear.com/7.x/initials/svg?seed=Dev'}
+                      alt="Avatar"
+                      style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'Developer'}</span>
+                      <span style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || 'dev@mitraverify.com'}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            </motion.div>
-          </>
+                  <button
+                    onClick={() => { logout(); setMobileOpen(false); }}
+                    className="btn-ghost"
+                    style={{
+                      width: '100%',
+                      color: '#ff3366',
+                      background: 'rgba(255,51,102,0.04)',
+                      borderColor: 'rgba(255,51,102,0.12)',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                  <Link href="/auth/login" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
+                    <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>Sign In</button>
+                  </Link>
+                  <Link href="/auth/signup" style={{ textDecoration: 'none' }} onClick={() => setMobileOpen(false)}>
+                    <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Get Started</button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

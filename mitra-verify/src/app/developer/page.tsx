@@ -152,15 +152,15 @@ export default function DeveloperPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent' }}>
       <Navbar />
-      <div className="w-full max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 md:pt-32">
+      <div className="section-container" style={{ paddingTop: 112, paddingBottom: 64 }}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <Key size={20} color="#00d4ff" />
-              <span style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#00d4ff', fontWeight: 600 }}>DEVELOPER PORTAL</span>
-            </div>
-            <h1 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>API Keys</h1>
+              <span className="text-label" style={{ color: '#00d4ff', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Key size={16} color="#00d4ff" />
+                DEVELOPER PORTAL
+              </span>
+            <h1 className="heading-section" style={{ marginBottom: 8 }}>API Keys</h1>
             <p style={{ fontSize: 15, color: '#94a3b8' }}>Generate and manage API keys for all three verification APIs</p>
           </div>
           <button className="btn-primary w-full sm:w-auto" onClick={() => setShowCreate(true)}
@@ -430,7 +430,7 @@ export default function DeveloperPage() {
             { href: '/compare', icon: Zap, label: 'Compare APIs', desc: 'Speed & accuracy comparison' },
           ].map(({ href, icon: Icon, label, desc }) => (
             <Link key={href} href={href} style={{ textDecoration: 'none' }}>
-              <TiltCard style={{ padding: 20, borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <TiltCard style={{ padding: 'var(--space-3)', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(0,212,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon size={18} color="#00d4ff" />
                 </div>

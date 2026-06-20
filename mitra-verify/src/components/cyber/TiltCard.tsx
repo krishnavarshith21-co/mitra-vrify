@@ -19,7 +19,9 @@ export default function TiltCard({ children, className = '', style = {} }: TiltC
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => setIsMobile(
+      window.innerWidth < 768 || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
     checkMobile();
     window.addEventListener('resize', checkMobile, { passive: true });
     return () => window.removeEventListener('resize', checkMobile);

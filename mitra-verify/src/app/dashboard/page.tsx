@@ -215,11 +215,11 @@ export default function DashboardPage() {
     <PageTransition>
       <div style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
         <Navbar />
-        <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', padding: '0 16px', paddingTop: 112, paddingBottom: 80, position: 'relative', zIndex: 10 }}>
+        <div style={{ width: '100%', maxWidth: 1440, margin: '0 auto', padding: '0 16px', paddingTop: 112, paddingBottom: 80, position: 'relative', zIndex: 10 }}>
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Dashboard</h1>
+              <h1 className="heading-section" style={{ marginBottom: 4 }}>Dashboard</h1>
               <p style={{ color: '#475569', fontSize: 14 }}>
                 Last updated {lastRefresh ? format(lastRefresh, 'HH:mm:ss') : '--:--:--'} ·
                 <span style={{ color: '#00d4ff' }}> Auto-refreshes every 30s</span>
@@ -269,22 +269,31 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* Unified KPI Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
-                <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
-                <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
-                <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
-                <KPICard label="Success Rate" value={`${(overview?.success_rate || 0).toFixed(1)}`} unit="%" icon={TrendingUp} color="#00ff88" />
-                <KPICard label="Avg Processing Time" value={`${(overview?.avg_processing_time || 0).toFixed(0)}`} unit="ms" icon={Clock} color="#ffb800" />
-                <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+              {/* Primary KPI Grid */}
+              <div style={{ marginBottom: 'var(--space-2)' }}>
+                <h3 className="text-label" style={{ marginBottom: 'var(--space-2)' }}>Key Metrics</h3>
+                <div className="kpi-grid-primary">
+                  <KPICard label="Total Requests" value={overview?.total_requests || 0} icon={Activity} color="#00d4ff" />
+                  <KPICard label="Successful Verifications" value={overview?.successful_verifications || 0} icon={Eye} color="#00ff88" />
+                  <KPICard label="Spoof Attempts" value={overview?.spoof_attempts || 0} icon={Shield} color="#ff3366" />
+                  <KPICard label="Identity Matches" value={overview?.identity_matches || 0} icon={Fingerprint} color="#7c3aed" />
+                </div>
+              </div>
+
+              {/* Secondary KPI Grid */}
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <div className="kpi-grid-secondary">
+                  <KPICard label="Success Rate" value={`${(overview?.success_rate || 0).toFixed(1)}`} unit="%" icon={TrendingUp} color="#00ff88" />
+                  <KPICard label="Avg Processing Time" value={`${(overview?.avg_processing_time || 0).toFixed(0)}`} unit="ms" icon={Clock} color="#ffb800" />
+                  <KPICard label="Active API Keys" value={overview?.active_api_keys || 0} icon={Zap} color="#00d4ff" />
+                </div>
               </div>
 
               {/* Charts row */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="chart-row" style={{ marginBottom: 'var(--space-4)' }}>
                 {/* Usage Area Chart */}
                 <TiltCard className="lg:col-span-1" style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Requests (Last 30 Days)</h3>
+                  <h3 className="heading-card" style={{ fontSize: 15, marginBottom: 'var(--space-3)' }}>Requests (Last 30 Days)</h3>
                   {usageData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={220}>
                       <AreaChart data={usageData.slice(-15)}>
@@ -323,7 +332,7 @@ export default function DashboardPage() {
 
                 {/* Result Distribution */}
                 <TiltCard style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 20 }}>Result Distribution</h3>
+                  <h3 className="heading-card" style={{ fontSize: 15, marginBottom: 'var(--space-2)' }}>Result Distribution</h3>
                   {pieData.length > 0 ? (
                     <>
                       <div style={{ position: 'relative', width: '100%', height: 130 }}>
@@ -371,7 +380,7 @@ export default function DashboardPage() {
 
             {/* Threat Feed */}
             <div className="glass" style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertTriangle size={16} color="#ffb800" />
                   <h3 style={{ fontSize: 15, fontWeight: 600 }}>Threat Monitoring</h3>

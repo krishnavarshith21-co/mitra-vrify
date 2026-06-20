@@ -19,6 +19,9 @@ import LiveActivityFeed from '@/components/dashboard/LiveActivityFeed';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import NeuralNetworkAnimation from '@/components/dashboard/NeuralNetworkAnimation';
 import Global3DBackground from '@/components/cyber/Global3DBackground';
+import LiveStatusIndicators from '@/components/dashboard/LiveStatusIndicators';
+import EnhancedKPICard from '@/components/dashboard/EnhancedKPICard';
+
 
 interface Overview {
   total_requests: number;
@@ -65,35 +68,7 @@ interface UsageDataItem {
   total: number;
 }
 
-function KPICard({ label, value, unit, delta, icon: Icon, color = '#00d4ff' }: KPICardProps) {
-  return (
-    <TiltCard style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 'var(--radius-sm)',
-          background: `${color}12`, border: `1px solid ${color}25`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0
-        }}>
-          <Icon size={16} color={color} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {delta !== undefined && (
-            <span style={{ fontSize: 11, color: delta >= 0 ? '#00ff88' : '#ff3366', fontWeight: 600 }}>
-              {delta >= 0 ? '+' : ''}{delta}%
-            </span>
-          )}
-          <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
-        </div>
-      </div>
-      <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc', lineHeight: 1 }}>
-        <AnimatedCounter value={value} />
-        {unit && <span style={{ fontSize: 'var(--text-sm)', color: '#475569', marginLeft: 3 }}>{unit}</span>}
-      </div>
-      <div style={{ fontSize: 'var(--text-xs)', color: '#94a3b8', marginTop: 6 }}>{label}</div>
-    </TiltCard>
-  );
-}
+
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -235,20 +210,17 @@ export default function DashboardPage() {
           <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-[#00d4ff]/[0.03] to-transparent" />
         </div>
 
-        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20">
+        <main className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
           {/* Hero Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 animate-fade-up">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_10px_#00ff88] animate-pulse" />
-                <span className="text-[#00ff88] text-xs font-mono tracking-widest uppercase">System Online</span>
-              </div>
               <h1 className="text-3xl md:text-5xl font-semibold text-white tracking-tight mb-2">
-                {isAuthenticated && user?.name ? `Welcome, ${user.name.split(' ')[0]}` : 'Command Center'}
+                Security Operations Center
               </h1>
               <p className="text-sm text-slate-400">
                 Live biometric telemetry and threat intelligence. Auto-refreshes every 30s.
               </p>
+              <LiveStatusIndicators />
             </div>
             
             <div className="flex flex-wrap gap-3 items-center">
@@ -287,45 +259,38 @@ export default function DashboardPage() {
               
               {/* Primary KPIs span 3 */}
               <div className="col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="premium-glass spotlight-card p-5 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 rounded-lg bg-[#00d4ff]/10"><Activity size={18} color="#00d4ff" /></div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white tracking-tight"><AnimatedCounter value={overview?.total_requests || 0} /></div>
-                    <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Total Requests</div>
-                  </div>
-                </div>
-
-                <div className="premium-glass spotlight-card p-5 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 rounded-lg bg-[#00ff88]/10"><Shield size={18} color="#00ff88" /></div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white tracking-tight"><AnimatedCounter value={overview?.successful_verifications || 0} /></div>
-                    <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Passed</div>
-                  </div>
-                </div>
-
-                <div className="premium-glass spotlight-card p-5 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 rounded-lg bg-[#ffb800]/10"><AlertTriangle size={18} color="#ffb800" /></div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white tracking-tight"><AnimatedCounter value={overview?.spoof_attempts || 0} /></div>
-                    <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Spoof Attempts</div>
-                  </div>
-                </div>
-
-                <div className="premium-glass spotlight-card p-5 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 rounded-lg bg-[#7c3aed]/10"><TrendingUp size={18} color="#7c3aed" /></div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-white tracking-tight">{(overview?.success_rate || 0).toFixed(1)}<span className="text-sm ml-1 text-slate-400">%</span></div>
-                    <div className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Success Rate</div>
-                  </div>
-                </div>
+                <EnhancedKPICard 
+                  label="Total Requests" 
+                  value={overview?.total_requests || 0} 
+                  icon={Activity} 
+                  color="#00d4ff" 
+                  delta={+12.4}
+                  sparklineData={usageData.map(d => d.total)}
+                />
+                <EnhancedKPICard 
+                  label="Passed" 
+                  value={overview?.successful_verifications || 0} 
+                  icon={Shield} 
+                  color="#00ff88" 
+                  delta={+8.2}
+                  sparklineData={usageData.map(d => d.pass)}
+                />
+                <EnhancedKPICard 
+                  label="Spoof Attempts" 
+                  value={overview?.spoof_attempts || 0} 
+                  icon={AlertTriangle} 
+                  color="#ffb800" 
+                  delta={-15.3}
+                  sparklineData={usageData.map(d => d.spoof)}
+                />
+                <EnhancedKPICard 
+                  label="Success Rate" 
+                  value={parseFloat((overview?.success_rate || 0).toFixed(1))}
+                  unit="%" 
+                  icon={TrendingUp} 
+                  color="#7c3aed" 
+                  delta={+2.1}
+                />
               </div>
             </div>
 

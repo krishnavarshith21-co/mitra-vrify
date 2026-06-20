@@ -21,168 +21,70 @@ const TECH_STACK = [
 
 export default function Footer() {
   return (
-    <footer className="relative w-full overflow-hidden mt-12 md:mt-24">
-      {/* Top Border Glow */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-        background: 'linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.5), transparent)',
-        boxShadow: '0 0 15px rgba(0, 212, 255, 0.4)',
-      }} />
-
+    <footer className="relative w-full overflow-hidden border-t border-white/5 bg-[#030712]">
       {/* Subtle Background Glow */}
-      <div style={{
-        position: 'absolute', bottom: -100, left: '50%', transform: 'translateX(-50%)',
-        width: '80%', height: 200, background: 'radial-gradient(ellipse at bottom, rgba(0,212,255,0.08), transparent 70%)',
-        zIndex: 0, pointerEvents: 'none',
-      }} />
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-gradient-to-t from-[#00d4ff]/5 to-transparent pointer-events-none" />
 
-      {/* Floating Particles */}
-      {[...Array(6)].map((_, i) => (
-        <motion.div
-          key={`particle-${i}`}
-          style={{
-            position: 'absolute',
-            width: Math.random() * 4 + 2,
-            height: Math.random() * 4 + 2,
-            borderRadius: '50%',
-            background: 'rgba(0, 212, 255, 0.4)',
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            zIndex: 0,
-            pointerEvents: 'none',
-          }}
-          animate={{
-            y: [0, -40, 0],
-            x: [0, Math.random() * 30 - 15, 0],
-            opacity: [0, 0.8, 0],
-          }}
-          transition={{
-            duration: Math.random() * 5 + 5,
-            repeat: Infinity,
-            ease: 'linear',
-            delay: Math.random() * 5,
-          }}
-        />
-      ))}
-
-      <div className="section-container relative z-10 pt-16 pb-8 md:pt-20 md:pb-12">
-        {/* Built By Badge */}
-        <div className="flex justify-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            whileHover={{ scale: 1.05 }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 20px',
-              borderRadius: 30,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(16px)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.2), inset 0 0 12px rgba(0,212,255,0.05)',
-              cursor: 'default',
-            }}
-          >
-            <span style={{ fontSize: 13, fontWeight: 500, color: '#f8fafc', letterSpacing: '0.02em' }}>
-              🚀 Built by <span className="gradient-text-cyan glow-cyan" style={{ fontWeight: 700, marginLeft: 4 }}>NEXT STEP INNOVATORS</span>
-            </span>
-          </motion.div>
-        </div>
-
-        {/* Main Footer Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-8 mb-16">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-12">
           
           {/* Left: Branding & Description */}
-          <motion.div 
-            className="md:col-span-12 lg:col-span-5 flex flex-col items-center md:items-start text-center md:text-left"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc', letterSpacing: '0.02em', marginBottom: 8 }}>
-              NEXT STEP <span className="gradient-text-cyan glow-cyan">INNOVATORS</span>
+          <div className="md:col-span-12 lg:col-span-5 flex flex-col items-center md:items-start text-center md:text-left">
+            <h2 className="text-xl font-bold tracking-widest text-white mb-2 uppercase flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse" />
+              Next Step <span className="text-[#00d4ff]">Innovators</span>
             </h2>
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#cbd5e1', marginBottom: 12 }}>
-              Building the future of secure biometric identity verification.
+            <p className="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wider">
+              Enterprise Biometric Security Division
             </p>
-            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, maxWidth: 380 }}>
-              We are a team focused on creating advanced face liveness, anti-spoofing, and identity verification solutions for modern applications.
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+              Architecting the future of secure identity verification. MITRA VERIFY provides military-grade face liveness, anti-spoofing, and continuous authentication infrastructure.
             </p>
-          </motion.div>
+          </div>
 
           {/* Center: Quick Links */}
-          <motion.div 
-            className="md:col-span-6 lg:col-span-3 flex flex-col items-center md:items-start text-center md:text-left"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>
-              Quick Links
+          <div className="md:col-span-6 lg:col-span-3 flex flex-col items-center md:items-start text-center md:text-left">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
+              Infrastructure
             </h3>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {QUICK_LINKS.map((link) => (
-                <Link key={link.label} href={link.href} style={{ textDecoration: 'none' }}>
-                  <motion.span
-                    style={{ fontSize: 14, color: '#94a3b8', transition: 'color 0.2s ease' }}
-                    whileHover={{ color: '#00d4ff', x: 2 }}
-                  >
-                    {link.label}
-                  </motion.span>
+                <Link key={link.label} href={link.href} className="text-sm text-slate-500 hover:text-[#00d4ff] transition-colors flex items-center gap-2 group">
+                  <span className="w-1 h-1 bg-slate-700 group-hover:bg-[#00d4ff] rounded-full transition-colors" />
+                  {link.label}
                 </Link>
               ))}
             </div>
-          </motion.div>
+          </div>
 
           {/* Right: Technology Stack */}
-          <motion.div 
-            className="md:col-span-6 lg:col-span-4 flex flex-col items-center md:items-start text-center md:text-left"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-          >
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20 }}>
-              Technology Stack
+          <div className="md:col-span-6 lg:col-span-4 flex flex-col items-center md:items-start text-center md:text-left">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
+              Core Technologies
             </h3>
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
               {TECH_STACK.map((tech) => (
-                <div key={tech} style={{
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  fontSize: 13,
-                  color: '#94a3b8',
-                }}>
+                <div key={tech} className="px-3 py-1.5 rounded-md bg-white/[0.02] border border-white/[0.05] text-xs font-mono text-slate-400 hover:text-[#00ff88] hover:border-[#00ff88]/30 transition-colors cursor-default">
                   {tech}
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
         </div>
 
         {/* Bottom Copyright */}
-        <motion.div 
-          className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-slate-800/50 gap-4"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-        >
-          <div style={{ fontSize: 13, color: '#64748b', textAlign: 'center' }}>
-            © 2026 NEXT STEP INNOVATORS. All Rights Reserved.
+        <div className="flex flex-col md:flex-row justify-between items-center pt-6 border-t border-white/5 gap-4">
+          <div className="text-xs font-mono text-slate-600">
+            © {new Date().getFullYear()} NEXT STEP INNOVATORS. SECURE DEPLOYMENT.
           </div>
-          <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-            Powered by <span style={{ fontWeight: 600, color: '#cbd5e1' }}>MITRA VERIFY</span>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+            <span className="text-xs font-mono font-semibold text-slate-400 tracking-wider">
+              POWERED BY MITRA VERIFY
+            </span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </footer>
   );

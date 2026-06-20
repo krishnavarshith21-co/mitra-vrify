@@ -61,6 +61,19 @@ export default function NeuralNetworkAnimation() {
         }
       }
 
+      // Draw horizontal scan lines
+      const time = Date.now() / 1000;
+      const scanY = (time * 50) % height;
+      
+      ctx.fillStyle = 'rgba(0, 255, 136, 0.05)';
+      ctx.fillRect(0, scanY, width, 2);
+      ctx.fillStyle = 'rgba(0, 255, 136, 0.02)';
+      ctx.fillRect(0, scanY - 10, width, 10);
+      
+      const scanY2 = ((time + 10) * 30) % height;
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.03)';
+      ctx.fillRect(0, scanY2, width, 1);
+
       animationFrameId = requestAnimationFrame(draw);
     };
 

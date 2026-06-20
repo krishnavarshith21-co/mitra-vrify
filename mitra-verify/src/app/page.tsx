@@ -16,6 +16,8 @@ import PageTransition from '@/components/cyber/PageTransition';
 interface Overview {
   total_requests: number;
   successful_verifications: number;
+  failed_verifications: number;
+  no_face_detected: number;
   spoof_attempts: number;
   identity_matches: number;
   success_rate: number;
@@ -52,6 +54,7 @@ interface UsageDataItem {
   pass: number;
   fail: number;
   spoof: number;
+  noFace: number;
   total: number;
 }
 
@@ -132,10 +135,10 @@ export default function DashboardPage() {
 
       // Process usage data into daily buckets
       const rawData: Activity[] = usageRes.data.data || [];
-      const buckets: Record<string, { pass: number; fail: number; spoof: number }> = {};
+      const buckets: Record<string, { pass: number; fail: number; spoof: number; noFace: number }> = {};
       for (let i = 29; i >= 0; i--) {
         const d = format(subDays(new Date(), i), 'MMM d');
-        buckets[d] = { pass: 0, fail: 0, spoof: 0 };
+        buckets[d] = { pass: 0, fail: 0, spoof: 0, noFace: 0 };
       }
       rawData.forEach(item => {
         const d = format(new Date(item.date), 'MMM d');
@@ -143,10 +146,11 @@ export default function DashboardPage() {
           const res = (item.result || '').toLowerCase();
           if (res === 'pass' || res === 'success' || res === 'identity_match_success') buckets[d].pass++;
           else if (res === 'spoof' || res === 'spoof_detected') buckets[d].spoof++;
+          else if (res === 'no_face_detected') buckets[d].noFace++;
           else buckets[d].fail++;
         }
       });
-      setUsageData(Object.entries(buckets).map(([date, counts]) => ({ date, ...counts, total: counts.pass + counts.fail + counts.spoof })));
+      setUsageData(Object.entries(buckets).map(([date, counts]) => ({ date, ...counts, total: counts.pass + counts.fail + counts.spoof + counts.noFace })));
       setLastRefresh(new Date());
       setError(null);
       setIsDemoMode(false);
@@ -156,6 +160,8 @@ export default function DashboardPage() {
       const demoOverview = {
         total_requests: 12450,
         successful_verifications: 12180,
+        failed_verifications: 85,
+        no_face_detected: 0,
         spoof_attempts: 185,
         identity_matches: 9840,
         success_rate: 97.83,
@@ -177,12 +183,14 @@ export default function DashboardPage() {
         const pass = Math.floor(Math.random() * 100) + 150;
         const spoof = Math.floor(Math.random() * 5);
         const fail = Math.floor(Math.random() * 10);
+        const noFace = Math.floor(Math.random() * 2);
         demoUsageData.push({
           date: dateStr,
           pass,
           spoof,
           fail,
-          total: pass + spoof + fail
+          noFace,
+          total: pass + spoof + fail + noFace
         });
       }
       setUsageData(demoUsageData);
@@ -201,8 +209,9 @@ export default function DashboardPage() {
 
   const pieData = overview ? [
     { name: 'Pass', value: overview.successful_verifications, color: '#00ff88' },
-    { name: 'Fail', value: overview.total_requests - overview.successful_verifications - overview.spoof_attempts, color: '#ff3366' },
+    { name: 'Fail', value: overview.failed_verifications, color: '#ff3366' },
     { name: 'Spoof', value: overview.spoof_attempts, color: '#ffb800' },
+    { name: 'No Face', value: overview.no_face_detected, color: '#94a3b8' },
   ].filter(d => d.value > 0) : [];
 
   return (
@@ -306,6 +315,10 @@ export default function DashboardPage() {
                             <stop offset="0%" stopColor="#ffb800" stopOpacity={0.3} />
                             <stop offset="100%" stopColor="#ffb800" stopOpacity={0} />
                           </linearGradient>
+                          <linearGradient id="noFaceGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
+                          </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                         <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -314,6 +327,7 @@ export default function DashboardPage() {
                         <Area type="monotone" dataKey="pass" stroke="#00ff88" strokeWidth={2} fill="url(#passGrad)" name="Pass" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#00ff88' }} />
                         <Area type="monotone" dataKey="fail" stroke="#ff3366" strokeWidth={2} fill="url(#failGrad)" name="Fail" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#ff3366' }} />
                         <Area type="monotone" dataKey="spoof" stroke="#ffb800" strokeWidth={2} fill="url(#spoofGrad)" name="Spoof" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#ffb800' }} />
+                        <Area type="monotone" dataKey="noFace" stroke="#94a3b8" strokeWidth={2} fill="url(#noFaceGrad)" name="No Face" isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" activeDot={{ r: 4, strokeWidth: 0, fill: '#94a3b8' }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (

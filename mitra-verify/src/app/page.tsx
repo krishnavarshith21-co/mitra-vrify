@@ -7,7 +7,7 @@ import {
   Activity, Eye, Lock, Globe, Star, ChevronRight
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import AboutSection from '@/components/AboutSection';
 import { useAuth } from '@/context/AuthContext';
 import AuthenticatedDashboard from '@/components/AuthenticatedDashboard';
 import type { ScanPhase } from '@/components/3d/HeroScene';
@@ -199,10 +199,9 @@ export default function HomePage() {
 
   if (isAuthenticated) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
         <Navbar />
         <AuthenticatedDashboard />
-        <Footer />
       </div>
     );
   }
@@ -672,7 +671,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Footer />
+      <AboutSection />
     </div>
   );
 }

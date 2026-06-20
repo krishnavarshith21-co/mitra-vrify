@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Eye, Mail, Lock, User, ArrowRight, CheckCircle, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle, RefreshCw } from 'lucide-react';
 import { authAPI } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +19,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -172,11 +174,24 @@ export default function SignupPage() {
               <div style={{ position: 'relative' }}>
                 <Lock size={15} color="#475569" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <input
-                  type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••"
-                  style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                  type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••"
+                  style={{ width: '100%', padding: '12px 40px 12px 40px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
                   onFocus={e => (e.target.style.borderColor = 'rgba(0,212,255,0.4)')}
                   onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#00d4ff'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
@@ -185,11 +200,24 @@ export default function SignupPage() {
               <div style={{ position: 'relative' }}>
                 <Lock size={15} color="#475569" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <input
-                  type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="••••••••"
-                  style={{ width: '100%', padding: '12px 14px 12px 40px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                  type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="••••••••"
+                  style={{ width: '100%', padding: '12px 40px 12px 40px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontSize: 14, outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
                   onFocus={e => (e.target.style.borderColor = 'rgba(0,212,255,0.4)')}
                   onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#00d4ff'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

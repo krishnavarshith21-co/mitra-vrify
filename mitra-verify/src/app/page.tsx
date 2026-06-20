@@ -13,7 +13,7 @@ import AnimatedCounter from '@/components/cyber/AnimatedCounter';
 import ThreeGlobe from '@/components/cyber/ThreeGlobe';
 import PageTransition from '@/components/cyber/PageTransition';
 import { useAuth } from '@/context/AuthContext';
-import SecurityRadar from '@/components/dashboard/SecurityRadar';
+import BiometricSecurityRadar from '@/components/dashboard/BiometricSecurityRadar';
 import VerificationFunnel from '@/components/dashboard/VerificationFunnel';
 import LiveActivityFeed from '@/components/dashboard/LiveActivityFeed';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
@@ -270,9 +270,9 @@ export default function DashboardPage() {
               
               {/* Radar - spans 3 */}
               <div className="premium-glass spotlight-card lg:col-span-3 p-6 flex flex-col">
-                <h3 className="text-sm font-semibold text-white mb-6 uppercase tracking-wider">Active Scanning</h3>
+                <h3 className="text-sm font-semibold text-white mb-6 uppercase tracking-wider">Biometric Radar</h3>
                 <div className="flex-1 flex items-center justify-center">
-                  <SecurityRadar />
+                  <BiometricSecurityRadar />
                 </div>
               </div>
 

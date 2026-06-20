@@ -8,6 +8,7 @@ export interface VerificationEvent {
   spoofFlag: boolean;
   faceDetectedFlag: boolean;
   identityMatchedFlag: boolean;
+  attentionScore: number;
   ip: string;
 }
 

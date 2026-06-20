@@ -549,6 +549,7 @@ export default function AdvancedDemoPage() {
           spoofFlag: overallResult === 'spoof' || spoofScore > 0.45,
           faceDetectedFlag: faceDetected,
           identityMatchedFlag: false,
+          attentionScore: overallResult === 'pass' ? 0.8 : 0.2,
         }).catch(console.error);
       });
     }

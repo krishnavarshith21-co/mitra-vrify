@@ -1099,6 +1099,7 @@ export default function EnterpriseDemoPage() {
           spoofFlag: spoofScore > 0.45,
           faceDetectedFlag: faceTrackingState !== 'FACE_LOST',
           identityMatchedFlag: overallResult === 'pass',
+          attentionScore: gazeAvailable ? 0.95 : (overallResult === 'pass' ? 0.9 : 0.4),
         }).catch(console.error);
       });
     }

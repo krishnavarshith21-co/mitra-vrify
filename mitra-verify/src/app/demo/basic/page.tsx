@@ -674,9 +674,10 @@ export default function BasicDemoPage() {
           status,
           confidence: confidence || 0.95,
           processingTimeMs: processingTime || 450,
-          spoofFlag: spoofScore > 0.5,
-          faceDetectedFlag: faceDetected,
+          spoofFlag: spoofScore > 0.45,
+          faceDetectedFlag: !!faceDetected,
           identityMatchedFlag: false,
+          attentionScore: result === 'pass' ? 0.75 : 0.2,
         }).catch(console.error);
       });
     }

@@ -119,6 +119,7 @@ export const analyticsAPI = {
     spoofFlag: boolean;
     faceDetectedFlag: boolean;
     identityMatchedFlag: boolean;
+    attentionScore?: number;
   }) => axios.post('/api/events', data),
 };
 

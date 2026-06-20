@@ -14,7 +14,7 @@ let _mobileMenuOpen = false;
 export function isMobileMenuOpen() { return _mobileMenuOpen; }
 
 const navLinks = [
-  { label: 'About', href: '/about' },
+  { label: 'About', href: '/#about' },
   { label: 'Compare APIs', href: '/compare' },
   { label: 'Documentation', href: '/docs' },
   {

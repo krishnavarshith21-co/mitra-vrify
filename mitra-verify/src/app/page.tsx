@@ -7,6 +7,7 @@ import {
   Activity, Eye, Lock, Globe, Star, ChevronRight
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import AboutSection from '@/components/AboutSection';
 import { useAuth } from '@/context/AuthContext';
 import AuthenticatedDashboard from '@/components/AuthenticatedDashboard';
 import type { ScanPhase } from '@/components/3d/HeroScene';
@@ -669,6 +670,10 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      <div id="about">
+        <AboutSection />
+      </div>
     </div>
   );
 }

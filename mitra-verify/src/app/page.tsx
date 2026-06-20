@@ -215,7 +215,7 @@ export default function HomePage() {
       <motion.section
         ref={heroRef}
         style={mounted ? { opacity: heroOpacity } : {}}
-        className="grid-bg relative min-h-[100dvh] flex items-center pt-24 pb-24 md:pb-16 lg:pt-0 lg:pb-0 overflow-hidden"
+        className="grid-bg relative min-h-[100dvh] flex items-center pt-16 pb-16 md:pt-24 md:pb-16 lg:pt-0 lg:pb-0 overflow-hidden"
       >
         {/* Gradient overlays */}
         <div style={{

@@ -166,7 +166,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop & Tablet Links — visible only at 1024px+ */}
+          {/* Desktop Links — visible only at 768px+ */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -174,10 +174,10 @@ export default function Navbar() {
             flex: 1,
             justifyContent: 'center',
           }}
-            className="hidden lg:flex"
+            className="hidden md:flex"
           >
             {visibleLinks.map(link => {
-              const isTertiary = link.label === 'Compare APIs' || link.label === 'Developer Portal';
+              const isTertiary = link.label === 'Compare APIs' || link.label === 'Developer Portal' || link.label === 'Admin Hub';
               return (
                 <div
                   key={link.label}
@@ -322,7 +322,7 @@ export default function Navbar() {
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {isAuthenticated ? (
-              <div style={{ position: 'relative' }} id="user-profile-menu">
+              <div className="hidden md:block" style={{ position: 'relative' }} id="user-profile-menu">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   style={{
@@ -504,16 +504,16 @@ export default function Navbar() {
                 >
                   Sign In
                 </Link>
-                <Link href="/auth/signup" className="btn-primary" style={{ padding: '0 16px', fontSize: 13, textDecoration: 'none', height: 36, whiteSpace: 'nowrap' }}>
+                <Link href="/auth/signup" className="btn-primary hidden md:inline-flex" style={{ padding: '0 16px', fontSize: 13, textDecoration: 'none', height: 36, whiteSpace: 'nowrap' }}>
                   Get Started
                 </Link>
               </>
             )}
 
-            {/* Mobile Menu Toggle — visible below lg (1024px) */}
+            {/* Mobile Menu Toggle — visible below md (768px) */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="flex lg:hidden"
+              className="flex md:hidden"
               aria-label="Toggle navigation menu"
               style={{
                 background: 'rgba(255,255,255,0.04)',
@@ -706,19 +706,23 @@ export default function Navbar() {
                       <span style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || 'dev@mitraverify.com'}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => { logout(); setMobileOpen(false); }}
-                    className="btn-ghost"
-                    style={{
-                      width: '100%',
-                      color: '#ff3366',
-                      background: 'rgba(255,51,102,0.04)',
-                      borderColor: 'rgba(255,51,102,0.12)',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    Logout
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12, marginTop: 16 }}>
+                    <Link href="/developer" className="mobile-nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 16px' }}>Account Settings</Link>
+                    <Link href="/developer" className="mobile-nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 16px' }}>API Keys</Link>
+                    <button
+                      onClick={() => { logout(); setMobileOpen(false); }}
+                      className="btn-ghost"
+                      style={{
+                        width: '100%',
+                        color: '#ff3366',
+                        background: 'rgba(255,51,102,0.04)',
+                        borderColor: 'rgba(255,51,102,0.12)',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>

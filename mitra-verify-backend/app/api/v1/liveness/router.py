@@ -270,9 +270,14 @@ async def demo_process(
             challenges = session.get("challenges", [])
             if challenges and data.challenge_type == challenges[-1]["id"] and cv_result.get("challenge_passed"):
                 is_terminal = True
+                if status not in terminal_statuses:
+                    cv_result["result"] = "pass"
                 
             if is_terminal:
                 result_status = map_verification_result(cv_result, data.api_type or "basic")
+                print(f"verification_result: status={cv_result.get('status')} result={cv_result.get('result')}")
+                print(f"analytics_result: mapped_result={result_status}")
+                print(f"dashboard_result: logged_as={result_status}")
                 
                 stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
                 res = await db.execute(stmt)

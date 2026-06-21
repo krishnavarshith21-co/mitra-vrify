@@ -9,8 +9,6 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/context/AuthContext';
-import EnterpriseArchitecture from '@/components/home/EnterpriseArchitecture';
-import EnterpriseBenefits from '@/components/home/EnterpriseBenefits';
 import type { ScanPhase } from '@/components/3d/HeroScene';
 
 // Dynamically import 3D scene to avoid SSR issues
@@ -87,14 +85,6 @@ const API_PRODUCTS = [
   },
 ];
 
-const FEATURES = [
-  { icon: Lock, title: 'API Key Auth', desc: 'Secure SHA-256 hashed API keys with rate limiting and per-key analytics.' },
-  { icon: Activity, title: 'Real-Time Analytics', desc: 'Full request logs, spoof detection rates, and identity matching metrics.' },
-  { icon: Code2, title: 'Multi-Language SDKs', desc: 'JavaScript, TypeScript, Python, Node.js, React, and cURL examples.' },
-  { icon: Globe, title: 'Global Deployment', desc: 'Enterprise-ready infrastructure hosted globally with multi-region redundancy.' },
-  { icon: Shield, title: 'Anti-Spoof Engine', desc: 'Detects print attacks, video replays, deepfakes, and screen spoofs.' },
-  { icon: Eye, title: 'MediaPipe Powered', desc: '478 facial landmarks, iris tracking, and head pose estimation.' },
-];
 
 const CODE_EXAMPLE = `import requests
 
@@ -550,55 +540,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FEATURES GRID ────────────────────────────────── */}
-      <section style={{ background: 'var(--bg-secondary)' }} className="section-padding">
-        <div className="section-container">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            style={{ textAlign: 'center', marginBottom: 48 }}
-          >
-            <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
-              Everything You Need
-            </h2>
-            <p style={{ fontSize: 16, color: '#94a3b8' }}>
-              Production-ready platform with zero compromises
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="glass card-hover"
-                style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)', height: '100%' }}
-              >
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12,
-                  background: 'rgba(0,212,255,0.08)',
-                  border: '1px solid rgba(0,212,255,0.15)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-                }}>
-                  <feature.icon size={20} color="#00d4ff" />
-                </div>
-                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#f8fafc', marginBottom: 8 }}>{feature.title}</h3>
-                <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6 }}>{feature.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── ENTERPRISE ARCHITECTURE ──────────────────────── */}
-      <EnterpriseArchitecture />
-
-      {/* ── ENTERPRISE BENEFITS & SECURITY LAYERS ────────── */}
-      <EnterpriseBenefits />
 
       {/* ── CTA ──────────────────────────────────────────── */}
       <section className="section-padding">

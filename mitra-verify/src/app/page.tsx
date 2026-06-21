@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/context/AuthContext';
+import EnterpriseArchitecture from '@/components/home/EnterpriseArchitecture';
+import EnterpriseBenefits from '@/components/home/EnterpriseBenefits';
 import type { ScanPhase } from '@/components/3d/HeroScene';
 
 // Dynamically import 3D scene to avoid SSR issues
@@ -89,7 +91,7 @@ const FEATURES = [
   { icon: Lock, title: 'API Key Auth', desc: 'Secure SHA-256 hashed API keys with rate limiting and per-key analytics.' },
   { icon: Activity, title: 'Real-Time Analytics', desc: 'Full request logs, spoof detection rates, and identity matching metrics.' },
   { icon: Code2, title: 'Multi-Language SDKs', desc: 'JavaScript, TypeScript, Python, Node.js, React, and cURL examples.' },
-  { icon: Globe, title: 'Open Source', desc: 'Fully open source under MIT license. Self-host, contribute, and extend.' },
+  { icon: Globe, title: 'Global Deployment', desc: 'Enterprise-ready infrastructure hosted globally with multi-region redundancy.' },
   { icon: Shield, title: 'Anti-Spoof Engine', desc: 'Detects print attacks, video replays, deepfakes, and screen spoofs.' },
   { icon: Eye, title: 'MediaPipe Powered', desc: '478 facial landmarks, iris tracking, and head pose estimation.' },
 ];
@@ -249,9 +251,9 @@ export default function HomePage() {
                     fontSize: 11, background: 'rgba(0,212,255,0.15)', color: '#00d4ff',
                     padding: '2px 8px', borderRadius: 20, fontWeight: 600,
                   }}>
-                    <Star size={10} fill="#00d4ff" /> Open Source
+                    <Star size={10} fill="#00d4ff" /> Enterprise Edition
                   </span>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>Free forever · MIT License</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>Powered by Next Step Innovators</span>
                   <ArrowRight size={12} color="#94a3b8" />
                 </a>
               </motion.div>
@@ -279,7 +281,7 @@ export default function HomePage() {
                 style={{ fontSize: 'var(--text-base)', color: '#94a3b8', lineHeight: 1.7, maxWidth: 'min(520px, 100%)', marginBottom: 16 }}
               >
                 Production-ready biometric verification platform. Face liveness detection,
-                anti-spoof, and continuous identity authentication — all open source.
+                anti-spoof protection, and continuous identity authentication infrastructure.
               </motion.p>
 
                 <motion.div
@@ -307,7 +309,7 @@ export default function HomePage() {
                   { value: '99%', label: 'Max Accuracy', color: '#00ff88' },
                   { value: '< 1s', label: 'Fast Mode', color: '#00d4ff' },
                   { value: '3 APIs', label: 'Products', color: '#7c3aed' },
-                  { value: 'MIT', label: 'License', color: '#ffb800' },
+                  { value: 'Enterprise', label: 'License', color: '#ffb800' },
                 ].map(stat => (
                   <div key={stat.label} className="glass card-hover" style={{ padding: 'var(--space-2)', borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -592,6 +594,12 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── ENTERPRISE ARCHITECTURE ──────────────────────── */}
+      <EnterpriseArchitecture />
+
+      {/* ── ENTERPRISE BENEFITS & SECURITY LAYERS ────────── */}
+      <EnterpriseBenefits />
+
       {/* ── CTA ──────────────────────────────────────────── */}
       <section className="section-padding">
         <div className="section-container" style={{ maxWidth: 720, textAlign: 'center' }}>
@@ -612,35 +620,28 @@ export default function HomePage() {
             {!isAuthenticated ? (
               <>
                 <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
-                  Open Source & Free Forever
+                  Enterprise Biometric Security
                 </h2>
                 <p style={{ fontSize: 17, color: '#94a3b8', lineHeight: 1.7, marginBottom: 40, maxWidth: 500, margin: '0 auto 40px' }}>
-                  No subscriptions. No hidden fees. No rate limit walls. Fork it, self-host it, contribute to it.
-                  Enterprise biometrics for everyone.
+                  Deploy military-grade liveness detection and identity authentication into your infrastructure today. Secure your platform with confidence.
                 </p>
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <Link href="/signup" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    Create Free Account <ArrowRight size={16} />
+                    Start Enterprise Trial <ArrowRight size={16} />
                   </Link>
                 </div>
               </>
             ) : (
               <>
                 <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
-                  Welcome Back, {user?.name || 'Developer'}
+                  Welcome Back, {user?.name || 'Administrator'}
                 </h2>
                 <p style={{ fontSize: 17, color: '#94a3b8', lineHeight: 1.7, marginBottom: 40, maxWidth: 500, margin: '0 auto 40px' }}>
-                  You are authenticated. Access your dashboard, configure API keys, and launch verification sessions.
+                  Access your enterprise Security Operations Center to monitor telemetry, review analytics, and manage verification logs.
                 </p>
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <Link href="/dashboard" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    Open Dashboard <ArrowRight size={16} />
-                  </Link>
-                  <Link href="/developer" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    Developer Portal
-                  </Link>
-                  <Link href="/developer" className="btn-ghost" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    Manage API Keys
+                    Open Operations Center <ArrowRight size={16} />
                   </Link>
                 </div>
               </>

@@ -6,7 +6,7 @@ export default function RegisterRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/auth/signup');
+    router.replace('/signup');
   }, [router]);
 
   return (

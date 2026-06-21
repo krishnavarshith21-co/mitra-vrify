@@ -487,7 +487,7 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="hidden md:flex items-center gap-2">
-                <Link href="/auth/login"
+                <Link href="/signin"
                   className="inline-flex"
                   style={{
                     padding: '8px 16px',
@@ -503,7 +503,7 @@ export default function Navbar() {
                 >
                   Sign In
                 </Link>
-                <Link href="/auth/signup" className="btn-primary" style={{ padding: '0 16px', fontSize: 13, textDecoration: 'none', height: 36, whiteSpace: 'nowrap' }}>
+                <Link href="/signup" className="btn-primary" style={{ padding: '0 16px', fontSize: 13, textDecoration: 'none', height: 36, whiteSpace: 'nowrap' }}>
                   Get Started
                 </Link>
               </div>
@@ -617,7 +617,7 @@ export default function Navbar() {
                 { label: 'About', href: '/about' },
                 { label: 'Developer Portal', href: '/developer' },
                 { label: 'Admin Hub', href: '/admin' },
-                { label: 'Sign In', href: '/auth/login' },
+                { label: 'Sign In', href: '/signin' },
               ].map((link, idx) => (
                 <motion.div
                   key={link.label}

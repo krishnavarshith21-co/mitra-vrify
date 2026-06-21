@@ -138,7 +138,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.replace('/auth/login?reason=unauthenticated');
+      router.replace('/signin?reason=unauthenticated');
       return;
     }
     if (user?.role === 'admin') {
@@ -153,7 +153,7 @@ export default function AdminPage() {
       const timer = setTimeout(() => {
         setIsAdmin(false);
         setCheckingAuth(false);
-        router.replace('/auth/login?reason=unauthenticated');
+        router.replace('/signin?reason=unauthenticated');
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -276,7 +276,7 @@ export default function AdminPage() {
             <Link href="/" className="btn-ghost" style={{ textDecoration: 'none' }}>
               Return Home
             </Link>
-            <Link href="/auth/login" className="btn-primary" style={{ textDecoration: 'none' }}>
+            <Link href="/signin" className="btn-primary" style={{ textDecoration: 'none' }}>
               Sign In Admin
             </Link>
           </div>

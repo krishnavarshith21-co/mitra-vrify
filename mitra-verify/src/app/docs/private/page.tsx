@@ -40,7 +40,7 @@ export default function PrivateDocsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.replace('/auth/login?reason=unauthenticated');
+      router.replace('/signin?reason=unauthenticated');
     }
   }, [router, isAuthenticated, authLoading]);
 

@@ -318,7 +318,7 @@ export default function EnterpriseDemoPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.replace('/auth/login?reason=unauthenticated');
+      router.replace('/signin?reason=unauthenticated');
     }
   }, [router, isAuthenticated, authLoading]);
 
@@ -551,7 +551,7 @@ export default function EnterpriseDemoPage() {
     // Auto logout flow: Token Revoked, Redirect to Login via AuthContext logout after 3s
     if (shouldRedirect) {
       setTimeout(() => {
-        logout('/auth/login?reason=verification_lost');
+        logout('/signin?reason=verification_lost');
       }, 3000);
     }
   }, [logout, sessionId]);

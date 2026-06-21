@@ -74,7 +74,7 @@ export default function DeveloperPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.replace('/auth/login?reason=unauthenticated');
+      router.replace('/signin?reason=unauthenticated');
       return;
     }
     async function loadKeys() {

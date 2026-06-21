@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authAPI.logout();
     clearStorage();
     setUser(null);
-    window.location.href = callbackUrl || '/auth/login';
+    window.location.href = callbackUrl || '/signin';
   }, []);
 
   const isAuthenticated = !!user;

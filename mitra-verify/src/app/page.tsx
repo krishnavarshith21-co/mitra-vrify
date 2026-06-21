@@ -373,9 +373,9 @@ export default function HomePage() {
               </motion.div>
             </div>
 
-            <div className="lg:col-span-6 relative w-full h-[400px] lg:h-[600px] flex items-center justify-center">
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.2 }} className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00d4ff]/10 rounded-full blur-[120px]" />
+            <div className="lg:col-span-6 relative w-full h-[550px] lg:h-[700px] flex items-center justify-center -mr-12 lg:-mr-24">
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.2 }} className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="absolute w-[600px] h-[600px] bg-[#00d4ff]/15 rounded-full blur-[120px] mix-blend-screen" />
               </motion.div>
               <div className="relative w-full h-full z-10 pointer-events-auto">
                 {mounted && (

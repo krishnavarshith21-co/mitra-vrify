@@ -8,11 +8,11 @@ const FOOTER_LINKS = {
     { label: 'Face Liveness', href: '/demo/basic' },
     { label: 'Anti-Spoofing', href: '/demo/advanced' },
     { label: 'Identity Matching', href: '/demo/enterprise' },
-    { label: 'Pricing', href: '/pricing' },
+    { label: 'Pricing', href: '/compare' },
   ],
   Developers: [
     { label: 'Documentation', href: '/docs' },
-    { label: 'API Reference', href: '/docs/api' },
+    { label: 'API Reference', href: '/developer' },
     { label: 'Developer Portal', href: '/developer' },
     { label: 'GitHub', href: 'https://github.com' },
   ],

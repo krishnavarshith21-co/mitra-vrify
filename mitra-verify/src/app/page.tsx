@@ -145,8 +145,8 @@ export default function HomePage() {
             }}
             className="absolute rounded-full bg-[#00d4ff]"
             style={{
-              left: \`\${Math.random() * 100}%\`,
-              top: \`\${Math.random() * 100}%\`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
               width: Math.random() * 3 + 1,
               height: Math.random() * 3 + 1,
               boxShadow: '0 0 10px #00d4ff',
@@ -307,7 +307,7 @@ export default function HomePage() {
                       { label: 'Multi-Face Detection', value: 'Clear (1 Face)', icon: Fingerprint, color: '#7c3aed' },
                     ].map((item, i) => (
                       <div key={i} className="bg-white/[0.02] border border-white/5 rounded-xl p-5 flex items-center gap-5 hover:bg-white/[0.04] transition-colors">
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: \`\${item.color}15\`, border: \`1px solid \${item.color}30\` }}>
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${item.color}15`, border: `1px solid ${item.color}30` }}>
                           <item.icon size={20} color={item.color} />
                         </div>
                         <div>
@@ -342,9 +342,9 @@ export default function HomePage() {
               <motion.div key={useCase.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <TiltCard className="h-full">
                   <div className="h-full p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/20 transition-colors relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500" style={{ backgroundImage: \`linear-gradient(to bottom right, \${useCase.color}, transparent)\` }} />
+                    <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500" style={{ backgroundImage: `linear-gradient(to bottom right, ${useCase.color}, transparent)` }} />
                     <div className="relative z-10">
-                      <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6" style={{ background: \`\${useCase.color}15\`, border: \`1px solid \${useCase.color}30\` }}>
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6" style={{ background: `${useCase.color}15`, border: `1px solid ${useCase.color}30` }}>
                         <useCase.icon size={28} color={useCase.color} />
                       </div>
                       <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{useCase.title}</h3>
@@ -375,10 +375,10 @@ export default function HomePage() {
             ].map((plan, i) => (
               <motion.div key={plan.name} initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className="relative flex flex-col h-full bg-[#050b14] p-8 rounded-2xl border border-white/10 hover:border-white/20 transition-all group overflow-hidden"
-                style={{ ...(plan.popular ? { borderColor: \`\${plan.color}50\`, boxShadow: \`0 0 30px \${plan.color}15\` } : {}) }}
+                style={{ ...(plan.popular ? { borderColor: `${plan.color}50`, boxShadow: `0 0 30px ${plan.color}15` } : {}) }}
               >
                 {plan.popular && <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#3b82f6] text-white text-[10px] font-bold uppercase tracking-widest py-1 px-4 rounded-b-lg">Most Popular</div>}
-                <div className="absolute inset-0 bg-gradient-to-b opacity-0 group-hover:opacity-[0.03] transition-opacity" style={{ backgroundImage: \`linear-gradient(to bottom, \${plan.color}, transparent)\` }} />
+                <div className="absolute inset-0 bg-gradient-to-b opacity-0 group-hover:opacity-[0.03] transition-opacity" style={{ backgroundImage: `linear-gradient(to bottom, ${plan.color}, transparent)` }} />
                 
                 <h3 className="text-2xl font-bold text-white mb-2 tracking-tight mt-4">{plan.name}</h3>
                 <div className="text-[13px] text-slate-400 mb-8 border-b border-white/10 pb-6">

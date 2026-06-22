@@ -165,12 +165,12 @@ def authenticate_user(image_bytes: bytes, user_id: str) -> bool:
 }`
 };
 
-const CAPABILITY_BADGES = [
-  { name: '478 Facial Landmarks', desc: 'Dense micro-expression tracking' },
-  { name: 'Liveness Detection', desc: 'Real-time biological verification' },
-  { name: 'Deepfake Analysis', desc: 'Synthetic media detection' },
-  { name: 'Identity Matching', desc: 'Military-grade 1:N recognition' },
-  { name: 'Multi-Face Detection', desc: 'Zero-trust background monitoring' },
+const ENTERPRISE_CAPABILITIES = [
+  { title: '478 Facial Landmarks', desc: 'Real-time facial mesh extraction with dense biometric mapping.', icon: Focus, color: '#00d4ff' },
+  { title: 'Liveness Detection', desc: 'Detects real human presence through active and passive verification.', icon: Activity, color: '#00ff88' },
+  { title: 'Deepfake Analysis', desc: 'Identifies synthetic media, replay attacks, and manipulated faces.', icon: Shield, color: '#7c3aed' },
+  { title: 'Identity Matching', desc: 'Compares enrolled and live biometric signatures with confidence scoring.', icon: Fingerprint, color: '#00d4ff' },
+  { title: 'Multi-Face Detection', desc: 'Automatically flags unauthorized individuals within the frame.', icon: UserPlus, color: '#00ff88' },
 ];
 
 const threatData = [
@@ -643,30 +643,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── TECHNICAL CAPABILITIES ──────────────────────────────── */}
-      <section className="py-16 bg-[#030712] border-t border-white/5 relative z-10">
-        <div className="max-w-[1400px] mx-auto px-6">
-          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            {CAPABILITY_BADGES.map((badge) => (
-              <div key={badge.name} className="group relative flex items-center justify-center">
-                <div className="relative px-5 py-2.5 rounded-full bg-white/[0.01] border border-white/5 backdrop-blur-md overflow-hidden cursor-default transition-all duration-500 hover:bg-white/[0.03] hover:border-[#00d4ff]/30 hover:shadow-[0_0_20px_rgba(0,212,255,0.15)]">
-                  {/* Subtle animated pulse glow in the background */}
-                  <div className="absolute inset-0 bg-[#00d4ff]/0 group-hover:bg-[#00d4ff]/5 transition-colors duration-500 rounded-full" />
-                  <div className="absolute -inset-1 bg-gradient-to-r from-transparent via-[#00d4ff]/10 to-transparent opacity-0 group-hover:opacity-100 blur-sm group-hover:animate-[pulse_2s_ease-in-out_infinite] transition-opacity duration-500" />
-                  
-                  <div className="relative z-10 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-700 group-hover:bg-[#00d4ff] group-hover:shadow-[0_0_8px_#00d4ff] transition-all duration-500" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(0,212,255,0.5)] transition-all duration-500">
-                      {badge.name}
-                    </span>
-                  </div>
-                </div>
+      {/* ── ENTERPRISE-GRADE SECURITY CAPABILITIES ──────────────────────────────── */}
+      <section className="py-24 lg:py-32 bg-[#030712] border-t border-white/5 relative z-10 overflow-hidden">
+        {/* Subtle particle background for this section */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.03),transparent_70%)] pointer-events-none" />
+        
+        <div className="max-w-[1400px] mx-auto px-6 relative z-10">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} className="text-center mb-16 lg:mb-24">
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#00d4ff] mb-4 block drop-shadow-[0_0_8px_rgba(0,212,255,0.5)]">
+              ENTERPRISE-GRADE SECURITY CAPABILITIES
+            </span>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white tracking-tight max-w-4xl mx-auto leading-tight">
+              Powered by advanced AI-driven biometric intelligence, anti-spoof protection, and real-time identity verification.
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6 lg:gap-8">
+            {ENTERPRISE_CAPABILITIES.map((cap, i) => (
+              <motion.div 
+                key={cap.title} 
+                initial={{ opacity: 0, y: 40 }} 
+                whileInView={{ opacity: 1, y: 0 }} 
+                viewport={{ once: true, margin: "-50px" }} 
+                transition={{ delay: i * 0.1, type: "spring", stiffness: 100, damping: 20 }}
+                whileHover={{ y: -5 }}
+                className={`group relative h-full flex flex-col ${i < 3 ? 'md:col-span-2' : 'md:col-span-3'}`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="absolute inset-0 border border-white/5 rounded-2xl group-hover:border-[#00d4ff]/30 transition-colors duration-500 pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_30px_rgba(0,212,255,0.1)]" />
                 
-                {/* Tooltip */}
-                <div className="absolute top-full mt-3 w-max px-3 py-1.5 bg-[#0a0f1e]/90 backdrop-blur-md rounded border border-white/10 text-xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 shadow-xl">
-                  {badge.desc}
+                <div className="relative z-10 p-8 h-full bg-[#0a0f1e]/40 backdrop-blur-md rounded-2xl overflow-hidden flex flex-col border border-transparent">
+                  {/* Glowing background blob */}
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none" style={{ backgroundColor: cap.color }} />
+                  
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 relative" style={{ backgroundColor: `${cap.color}15`, border: `1px solid ${cap.color}30` }}>
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-500 blur-md" style={{ backgroundColor: cap.color }} />
+                    <cap.icon size={26} color={cap.color} className="relative z-10 transform group-hover:rotate-12 transition-transform duration-500" />
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-white mb-3 tracking-tight transition-all">{cap.title}</h3>
+                  <p className="text-[15px] text-slate-400 leading-relaxed font-medium">{cap.desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

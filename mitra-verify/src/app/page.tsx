@@ -392,25 +392,25 @@ export default function HomePage() {
         </div>
       </motion.section>
 
-      {/* ── TRUSTED ACROSS CRITICAL INDUSTRIES ─────────────────────── */}
+      {/* ── ENGINEERED FOR ZERO-TRUST ENVIRONMENTS ─────────────────────── */}
       <section className="py-12 border-y border-white/5 bg-[#030712] relative z-10 overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]">
-        <div className="max-w-[1400px] mx-auto px-6 mb-8 text-center text-left">
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500">Trusted Across Critical Industries</span>
+        <div className="max-w-[1400px] mx-auto px-6 mb-8 text-center">
+          <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-500 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]">Engineered for Zero-Trust Environments</span>
         </div>
-        <div className="flex whitespace-nowrap opacity-50 relative">
+        <div className="flex whitespace-nowrap opacity-80 relative">
           <div className="absolute left-0 top-0 w-48 h-full bg-gradient-to-r from-[#030712] to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 w-48 h-full bg-gradient-to-l from-[#030712] to-transparent z-10 pointer-events-none" />
           <motion.div
             animate={{ x: [0, -2000] }}
-            transition={{ repeat: Infinity, duration: 50, ease: 'linear' }}
-            className="flex items-center gap-20 px-8"
+            transition={{ repeat: Infinity, duration: 40, ease: 'linear' }}
+            className="flex items-center gap-16 px-8"
           >
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center gap-20">
-                {['ACME Corp', 'GlobalBank', 'HealthPlus', 'GovTech', 'FinSecure', 'EduLearn', 'SecurePay'].map((logo, idx) => (
-                  <div key={logo} className="flex items-center gap-3 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100 cursor-default">
-                    <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-white font-bold text-xs">{logo.charAt(0)}</div>
-                    <span className="text-xl font-bold tracking-tight text-white">{logo}</span>
+              <div key={i} className="flex items-center gap-16">
+                {['Education', 'Banking', 'FinTech', 'Healthcare', 'Government', 'Enterprise', 'Workforce Access', 'Customer Verification'].map((sector, idx) => (
+                  <div key={sector} className="flex items-center gap-3 transition-all opacity-60 hover:opacity-100 cursor-default group">
+                    <div className={`w-1.5 h-1.5 rounded-full ${idx % 2 === 0 ? 'bg-[#00d4ff] shadow-[0_0_8px_#00d4ff]' : 'bg-[#00ff88] shadow-[0_0_8px_#00ff88]'}`} />
+                    <span className="text-sm font-semibold uppercase tracking-widest text-slate-300 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all">{sector}</span>
                   </div>
                 ))}
               </div>

@@ -638,7 +638,10 @@ export default function HomePage() {
       </section>
 
       {/* ── MINIMALIST ENTERPRISE SECURITY SECTION ──────────────────────────────── */}
-      <section className="py-32 lg:py-48 bg-[#030712] border-t border-white/5 relative z-10">
+      <section className="pt-20 pb-32 lg:pt-28 lg:pb-40 bg-[#030712] border-t border-white/5 relative z-10 overflow-hidden">
+        {/* Subtle animated grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+
         <div className="max-w-[1200px] mx-auto px-6 relative z-10">
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="text-center">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 mb-6 block">
@@ -647,7 +650,7 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl lg:text-7xl font-semibold text-white tracking-tight mb-8">
               Identity Verification Built For Trust
             </h2>
-            <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto font-light leading-relaxed">
+            <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
               Advanced liveness detection, anti-spoof intelligence, and real-time biometric authentication.
             </p>
           </motion.div>
@@ -657,14 +660,14 @@ export default function HomePage() {
             whileInView={{ opacity: 1, y: 0 }} 
             viewport={{ once: true, margin: "-50px" }} 
             transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-24 md:mt-32 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-4 lg:gap-8 max-w-5xl mx-auto"
+            className="mt-20 md:mt-24 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-4 lg:gap-8 max-w-5xl mx-auto"
           >
             {[
               { value: '478+', label: 'Facial Landmarks' },
               { value: '<1s', label: 'Verification' },
-              { value: '99%', label: 'Liveness Accuracy' },
-              { value: '24/7', label: 'Monitoring' },
-              { value: '3', label: 'Verification APIs' }
+              { value: '99%', label: 'Anti-Spoof Engine' },
+              { value: '24/7', label: 'Continuous Verification' },
+              { value: '3', label: 'Security Levels' }
             ].map((metric) => (
               <div key={metric.label} className="flex flex-col items-center text-center">
                 <div className="text-4xl lg:text-5xl font-light text-white mb-3 tracking-tight">{metric.value}</div>
@@ -673,27 +676,77 @@ export default function HomePage() {
             ))}
           </motion.div>
 
-          <motion.div 
-            initial={{ scaleX: 0, opacity: 0 }} 
-            whileInView={{ scaleX: 1, opacity: 1 }} 
-            viewport={{ once: true, margin: "-50px" }} 
-            transition={{ duration: 1.5, delay: 0.4, ease: "easeInOut" }}
-            className="w-full max-w-5xl mx-auto h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mt-20 mb-12 origin-center"
-          />
+          {/* Animated Horizontal Glow Divider */}
+          <div className="relative w-full max-w-5xl mx-auto mt-20 mb-16 h-px">
+            <motion.div 
+              initial={{ scaleX: 0, opacity: 0 }} 
+              whileInView={{ scaleX: 1, opacity: 1 }} 
+              viewport={{ once: true, margin: "-50px" }} 
+              transition={{ duration: 1.5, delay: 0.4, ease: "easeInOut" }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-[#00d4ff]/40 to-transparent origin-center"
+            />
+            {/* Glowing moving dot along the divider */}
+            <motion.div
+              initial={{ left: '0%', opacity: 0 }}
+              whileInView={{ opacity: [0, 1, 1, 0] }}
+              animate={{ left: ['0%', '100%'] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              className="absolute top-1/2 -translate-y-1/2 w-16 h-[1px] bg-[#00d4ff] shadow-[0_0_15px_#00d4ff]"
+            />
+          </div>
 
+          {/* Premium Biometric Pipeline Visualization */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
             whileInView={{ opacity: 1, y: 0 }} 
             viewport={{ once: true, margin: "-50px" }} 
             transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-wrap justify-center items-center gap-y-4 gap-x-4 md:gap-x-8 text-sm md:text-[15px] font-light tracking-wide text-slate-400 max-w-4xl mx-auto"
+            className="w-full max-w-5xl mx-auto"
           >
-            {['Face Recognition', 'Liveness Detection', 'Deepfake Analysis', 'Identity Matching', 'Multi-Face Detection'].map((item, index, arr) => (
-              <div key={item} className="flex items-center gap-4 md:gap-8">
-                <span className="hover:text-white transition-colors cursor-default">{item}</span>
-                {index < arr.length - 1 && <span className="text-slate-800 text-[10px]">●</span>}
+            <div className="relative p-8 md:px-12 md:pt-10 md:pb-24 rounded-2xl bg-white/[0.01] border border-white/5 backdrop-blur-md">
+              <div className="flex flex-col md:flex-row items-center justify-between relative z-10 w-full">
+                {[
+                  { id: '1', title: 'Face Detection' },
+                  { id: '2', title: 'Landmark Extraction' },
+                  { id: '3', title: 'Liveness Check' },
+                  { id: '4', title: 'Identity Match' },
+                  { id: '5', title: 'Access Granted' }
+                ].map((step, index, arr) => (
+                  <div key={step.id} className="flex flex-col md:flex-row items-center flex-1 w-full md:w-auto">
+                    
+                    <div className="flex flex-col items-center group relative shrink-0">
+                      <div className="w-10 h-10 rounded-full border border-white/10 bg-[#0a0f1e] flex items-center justify-center text-[11px] font-mono text-slate-400 group-hover:border-[#00d4ff]/50 group-hover:text-[#00d4ff] transition-colors relative z-20">
+                        {step.id}
+                        {/* Pulse glow inside node */}
+                        <div className="absolute inset-0 rounded-full bg-[#00d4ff]/0 group-hover:bg-[#00d4ff]/10 group-hover:shadow-[0_0_15px_rgba(0,212,255,0.2)] transition-all duration-500" />
+                      </div>
+                      <span className="md:absolute md:top-14 mt-4 md:mt-0 text-[10px] uppercase tracking-widest text-slate-500 text-center group-hover:text-slate-300 transition-colors w-24 md:left-1/2 md:-translate-x-1/2">
+                        {step.title}
+                      </span>
+                    </div>
+
+                    {/* Connecting thin line between nodes */}
+                    {index < arr.length - 1 && (
+                      <div className="flex-1 w-px h-8 md:w-full md:h-px bg-white/10 mx-auto my-4 md:my-0 md:mx-4 relative overflow-hidden">
+                        {/* Animated pulse flowing through connecting horizontal line */}
+                        <motion.div
+                          animate={{ left: ['-100%', '100%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: index * 0.4 }}
+                          className="absolute hidden md:block top-0 w-1/2 h-full bg-gradient-to-r from-transparent via-[#00d4ff]/50 to-transparent shadow-[0_0_8px_rgba(0,212,255,0.3)]"
+                        />
+                        {/* Animated pulse flowing through connecting vertical line (mobile) */}
+                        <motion.div
+                          animate={{ top: ['-100%', '100%'] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: index * 0.4 }}
+                          className="absolute md:hidden left-0 h-1/2 w-full bg-gradient-to-b from-transparent via-[#00d4ff]/50 to-transparent shadow-[0_0_8px_rgba(0,212,255,0.3)]"
+                        />
+                      </div>
+                    )}
+
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </section>

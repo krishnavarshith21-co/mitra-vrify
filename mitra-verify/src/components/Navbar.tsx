@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Zap, Menu, X, ChevronDown,
-  Eye, Fingerprint
+  Eye, Fingerprint, Activity, Globe, CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -318,8 +318,25 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Right Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {/* Right Actions & Status Indicators */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            
+            {/* Status Indicators (Hidden on small screens) */}
+            <div className="hidden xl:flex items-center gap-4 mr-2 border-r border-white/10 pr-4">
+              <div className="flex items-center gap-1.5" title="System Operational">
+                <CheckCircle2 size={12} className="text-[#00ff88]" />
+                <span className="text-[10px] uppercase tracking-widest text-[#00ff88] font-bold">Operational</span>
+              </div>
+              <div className="flex items-center gap-1.5" title="99.99% Uptime">
+                <Activity size={12} className="text-[#00d4ff]" />
+                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">99.99%</span>
+              </div>
+              <div className="flex items-center gap-1.5" title="Global Edge Regions">
+                <Globe size={12} className="text-[#7c3aed]" />
+                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">12 Regions</span>
+              </div>
+            </div>
+
             {isAuthenticated ? (
               <div className="hidden md:block" style={{ position: 'relative' }} id="user-profile-menu">
                 <button

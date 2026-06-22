@@ -3,11 +3,12 @@
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { 
-  Shield, Activity, Server, Key, RefreshCw, Settings, BarChart3, 
+  Shield, Activity, Server, BarChart3, 
   HelpCircle, FileText, ShieldAlert, Globe, Clock, CheckCircle2, XCircle, AlertTriangle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // --- MOCK DATA ---
@@ -75,7 +76,8 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#020813] flex flex-col md:flex-row relative overflow-hidden">
+      <Navbar />
+      <div className="min-h-screen bg-[#020813] flex flex-col relative overflow-hidden pt-20">
         
         {/* Global Dashboard Background Layers */}
         <div className="absolute inset-0 pointer-events-none z-0">
@@ -84,79 +86,9 @@ export default function DashboardPage() {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,212,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,212,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
         </div>
 
-        {/* SIDEBAR (Desktop) */}
-        <div className="w-full md:w-[260px] bg-[#050a17]/80 backdrop-blur-xl border-r border-white/5 flex-shrink-0 flex flex-col h-screen sticky top-0 hidden md:flex z-20">
-          <div className="p-6 border-b border-white/5">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00d4ff]/20 to-[#0066ff]/20 border border-[#00d4ff]/30 flex items-center justify-center group-hover:border-[#00d4ff] transition-colors shadow-[0_0_15px_rgba(0,212,255,0.1)]">
-                <Shield size={20} color="#00d4ff" />
-              </div>
-              <div>
-                <h2 className="text-[13px] font-extrabold text-white tracking-widest uppercase">Mitra Verify</h2>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_#00ff88]" />
-                  <span className="text-[10px] text-[#00ff88] font-mono uppercase tracking-wider">Production</span>
-                </div>
-              </div>
-            </Link>
-          </div>
-          
-          <div className="p-4 flex-1 overflow-y-auto space-y-1">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3 mt-2">Platform</div>
-            {[
-              { id: 'overview', label: 'Command Center', icon: Activity },
-              { id: 'logs', label: 'Operations Log', icon: Server },
-              { id: 'analytics', label: 'Threat Analytics', icon: BarChart3 },
-            ].map(item => (
-              <button 
-                key={item.id} 
-                onClick={() => setActiveTab(item.id)} 
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
-                  activeTab === item.id 
-                    ? 'bg-gradient-to-r from-[#00d4ff]/10 to-transparent text-[#00d4ff] border-l-2 border-[#00d4ff]' 
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.02] border-l-2 border-transparent'
-                }`}
-              >
-                <item.icon size={16} className={activeTab === item.id ? 'opacity-100' : 'opacity-60'} /> {item.label}
-              </button>
-            ))}
-
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-3 mt-8">Configuration</div>
-            {[
-              { id: 'keys', label: 'API Keys', icon: Key },
-              { id: 'webhooks', label: 'Webhooks', icon: RefreshCw },
-              { id: 'settings', label: 'Settings', icon: Settings },
-            ].map(item => (
-              <button 
-                key={item.id} 
-                onClick={() => setActiveTab(item.id)} 
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
-                  activeTab === item.id 
-                    ? 'bg-gradient-to-r from-[#00d4ff]/10 to-transparent text-[#00d4ff] border-l-2 border-[#00d4ff]' 
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.02] border-l-2 border-transparent'
-                }`}
-              >
-                <item.icon size={16} className={activeTab === item.id ? 'opacity-100' : 'opacity-60'} /> {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-4 border-t border-white/5 bg-[#030712]/50">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/[0.02] cursor-pointer transition-colors border border-transparent hover:border-white/5">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#0066ff] to-[#00d4ff] flex items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(0,212,255,0.2)]">
-                {user?.email?.charAt(0).toUpperCase() || 'E'}
-              </div>
-              <div className="overflow-hidden flex-1">
-                <div className="text-[13px] font-semibold text-white truncate">{user?.email || 'enterprise@acme.corp'}</div>
-                <div className="text-[11px] text-slate-500 truncate font-mono">Workspace Owner</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto relative z-10">
-          <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
+        <main className="flex-1 w-full relative z-10">
+          <div className="p-6 md:p-8 lg:p-10 max-w-[1440px] mx-auto space-y-8">
             
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -339,24 +271,6 @@ export default function DashboardPage() {
 
           </div>
         </main>
-
-        {/* Mobile Navigation (Bottom) */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#050a17]/90 backdrop-blur-xl border-t border-white/5 flex justify-around p-3 z-50">
-          {[
-            { id: 'overview', icon: Activity },
-            { id: 'logs', icon: Server },
-            { id: 'analytics', icon: BarChart3 },
-            { id: 'settings', icon: Settings },
-          ].map(item => (
-            <button 
-              key={item.id} 
-              onClick={() => setActiveTab(item.id)} 
-              className={`p-3 rounded-xl transition-all \${activeTab === item.id ? 'bg-[#00d4ff]/20 text-[#00d4ff] shadow-[0_0_10px_rgba(0,212,255,0.1)]' : 'text-slate-400 hover:text-white'}`}
-            >
-              <item.icon size={20} />
-            </button>
-          ))}
-        </div>
       </div>
     </ProtectedRoute>
   );

@@ -32,8 +32,7 @@ const FOOTER_LINKS = {
 
 export default function Footer() {
   return (
-    <footer className="relative w-full border-t border-white/5 bg-[#030712] overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-px bg-gradient-to-r from-transparent via-[#00d4ff]/30 to-transparent" />
+    <footer className="relative w-full overflow-hidden">
       
       <div className="max-w-[1400px] mx-auto px-6 py-16 lg:py-24">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-16">

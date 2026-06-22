@@ -170,8 +170,19 @@ export default function HomePage() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-[#020617] overflow-hidden selection:bg-[#00d4ff]/30 selection:text-white">
+    <div className="min-h-screen bg-[#020813] overflow-hidden selection:bg-[#00d4ff]/30 selection:text-white relative">
       <Navbar />
+
+      {/* ── GLOBAL FIXED BACKGROUND LAYERS ───────────────────────── */}
+      <div className="fixed inset-0 pointer-events-none z-0 flex items-center justify-center">
+        {/* Soft Glow Orbs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00d4ff]/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#00ff88]/5 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-[30%] right-[20%] w-[30%] h-[40%] bg-[#3b82f6]/10 blur-[120px] rounded-full mix-blend-screen" />
+        
+        {/* Subtle Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,212,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,212,255,0.015)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
+      </div>
 
       {/* ── AMBIENT PARTICLES ───────────────────────────────────── */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -280,7 +291,7 @@ export default function HomePage() {
       </motion.section>
 
       {/* ── 2. REAL CAPABILITIES (Replaces Fake Metrics) ─────────────────── */}
-      <section className="py-16 border-y border-white/5 bg-[#01040a] relative z-10">
+      <section className="py-16 relative z-10">
         <div className="max-w-[1400px] mx-auto px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
@@ -311,7 +322,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 3. PRODUCT SHOWCASE (THREAT INTELLIGENCE) ────────────────────── */}
-      <section className="py-32 lg:py-40 relative z-10">
+      <section className="py-20 lg:py-24 relative z-10">
         <div className="max-w-[1200px] mx-auto px-6 relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">Active Threat Intelligence</h2>
@@ -398,7 +409,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 4. ENTERPRISE USE CASES ───────────────────────────────────── */}
-      <section className="py-32 relative z-10 bg-[#01040a] border-y border-white/5">
+      <section className="py-20 lg:py-24 relative z-10">
         <div className="max-w-[1400px] mx-auto px-6">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-20">
             <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">Mission-Critical Deployments</h2>
@@ -432,7 +443,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 5. ARCHITECTURE PILLARS ───────────────────────────────────── */}
-      <section className="py-32 lg:py-40 relative z-10 bg-[#020617]">
+      <section className="py-20 lg:py-24 relative z-10">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-px bg-gradient-to-r from-transparent via-[#00d4ff]/20 to-transparent" />
         <div className="max-w-[1200px] mx-auto px-6 relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-20">
@@ -507,7 +518,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 6. ANIMATED WORKFLOW (Expanded Descriptions) ────────────────── */}
-      <section className="py-32 relative z-10 border-t border-white/5 bg-[#01040a] overflow-hidden">
+      <section className="py-20 lg:py-24 relative z-10 overflow-hidden">
         <div className="max-w-[1400px] mx-auto px-6 relative z-10">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-24 text-center">
             <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-6">Data Workflow</h2>
@@ -570,7 +581,7 @@ export default function HomePage() {
       </section>
 
       {/* ── 7. FINAL CTA (Height Reduced) ───────────────────────────────── */}
-      <section className="py-24 lg:py-32 relative z-10 bg-[#020617] border-t border-white/5 overflow-hidden">
+      <section className="py-20 lg:py-28 relative z-10 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(0,212,255,0.06),transparent_60%)] pointer-events-none" />
         
         <div className="max-w-[1000px] mx-auto px-6 relative z-10 text-center">
@@ -590,25 +601,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────── */}
-      <footer className="py-10 border-t border-white/5 bg-[#01040a] relative z-10">
-        <div className="max-w-[1400px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Shield className="text-[#00d4ff]" size={18} />
-            <span className="text-sm font-bold text-white tracking-widest uppercase">MITRA VERIFY</span>
-          </div>
-          
-          <div className="flex gap-8 text-[12px] font-medium text-slate-500 uppercase tracking-widest">
-            <Link href="/docs" className="hover:text-white transition-colors">Documentation</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
-            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
-          </div>
-
-          <div className="text-[11px] text-slate-600 font-medium tracking-wide">
-            © {new Date().getFullYear()} NXT STEP INNOVATORS
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

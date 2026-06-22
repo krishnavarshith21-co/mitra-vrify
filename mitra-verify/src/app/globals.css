@@ -18,12 +18,12 @@
   --brand-red: #ff3366;
 
   /* ── Background System ──────────────────────────────────────── */
-  --bg-primary: #030712;
-  --bg-secondary: #0a0f1e;
-  --bg-tertiary: #0f172a;
-  --bg-card: rgba(15, 23, 42, 0.8);
+  --bg-primary: #020813;
+  --bg-secondary: #050a17;
+  --bg-tertiary: #081024;
+  --bg-card: rgba(8, 16, 36, 0.8);
   --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-elevated: rgba(10, 15, 30, 0.95);
+  --bg-elevated: rgba(5, 10, 23, 0.95);
 
   /* ── Border ─────────────────────────────────────────────────── */
   --border-subtle: rgba(255, 255, 255, 0.06);

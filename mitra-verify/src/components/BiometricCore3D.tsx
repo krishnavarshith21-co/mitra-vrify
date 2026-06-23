@@ -90,7 +90,7 @@ function WireframeGlobe() {
 export default function BiometricCore3D() {
   return (
     <div className="w-full h-full absolute inset-0 pointer-events-auto cursor-grab active:cursor-grabbing">
-      <Canvas camera={{ position: [0, 0, 7], fov: 45 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true, alpha: true }}>
         <OrbitControls enableZoom={false} enablePan={false} />
         <Float speed={1.5} rotationIntensity={0.05} floatIntensity={0.1}>
           <WireframeGlobe />

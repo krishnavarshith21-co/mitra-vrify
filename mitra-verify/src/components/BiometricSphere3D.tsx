@@ -144,8 +144,9 @@ function HollowPlexusCore() {
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      // Extremely slow rotation for premium enterprise feel (~20-30s per rotation)
-      groupRef.current.rotation.y += delta * 0.008; 
+      // 20 second rotation (2*PI / 20 ≈ 0.31 rad/sec)
+      // Since it runs every frame (60fps), delta is ~0.016s. 
+      groupRef.current.rotation.y += delta * 0.05; 
       groupRef.current.rotation.x = 0.15; 
     }
     if (shaderMaterialRef.current) {
@@ -314,15 +315,15 @@ function GroundProjection() {
   );
 }
 
-// ─── BACKGROUND PARALLAX PARTICLES ────────────────────────────────────────────────
+// ─── BACKGROUND RADIAL GLOW ────────────────────────────────────────────────
 function RadialGlow() {
   return (
     <mesh position={[0, 0, -5]}>
       <planeGeometry args={[15, 15]} />
       <meshBasicMaterial 
-        color="#0033aa" 
+        color="#0066ff" 
         transparent 
-        opacity={0.08} 
+        opacity={0.15} 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -349,27 +350,27 @@ function IntegratedVerificationCard() {
 
   return (
     <Html 
-      position={[5.5, 4.5, 1.0]} 
-      scale={1.2} 
+      position={[4.8, 3.8, 1.0]} 
+      scale={0.9} 
       transform 
       occlude="blending"
       className="pointer-events-none z-50"
     >
       <div 
         ref={containerRef}
-        className="bg-[rgba(2,6,15,0.8)] backdrop-blur-md border border-[rgba(0,212,255,0.15)] rounded-[14px] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] w-[210px] relative overflow-hidden transform-gpu"
+        className="bg-[rgba(2,6,15,0.7)] backdrop-blur-xl border border-[rgba(0,212,255,0.08)] rounded-[20px] p-4 shadow-[0_24px_50px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] w-[190px] relative overflow-hidden transform-gpu"
       >
         {/* Subtle top glow */}
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00d4ff]/40 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00d4ff]/30 to-transparent" />
         
-        <div className="flex items-center gap-3 mb-5">
-           <div className="w-7 h-7 rounded-lg bg-[#00d4ff]/10 flex items-center justify-center border border-[#00d4ff]/20">
-             <Shield size={14} className="text-[#00d4ff]" />
+        <div className="flex items-center gap-2 mb-4">
+           <div className="w-6 h-6 rounded bg-[#00d4ff]/10 flex items-center justify-center border border-[#00d4ff]/20">
+             <Shield size={12} className="text-[#00d4ff]" />
            </div>
-           <span className="text-[11px] font-bold text-white tracking-wide">Verification Engine</span>
+           <span className="text-[10px] font-bold text-white tracking-wider">Verification Engine</span>
         </div>
         
-        <div className="space-y-3 text-[9px] font-mono uppercase tracking-widest text-slate-300">
+        <div className="space-y-2.5 text-[8px] font-mono uppercase tracking-widest text-slate-300">
            <div className="flex items-center justify-between">
               <span>Liveness</span>
               <span className="text-[#00ff88] font-bold">PASS</span>
@@ -384,11 +385,11 @@ function IntegratedVerificationCard() {
            </div>
            <div className="flex items-center justify-between">
               <span>Spoof Risk</span>
-              <span className="text-[#00d4ff] font-bold">0.2%</span>
+              <span className="text-[#00d4ff] font-bold">0.1%</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Identity Match</span>
-              <span className="text-[#00d4ff] font-bold">98.7%</span>
+              <span className="text-[#00d4ff] font-bold">99.8%</span>
            </div>
         </div>
       </div>
@@ -410,18 +411,18 @@ function LiveFeedBadge() {
 
   return (
     <Html 
-      position={[5.5, -4.5, 1.5]} 
-      scale={1.2} 
+      position={[4.8, -4.0, 1.5]} 
+      scale={0.9} 
       transform 
       className="pointer-events-none z-50"
     >
       <div 
         ref={containerRef}
-        className="bg-[rgba(2,6,15,0.8)] backdrop-blur-md border border-[rgba(0,212,255,0.15)] rounded-full px-5 py-2.5 flex items-center gap-3 shadow-[0_20px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] transform-gpu"
+        className="bg-[rgba(2,6,15,0.7)] backdrop-blur-xl border border-[rgba(0,212,255,0.08)] rounded-full px-4 py-2 flex items-center gap-2 shadow-[0_24px_50px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] transform-gpu"
       >
-        <span className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_8px_#00ff88] animate-pulse" />
-        <span className="text-[10px] font-bold text-white uppercase tracking-widest whitespace-nowrap">Live Feed Active</span>
-        <Activity size={12} className="text-[#00d4ff] ml-1" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] shadow-[0_0_8px_#00ff88] animate-pulse" />
+        <span className="text-[8px] font-bold text-white uppercase tracking-widest whitespace-nowrap">Live Feed Active</span>
+        <Activity size={10} className="text-[#00d4ff] ml-1" />
       </div>
     </Html>
   );
@@ -461,7 +462,7 @@ export default function BiometricSphere3D() {
         camera={{ position: [0, 0, 10], fov: 45 }}
         gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
       >
-        <group position={[0, 0, 0]} scale={0.48}>
+        <group position={[0, 0, 0]} scale={0.62}>
           <SceneContainer />
         </group>
         

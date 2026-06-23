@@ -1,82 +1,81 @@
-'use client';
-
-import { Shield } from 'lucide-react';
+import React from 'react';
 import Link from 'next/link';
-
-const FOOTER_LINKS = {
-  Product: [
-    { label: 'Face Liveness', href: '/demo/basic' },
-    { label: 'Anti-Spoofing', href: '/demo/advanced' },
-    { label: 'Identity Matching', href: '/demo/enterprise' },
-    { label: 'Pricing', href: '/compare' },
-  ],
-  Developers: [
-    { label: 'Documentation', href: '/docs' },
-    { label: 'API Reference', href: '/developer' },
-    { label: 'Developer Portal', href: '/developer' },
-    { label: 'GitHub', href: 'https://github.com' },
-  ],
-  Company: [
-    { label: 'About Us', href: '/about' },
-    { label: 'Security Architecture', href: '/security' },
-    { label: 'System Status', href: '/status' },
-    { label: 'Support', href: '/support' },
-  ],
-  Legal: [
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Cookie Policy', href: '/cookies' },
-    { label: 'Data Processing', href: '/dpa' },
-  ],
-};
+import { Eye } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative w-full overflow-hidden">
-      
-      <div className="max-w-[1400px] mx-auto px-6 py-16 lg:py-24">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-16">
+    <footer className="relative z-10 bg-[#01081A] border-t border-white/[0.05] pt-24 pb-12">
+      <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-20">
           
-          <div className="col-span-2 lg:col-span-2 flex flex-col items-start text-left">
-            <Link href="/" className="flex items-center gap-3 mb-6 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00d4ff]/20 to-[#0066ff]/20 border border-[#00d4ff]/30 flex items-center justify-center group-hover:border-[#00d4ff] transition-colors shadow-[0_0_15px_rgba(0,212,255,0.1)]">
-                <Shield size={20} color="#00d4ff" />
+          {/* Brand Col */}
+          <div className="col-span-2 lg:col-span-2">
+            <Link href="/" className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-b from-[#00E5FF] to-[#00B2FF] flex items-center justify-center">
+                <Eye size={18} className="text-white fill-transparent" strokeWidth={2.5} />
               </div>
-              <span className="font-extrabold tracking-tight text-white text-lg">MITRA VERIFY</span>
+              <span className="text-white font-bold tracking-wide text-[15px]">MITRA <span className="text-[#00E5FF]">VERIFY</span></span>
             </Link>
-            <p className="text-[14px] text-slate-500 leading-relaxed mb-6 max-w-[300px]">
-              The enterprise biometric security standard. Architecting the future of secure, zero-friction identity verification for mission-critical applications.
+            <p className="text-slate-500 text-[13px] leading-relaxed mb-6 max-w-[300px]">
+              Enterprise-grade biometric identity infrastructure. Deterministic verification, zero-knowledge architecture.
             </p>
-          </div>
-
-          {Object.entries(FOOTER_LINKS).map(([category, links]) => (
-            <div key={category} className="col-span-1 flex flex-col items-start">
-              <h3 className="text-[13px] font-bold text-white mb-6 tracking-wide">
-                {category}
-              </h3>
-              <div className="flex flex-col gap-4">
-                {links.map((link) => (
-                  <Link key={link.label} href={link.href} className="text-[14px] text-slate-400 hover:text-[#00d4ff] transition-colors">
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
+            <div className="flex gap-4">
+              <span className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer text-[13px] font-bold">X</span>
+              <span className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer text-[13px] font-bold">In</span>
+              <span className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer text-[13px] font-bold">GH</span>
             </div>
-          ))}
-
+          </div>
+          
+          {/* Links Cols */}
+          <div>
+            <h4 className="text-white font-bold text-[14px] mb-6">Products</h4>
+            <ul className="space-y-4">
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Face Liveness</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Identity Match</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Voice Verify</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Pricing</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-white font-bold text-[14px] mb-6">Developers</h4>
+            <ul className="space-y-4">
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Documentation</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">API Reference</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">SDKs</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors flex items-center gap-2">Status <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_#22c55e]"></span></Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-white font-bold text-[14px] mb-6">Company</h4>
+            <ul className="space-y-4">
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">About Us</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Careers</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Blog</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Contact Sales</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-white font-bold text-[14px] mb-6">Legal</h4>
+            <ul className="space-y-4">
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Privacy Policy</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Terms of Service</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Cookie Policy</Link></li>
+              <li><Link href="#" className="text-slate-400 hover:text-[#00E5FF] text-[13px] transition-colors">Trust Center</Link></li>
+            </ul>
+          </div>
         </div>
-
-        <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 gap-4">
-          <div className="flex items-center gap-6">
-            <div className="text-[13px] font-medium text-slate-500">
-              © {new Date().getFullYear()} Nxt Step Innovators. All rights reserved.
-            </div>
-          </div>
-          <div className="flex items-center gap-2 bg-white/[0.02] border border-white/5 px-4 py-2 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_8px_#00ff88]" />
-            <span className="text-[12px] font-mono font-semibold text-slate-300">
-              All Systems Operational
-            </span>
+        
+        <div className="pt-8 border-t border-white/[0.05] flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-slate-500 text-[13px]">
+            &copy; {new Date().getFullYear()} Mitra Verify Inc. All rights reserved.
+          </p>
+          <div className="flex gap-4 opacity-50">
+            <span className="text-slate-500 text-[11px] font-mono border border-white/[0.1] px-2 py-1 rounded">SOC2 Type II</span>
+            <span className="text-slate-500 text-[11px] font-mono border border-white/[0.1] px-2 py-1 rounded">ISO27001</span>
+            <span className="text-slate-500 text-[11px] font-mono border border-white/[0.1] px-2 py-1 rounded">GDPR Compliant</span>
           </div>
         </div>
       </div>

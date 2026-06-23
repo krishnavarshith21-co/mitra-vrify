@@ -96,7 +96,7 @@ export default function HomePage() {
                </motion.div>
 
                {/* RIGHT SIDE: Extensively Upgraded 3D Biometric Sphere */}
-               <motion.div variants={itemVariants} className="relative w-full aspect-square max-w-[550px] mx-auto lg:ml-auto flex items-center justify-center mt-10 lg:mt-0">
+               <motion.div variants={itemVariants} className="relative w-full aspect-square max-w-[750px] mx-auto lg:ml-auto flex items-center justify-center mt-10 lg:mt-0 lg:scale-125 lg:translate-x-12 z-0">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.15)_0%,transparent_60%)] mix-blend-screen" />
                   
                   {/* Holographic Sphere Container */}
@@ -107,40 +107,49 @@ export default function HomePage() {
 
                      {/* Floating Verification Engine Card */}
                      <motion.div 
-                       animate={{ y: [0, -12, 0] }} 
-                       transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                       className="absolute top-[20%] -right-4 md:-right-12 bg-[#02050D]/80 backdrop-blur-xl border border-[rgba(0,255,255,0.2)] rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-20 w-56"
+                       animate={{ y: [0, -15, 0] }} 
+                       transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                       className="absolute top-[15%] -right-8 md:-right-16 bg-[#02050D]/90 backdrop-blur-2xl border border-[rgba(0,255,255,0.15)] rounded-2xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.9)] z-20 w-64"
                      >
-                        <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
                            <div className="w-8 h-8 rounded bg-[#00d4ff]/10 flex items-center justify-center border border-[#00d4ff]/20">
                              <Shield size={16} className="text-[#00d4ff]" />
                            </div>
                            <span className="text-xs font-bold text-white tracking-wide">Verification Engine</span>
                         </div>
-                        <div className="space-y-3 text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                        <div className="space-y-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">
                            <div className="flex items-center justify-between">
                               <span>Liveness</span>
-                              <span className="text-[#00ff88] font-bold shadow-[0_0_10px_rgba(0,255,136,0.3)]">PASS</span>
+                              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_5px_rgba(0,255,136,0.8)]">PASS</span>
                            </div>
                            <div className="flex items-center justify-between">
-                              <span>Landmarks</span>
-                              <span className="text-white font-bold">478</span>
+                              <span>Blink</span>
+                              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_5px_rgba(0,255,136,0.8)]">VERIFIED</span>
                            </div>
                            <div className="flex items-center justify-between">
-                              <span>Confidence</span>
-                              <span className="text-[#00d4ff] font-bold animate-pulse">99.8%</span>
+                              <span>Head Rotation</span>
+                              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_5px_rgba(0,255,136,0.8)]">VERIFIED</span>
+                           </div>
+                           <div className="flex items-center justify-between">
+                              <span>Spoof Risk</span>
+                              <span className="text-[#00d4ff] font-bold">0.2%</span>
+                           </div>
+                           <div className="flex items-center justify-between">
+                              <span>Identity Match</span>
+                              <span className="text-[#00d4ff] font-bold animate-pulse">98.7%</span>
                            </div>
                         </div>
                      </motion.div>
 
                      {/* Bottom Floating Badge */}
                      <motion.div 
-                       animate={{ y: [0, 12, 0] }} 
-                       transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                       className="absolute bottom-[20%] -left-4 md:-left-10 bg-[#02050D]/80 backdrop-blur-xl border border-[rgba(0,255,136,0.2)] rounded-full px-5 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-20 flex items-center gap-3"
+                       animate={{ y: [0, 15, 0] }} 
+                       transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                       className="absolute bottom-[20%] -left-8 md:-left-16 bg-[#02050D]/90 backdrop-blur-2xl border border-[rgba(0,255,136,0.2)] rounded-full px-6 py-3 shadow-[0_30px_60px_rgba(0,0,0,0.9)] z-20 flex items-center gap-3"
                      >
                         <span className="w-2.5 h-2.5 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_15px_#00ff88]" />
                         <span className="text-[11px] font-bold text-white uppercase tracking-widest">Live Feed Active</span>
+                        <Activity size={14} className="text-[#00ff88] animate-pulse ml-2" />
                      </motion.div>
                   </div>
                </motion.div>

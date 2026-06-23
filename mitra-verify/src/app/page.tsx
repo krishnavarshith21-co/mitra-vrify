@@ -14,9 +14,22 @@ import SecurityArchitecture from '@/components/SecurityArchitecture';
 import ComplianceSection from '@/components/ComplianceSection';
 import DeveloperExperience from '@/components/DeveloperExperience';
 
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  const { isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+
+  // Auto-redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, loading, router]);
 
   // 3D Tilt Effect on Hero Text
   const mouseX = useMotionValue(0);

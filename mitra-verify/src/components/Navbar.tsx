@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Eye, ChevronDown, Menu } from 'lucide-react';
+import { Eye, ChevronDown, Menu, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 
 function NavItem({ href, children, hasDropdown = false }: { href?: string, children: React.ReactNode, hasDropdown?: boolean }) {
   const content = (
@@ -25,6 +26,8 @@ function NavItem({ href, children, hasDropdown = false }: { href?: string, child
 }
 
 export default function Navbar() {
+  const { isAuthenticated, logout } = useAuth();
+
   return (
     <motion.nav 
       initial={{ y: -20, opacity: 0 }}
@@ -50,12 +53,25 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-5 ml-auto">
-          <Link href="/signin" className="text-[13px] font-medium text-slate-300 hover:text-white transition-colors">Sign In</Link>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link href="/signup" className="block px-5 py-2 rounded-lg bg-gradient-to-b from-[#00E5FF] to-[#00B2FF] hover:opacity-90 transition-opacity text-[13px] font-bold text-white shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:shadow-[0_0_25px_rgba(0,229,255,0.5)]">
-              Get Started
-            </Link>
-          </motion.div>
+          {isAuthenticated ? (
+            <>
+              <Link href="/dashboard" className="text-[13px] font-bold text-[#00E5FF] hover:text-white transition-colors px-4 py-2 bg-[#00E5FF]/10 border border-[#00E5FF]/20 rounded-lg">
+                Console
+              </Link>
+              <button onClick={() => logout()} className="text-[13px] font-medium text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1.5">
+                <LogOut size={14} /> Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signin" className="text-[13px] font-medium text-slate-300 hover:text-white transition-colors">Sign In</Link>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link href="/signup" className="block px-5 py-2 rounded-lg bg-gradient-to-b from-[#00E5FF] to-[#00B2FF] hover:opacity-90 transition-opacity text-[13px] font-bold text-white shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:shadow-[0_0_25px_rgba(0,229,255,0.5)]">
+                  Get Started
+                </Link>
+              </motion.div>
+            </>
+          )}
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}

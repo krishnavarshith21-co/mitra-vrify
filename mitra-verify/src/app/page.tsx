@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
+import BiometricSphere3D from '@/components/BiometricSphere3D';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -99,33 +100,10 @@ export default function HomePage() {
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.15)_0%,transparent_60%)] mix-blend-screen" />
                   
                   {/* Holographic Sphere Container */}
-                  <div className="relative w-full h-full rounded-full flex items-center justify-center perspective-[1200px]">
-                     {/* Multiple Glowing Orbital Rings */}
-                     <div className="absolute w-[95%] h-[95%] rounded-full border border-dashed border-[#00d4ff]/30 animate-[spin_25s_linear_infinite] shadow-[0_0_30px_rgba(0,212,255,0.1)]" />
-                     <div className="absolute w-[85%] h-[85%] rounded-full border-2 border-dotted border-[#00ff88]/20 animate-[spin_15s_linear_infinite_reverse]" />
-                     <div className="absolute w-[75%] h-[75%] rounded-full border border-[#7c3aed]/20 animate-[spin_30s_linear_infinite]" />
+                  <div className="relative w-full h-full rounded-full flex items-center justify-center">
                      
-                     {/* Core 3D Sphere (Wireframe representation) */}
-                     <motion.div 
-                        animate={{ rotateX: [0, 360], rotateY: [0, 360] }}
-                        transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                        className="relative w-[60%] h-[60%] rounded-full border-2 border-[#00d4ff]/40 shadow-[inset_0_0_80px_rgba(0,212,255,0.3)] backdrop-blur-sm bg-black/10"
-                        style={{ transformStyle: 'preserve-3d' }}
-                     >
-                        {/* High-density 3D Wireframe Equators */}
-                        <div className="absolute inset-0 rounded-full border border-[#00d4ff]/30" style={{transform: 'rotateX(45deg)'}} />
-                        <div className="absolute inset-0 rounded-full border border-[#00d4ff]/30" style={{transform: 'rotateX(-45deg)'}} />
-                        <div className="absolute inset-0 rounded-full border border-[#00d4ff]/30" style={{transform: 'rotateY(45deg)'}} />
-                        <div className="absolute inset-0 rounded-full border border-[#00d4ff]/30" style={{transform: 'rotateY(-45deg)'}} />
-                        <div className="absolute inset-0 rounded-full border border-[#00d4ff]/20" style={{transform: 'rotateX(90deg)'}} />
-                        
-                        {/* Dense Animated Landmark Particles */}
-                        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-[#00ff88] rounded-full shadow-[0_0_15px_#00ff88] animate-pulse" />
-                        <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 bg-[#00d4ff] rounded-full shadow-[0_0_15px_#00d4ff] animate-pulse" style={{ animationDelay: '0.3s' }} />
-                        <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-[#00ff88] rounded-full shadow-[0_0_15px_#00ff88] animate-pulse" style={{ animationDelay: '0.7s' }} />
-                        <div className="absolute bottom-1/4 right-1/3 w-1.5 h-1.5 bg-[#00d4ff] rounded-full shadow-[0_0_15px_#00d4ff] animate-pulse" style={{ animationDelay: '1.1s' }} />
-                        <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-white rounded-full shadow-[0_0_20px_white] animate-pulse" style={{ animationDelay: '1.5s' }} />
-                     </motion.div>
+                     {/* The new WebGL Three.js Sphere */}
+                     <BiometricSphere3D />
 
                      {/* Floating Verification Engine Card */}
                      <motion.div 

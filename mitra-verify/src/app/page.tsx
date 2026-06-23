@@ -122,20 +122,23 @@ export default function HomePage() {
 
                {/* Buttons */}
                <div className="flex flex-col sm:flex-row items-center gap-4 mb-16">
-                 <motion.button 
-                   whileHover={{ scale: 1.05 }}
-                   whileTap={{ scale: 0.95 }}
-                   className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-[#00E5FF] hover:bg-[#00c9e0] transition-colors text-[14px] font-bold text-[#020617] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:shadow-[0_0_30px_rgba(0,229,255,0.5)]"
-                 >
-                   Start Building Free <ArrowRight size={16} />
-                 </motion.button>
-                 <motion.button 
-                   whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
-                   whileTap={{ scale: 0.95 }}
-                   className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-transparent border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[14px] font-medium text-white flex items-center justify-center gap-2"
-                 >
-                   <Play size={16} className="opacity-70" /> Try Live Demo
-                 </motion.button>
+                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
+                   <Link 
+                     href="/signup"
+                     className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-[#00E5FF] hover:bg-[#00c9e0] transition-colors text-[14px] font-bold text-[#020617] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:shadow-[0_0_30px_rgba(0,229,255,0.5)]"
+                   >
+                     Start Building Free <ArrowRight size={16} />
+                   </Link>
+                 </motion.div>
+                 
+                 <motion.div whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto rounded-lg">
+                   <Link 
+                     href="/demo/advanced"
+                     className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-transparent border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[14px] font-medium text-white flex items-center justify-center gap-2"
+                   >
+                     <Play size={16} className="opacity-70" /> Try Live Demo
+                   </Link>
+                 </motion.div>
                </div>
 
                {/* Metrics */}

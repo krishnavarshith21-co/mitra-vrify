@@ -42,17 +42,17 @@ export default function Navbar() {
 
         {/* Links - Centered Absolutely */}
         <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
-          <NavItem href="#">Compare APIs</NavItem>
-          <NavItem href="#">Documentation</NavItem>
-          <NavItem hasDropdown>Demos</NavItem>
-          <NavItem href="#">About</NavItem>
+          <NavItem href="/compare">Compare APIs</NavItem>
+          <NavItem href="/docs">Documentation</NavItem>
+          <NavItem href="/demo/enterprise" hasDropdown>Demos</NavItem>
+          <NavItem href="/about">About</NavItem>
         </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-5 ml-auto">
-          <Link href="#" className="text-[13px] font-medium text-slate-300 hover:text-white transition-colors">Sign In</Link>
+          <Link href="/signin" className="text-[13px] font-medium text-slate-300 hover:text-white transition-colors">Sign In</Link>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link href="#" className="block px-5 py-2 rounded-lg bg-gradient-to-b from-[#00E5FF] to-[#00B2FF] hover:opacity-90 transition-opacity text-[13px] font-bold text-white shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:shadow-[0_0_25px_rgba(0,229,255,0.5)]">
+            <Link href="/signup" className="block px-5 py-2 rounded-lg bg-gradient-to-b from-[#00E5FF] to-[#00B2FF] hover:opacity-90 transition-opacity text-[13px] font-bold text-white shadow-[0_0_15px_rgba(0,229,255,0.3)] hover:shadow-[0_0_25px_rgba(0,229,255,0.5)]">
               Get Started
             </Link>
           </motion.div>

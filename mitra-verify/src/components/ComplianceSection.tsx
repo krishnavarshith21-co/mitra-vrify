@@ -20,7 +20,7 @@ export default function ComplianceSection() {
 
   const itemVariants = {
     hidden: { opacity: 0, x: 20 },
-    show: { opacity: 1, x: 0, transition: { type: "spring" } }
+    show: { opacity: 1, x: 0, transition: { type: "spring" as const } }
   };
 
   return (

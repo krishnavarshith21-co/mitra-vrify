@@ -2,97 +2,168 @@
 
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Torus, Points, PointMaterial, Html } from '@react-three/drei';
-import { EffectComposer, Bloom, DepthOfField } from '@react-three/postprocessing';
+import { Torus, Points, PointMaterial, Ring, Html } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { Shield } from 'lucide-react';
+import { Shield, Activity } from 'lucide-react';
 
-// ─── CUSTOM SHADER FOR ELEGANT NEURAL ACTIVITY ─────────────────────────────
+// ─── SHADER NOISE FUNCTIONS ────────────────────────────────────────────────
+const snoiseGLSL = `
+vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+
+float snoise(vec3 v){ 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 = v - i + dot(i, C.xxx) ;
+
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+  vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+
+  i = mod(i, 289.0 ); 
+  vec4 p = permute( permute( permute( 
+             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+  float n_ = 1.0/7.0; 
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+}
+`;
+
 const nodeVertexShader = `
+  ${snoiseGLSL}
+  
   uniform float time;
   varying float vAlpha;
+  varying float vIsLand;
   
   void main() {
-    // Subtle, elegant pulse
-    float pulse = sin(position.x * 2.0 + time * 1.0) * 
-                  cos(position.y * 1.5 - time * 0.8) * 
-                  sin(position.z * 2.5 + time * 1.2);
+    // Generate pseudo-continents using 3D noise
+    float noiseVal = snoise(position * 0.7 + time * 0.02);
     
-    // Base alpha 0.15, peaks gently to 0.8
-    vAlpha = 0.15 + max(0.0, pulse * 0.65);
+    // Add fine detail noise
+    float detailNoise = snoise(position * 2.0 - time * 0.05);
+    noiseVal += detailNoise * 0.3;
+    
+    // Threshold to separate landmasses and oceans
+    float isLand = smoothstep(0.1, 0.4, noiseVal);
+    
+    vIsLand = isLand;
+    
+    // Land gets bright pulsing alpha, oceans stay very dim
+    float pulse = sin(position.x * 5.0 + time * 2.0) * 0.5 + 0.5;
+    vAlpha = mix(0.05, 0.6 + pulse * 0.4, isLand);
     
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     
-    // Smaller, more refined point size
-    gl_PointSize = (15.0 * vAlpha) / -mvPosition.z;
+    // Land points are much larger
+    float pSize = mix(3.0, 22.0, isLand);
+    gl_PointSize = (pSize * vAlpha) / -mvPosition.z;
   }
 `;
 
 const nodeFragmentShader = `
-  uniform vec3 baseColor;
-  uniform vec3 accentColor;
   varying float vAlpha;
+  varying float vIsLand;
   
   void main() {
     float dist = distance(gl_PointCoord, vec2(0.5));
     if (dist > 0.5) discard;
     
-    // Gentle shift to purple accent when active
-    vec3 finalColor = mix(baseColor, accentColor, smoothstep(0.5, 0.9, vAlpha));
+    vec3 oceanColor = vec3(0.0, 0.1, 0.3); // Deep dim blue
+    vec3 landColor = vec3(0.0, 0.8, 1.0);  // Bright electric cyan
     
-    // Soft glowing particle
+    vec3 finalColor = mix(oceanColor, landColor, vIsLand);
+    
     float strength = (0.5 - dist) * 2.0;
     gl_FragColor = vec4(finalColor, vAlpha * strength);
   }
 `;
 
-// ─── REFINED HIGH-DENSITY PLEXUS CORE ──────────────────────────────────────
+// ─── CONTINENT-MAPPED GLOBE CORE ───────────────────────────────────────────
 function HollowPlexusCore() {
   const groupRef = useRef<THREE.Group>(null);
-  const linesRef = useRef<THREE.LineSegments>(null);
-  
   const shaderMaterialRef = useRef<THREE.ShaderMaterial>(null);
 
-  // 5000+ nodes (Detail 6)
-  const pointGeometry = useMemo(() => new THREE.IcosahedronGeometry(3.5, 6), []);
-  const lineGeometry = useMemo(() => new THREE.IcosahedronGeometry(3.5, 5), []);
+  // High density Sphere (128x128 = 16k vertices) for detailed continents
+  const pointGeometry = useMemo(() => new THREE.SphereGeometry(3.5, 128, 128), []);
+  // Lower density Icosahedron for subtle background wireframe
+  const lineGeometry = useMemo(() => new THREE.IcosahedronGeometry(3.5, 4), []);
   const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(lineGeometry, 5), [lineGeometry]);
 
   const shaderUniforms = useMemo(() => ({
-    time: { value: 0 },
-    baseColor: { value: new THREE.Color("#0088ff") },
-    accentColor: { value: new THREE.Color("#8a2be2") }
+    time: { value: 0 }
   }), []);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.02; // Very slow, elegant rotation
-      groupRef.current.rotation.x += delta * 0.005;
+      // Rotation matches the image orientation
+      groupRef.current.rotation.y += delta * 0.05; 
+      groupRef.current.rotation.x = 0.2; 
     }
     if (shaderMaterialRef.current) {
       shaderMaterialRef.current.uniforms.time.value = state.clock.elapsedTime;
-    }
-    if (linesRef.current && linesRef.current.material) {
-      // Extremely subtle connection lines
-      (linesRef.current.material as THREE.LineBasicMaterial).opacity = 0.03 + Math.sin(state.clock.elapsedTime * 1.5) * 0.02;
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* Delicate Neural Web Connections */}
-      <lineSegments ref={linesRef} geometry={edgesGeometry}>
+      {/* Subtle connection lines */}
+      <lineSegments geometry={edgesGeometry}>
         <lineBasicMaterial 
           color="#0066cc" 
           transparent 
-          opacity={0.03} 
+          opacity={0.08} 
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
       </lineSegments>
 
-      {/* Massive Density Data Nodes with Custom Neural Shaders */}
+      {/* Procedural Continent Shader Points */}
       <points geometry={pointGeometry}>
         <shaderMaterial
           ref={shaderMaterialRef}
@@ -108,53 +179,46 @@ function HollowPlexusCore() {
   );
 }
 
-// ─── EXACTLY 2 MINIMAL ORBITAL RINGS ───────────────────────────────────────
+// ─── 2 EXACT ORBIT RINGS WITH COMET NODES ──────────────────────────────────
 function OrbitalRings() {
-  const ring1Ref = useRef<THREE.Mesh>(null);
-  const ring2Ref = useRef<THREE.Mesh>(null);
+  const ring1Ref = useRef<THREE.Group>(null);
+  const ring2Ref = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
     if (ring1Ref.current) {
-      // Slow rotation for the large cyan ring
-      ring1Ref.current.rotation.z += delta * 0.05;
+      ring1Ref.current.rotation.y -= delta * 0.15;
     }
     if (ring2Ref.current) {
-      // Independent rotation for the smaller purple ring
-      ring2Ref.current.rotation.z -= delta * 0.08;
+      ring2Ref.current.rotation.x -= delta * 0.1;
+      ring2Ref.current.rotation.y += delta * 0.05;
     }
   });
 
   return (
     <group>
-      {/* Orbit Ring 1: Large, Cyan, Horizontal tilt */}
-      <Torus 
-        ref={ring1Ref as any}
-        args={[4.4, 0.003, 32, 256]} 
-        rotation={[Math.PI/2 - 0.2, 0, 0]}
-      >
-        <meshBasicMaterial 
-          color="#00d4ff" 
-          transparent 
-          opacity={0.15} 
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </Torus>
+      {/* Ring 1: Wide, Cyan, Horizontal tilt */}
+      <group ref={ring1Ref} rotation={[0.2, 0, -0.1]}>
+        <Ring args={[5.2, 5.22, 128]}>
+          <meshBasicMaterial color="#00d4ff" transparent opacity={0.3} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+        </Ring>
+        {/* Comet node */}
+        <mesh position={[5.21, 0, 0]}>
+          <circleGeometry args={[0.06, 16]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      </group>
 
-      {/* Orbit Ring 2: Slightly smaller, Purple-blue gradient, Different angle */}
-      <Torus 
-        ref={ring2Ref as any}
-        args={[4.1, 0.002, 32, 256]} 
-        rotation={[Math.PI/3, Math.PI/6, 0]}
-      >
-        <meshBasicMaterial 
-          color="#8a2be2" 
-          transparent 
-          opacity={0.2} 
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </Torus>
+      {/* Ring 2: Purple-blue, angled */}
+      <group ref={ring2Ref} rotation={[0.5, 0.4, 0.8]}>
+        <Ring args={[4.6, 4.62, 128]}>
+          <meshBasicMaterial color="#8a2be2" transparent opacity={0.4} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+        </Ring>
+        {/* Comet node */}
+        <mesh position={[-4.61, 0, 0]}>
+          <circleGeometry args={[0.05, 16]} />
+          <meshBasicMaterial color="#00d4ff" />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -164,7 +228,7 @@ function BackgroundParticles() {
   const pointsRef = useRef<THREE.Points>(null);
 
   const [positions] = useMemo(() => {
-    const count = 3000;
+    const count = 1500;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 50; 
@@ -176,7 +240,7 @@ function BackgroundParticles() {
 
   useFrame((state, delta) => {
     if (pointsRef.current) {
-      pointsRef.current.position.y += delta * 0.05; // Very slow, gentle movement
+      pointsRef.current.position.y += delta * 0.05;
       if (pointsRef.current.position.y > 20) pointsRef.current.position.y = -20;
     }
   });
@@ -186,23 +250,51 @@ function BackgroundParticles() {
       <PointMaterial
         transparent
         color="#ffffff"
-        size={0.03}
+        size={0.04}
         sizeAttenuation={true}
         depthWrite={false}
-        opacity={0.15}
+        opacity={0.3}
         blending={THREE.AdditiveBlending}
       />
     </Points>
   );
 }
 
-// ─── SOFT BACKGROUND VOLUMETRIC GLOW ───────────────────────────────────────
+// ─── HOLOGRAPHIC GROUND PROJECTION & CORE BEAM ──────────────────────────────
+function GroundProjection() {
+  return (
+    <group position={[0, -4.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Intense center beam source */}
+      <mesh position={[0, 0, 0.1]}>
+         <circleGeometry args={[1.5, 64]} />
+         <meshBasicMaterial color="#00d4ff" transparent opacity={0.4} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0, 0.05]}>
+         <circleGeometry args={[0.5, 64]} />
+         <meshBasicMaterial color="#ffffff" transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      {/* Deep floor rings */}
+      <Ring args={[2.5, 2.52, 128]}>
+        <meshBasicMaterial color="#00d4ff" transparent opacity={0.4} blending={THREE.AdditiveBlending} />
+      </Ring>
+      <Ring args={[3.5, 3.52, 128]}>
+        <meshBasicMaterial color="#0066ff" transparent opacity={0.2} blending={THREE.AdditiveBlending} />
+      </Ring>
+      <Ring args={[4.5, 4.51, 128]}>
+        <meshBasicMaterial color="#8a2be2" transparent opacity={0.15} blending={THREE.AdditiveBlending} />
+      </Ring>
+    </group>
+  );
+}
+
+// ─── BACKGROUND RADIAL GLOW ────────────────────────────────────────────────
 function RadialGlow() {
   return (
     <mesh position={[0, 0, -8]}>
       <planeGeometry args={[25, 25]} />
       <meshBasicMaterial 
-        color="#004488" 
+        color="#0033aa" 
         transparent 
         opacity={0.05} 
         blending={THREE.AdditiveBlending}
@@ -212,46 +304,67 @@ function RadialGlow() {
   );
 }
 
-// ─── 50% SMALLER INTEGRATED 3D CARD ────────────────────────────────────────
+// ─── REFINED EXACT VERIFICATION CARD MATCHING MOCKUP ───────────────────────
 function IntegratedVerificationCard() {
   return (
     <Html 
-      // Upper right, positioned so it never touches viewport edges and barely overlaps the sphere
-      position={[3.8, 2.5, 1.0]} 
-      scale={0.25} 
+      position={[3.2, 1.5, 2.0]} 
+      scale={0.4} 
       transform 
-      occlude 
+      occlude="blending"
       className="pointer-events-none"
     >
-      <div className="bg-[#02050D]/80 backdrop-blur-3xl border border-[rgba(255,255,255,0.06)] rounded-xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)] w-64 transform transition-all">
-        <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
-           <div className="w-8 h-8 rounded bg-[#00d4ff]/5 flex items-center justify-center border border-[#00d4ff]/10">
-             <Shield size={16} className="text-[#00d4ff]" />
+      <div className="bg-[#020617]/90 backdrop-blur-3xl border border-white/10 rounded-[20px] p-8 shadow-[0_0_80px_rgba(0,0,0,0.8)] w-[320px] transform transition-all relative overflow-hidden">
+        {/* Subtle top glow */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#00d4ff]/50 to-transparent" />
+        
+        <div className="flex items-center gap-4 mb-8">
+           <div className="w-10 h-10 rounded-lg bg-[#00d4ff]/10 flex items-center justify-center border border-[#00d4ff]/20">
+             <Shield size={20} className="text-[#00d4ff]" />
            </div>
-           <span className="text-xs font-medium text-slate-300 tracking-wide">Verification Engine</span>
+           <span className="text-sm font-semibold text-white tracking-wide">Verification Engine</span>
         </div>
-        <div className="space-y-4 text-[10px] font-mono uppercase tracking-widest text-slate-500">
+        
+        <div className="space-y-5 text-xs font-mono uppercase tracking-widest text-slate-400">
            <div className="flex items-center justify-between">
               <span>Liveness</span>
-              <span className="text-white font-medium">PASS</span>
+              <span className="text-[#00ff88] font-bold">PASS</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Blink</span>
-              <span className="text-white font-medium">VERIFIED</span>
+              <span className="text-[#00ff88] font-bold">VERIFIED</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Head Rotation</span>
-              <span className="text-white font-medium">VERIFIED</span>
+              <span className="text-[#00ff88] font-bold">VERIFIED</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Spoof Risk</span>
-              <span className="text-[#00d4ff] font-medium">0.2%</span>
+              <span className="text-[#00d4ff] font-bold">0.2%</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Identity Match</span>
-              <span className="text-[#00d4ff] font-medium animate-pulse">98.7%</span>
+              <span className="text-[#00d4ff] font-bold">98.7%</span>
            </div>
         </div>
+      </div>
+    </Html>
+  );
+}
+
+// ─── BOTTOM LIVE FEED BADGE ────────────────────────────────────────────────
+function LiveFeedBadge() {
+  return (
+    <Html 
+      position={[4.0, -3.0, 1.5]} 
+      scale={0.35} 
+      transform 
+      className="pointer-events-none"
+    >
+      <div className="bg-[#020617]/90 backdrop-blur-xl border border-white/10 rounded-full px-8 py-4 flex items-center gap-4 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+        <span className="w-3 h-3 rounded-full bg-[#00ff88] shadow-[0_0_12px_#00ff88] animate-pulse" />
+        <span className="text-sm font-bold text-white uppercase tracking-widest">Live Feed Active</span>
+        <Activity size={18} className="text-[#00d4ff] ml-2" />
       </div>
     </Html>
   );
@@ -263,12 +376,11 @@ function SceneContainer() {
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Extremely subtle, elegant parallax
       const targetX = (state.pointer.x * Math.PI) / 24;
       const targetY = (state.pointer.y * Math.PI) / 24;
       
-      groupRef.current.rotation.y += (targetX - groupRef.current.rotation.y) * 0.01;
-      groupRef.current.rotation.x += (-targetY - groupRef.current.rotation.x) * 0.01;
+      groupRef.current.rotation.y += (targetX - groupRef.current.rotation.y) * 0.02;
+      groupRef.current.rotation.x += (-targetY - groupRef.current.rotation.x) * 0.02;
     }
   });
 
@@ -278,7 +390,9 @@ function SceneContainer() {
       <BackgroundParticles />
       <HollowPlexusCore />
       <OrbitalRings />
+      <GroundProjection />
       <IntegratedVerificationCard />
+      <LiveFeedBadge />
     </group>
   );
 }
@@ -292,19 +406,13 @@ export default function BiometricSphere3D() {
       >
         <SceneContainer />
         
-        {/* Refined, softer postprocessing */}
+        {/* Cinematic Postprocessing matching mockup */}
         <EffectComposer multisampling={4}>
           <Bloom 
-            luminanceThreshold={0.4} 
+            luminanceThreshold={0.2} 
             luminanceSmoothing={0.9} 
-            intensity={0.8} 
+            intensity={1.2} 
             mipmapBlur 
-          />
-          <DepthOfField 
-            focusDistance={0.02} 
-            focalLength={0.05} 
-            bokehScale={2} 
-            height={480} 
           />
         </EffectComposer>
       </Canvas>

@@ -148,7 +148,7 @@ export default function HomePage() {
             </motion.div>
 
             {/* ─── RIGHT SIDE VISUAL ─────────────────────────────────────── */}
-            <div className="relative h-[600px] lg:h-auto w-full flex items-center justify-center z-10">
+            <div className="relative h-[600px] lg:h-auto w-full flex items-center justify-center z-10 mt-12 lg:mt-24">
                
                {/* Wireframe Globe Background */}
                <div className="absolute inset-[-20%] pointer-events-none">

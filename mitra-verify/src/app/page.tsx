@@ -156,7 +156,7 @@ export default function HomePage() {
                </div>
 
                {/* Floating Biometric Scan Panel */}
-               <div className="absolute right-[0%] lg:right-[-5%] bottom-[10%] lg:bottom-[5%] w-[280px] bg-[#01081A]/80 backdrop-blur-md border border-[#00E5FF]/20 rounded-xl p-4 shadow-[0_0_50px_rgba(0,229,255,0.05)] pointer-events-auto">
+               <div className="absolute right-[0%] lg:right-[-10%] bottom-[0%] lg:bottom-[-10%] w-[280px] bg-[#01081A]/80 backdrop-blur-md border border-[#00E5FF]/20 rounded-xl p-4 shadow-[0_0_50px_rgba(0,229,255,0.05)] pointer-events-auto">
                   
                   {/* Header */}
                   <div className="flex justify-between items-center mb-4">

@@ -2,36 +2,30 @@
 
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Torus, Points, PointMaterial, Ring, Html, Line } from '@react-three/drei';
+import { Torus, Points, PointMaterial, Html } from '@react-three/drei';
 import { EffectComposer, Bloom, DepthOfField } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { Shield } from 'lucide-react';
 
-// ─── CUSTOM SHADER FOR NEURAL ACTIVITY PULSES ───────────────────────────────
+// ─── CUSTOM SHADER FOR ELEGANT NEURAL ACTIVITY ─────────────────────────────
 const nodeVertexShader = `
   uniform float time;
   varying float vAlpha;
   
   void main() {
-    // Generate dynamic pulsing "data packets" traveling through nodes
-    float pulse = sin(position.x * 4.0 + time * 2.0) * 
-                  cos(position.y * 3.0 - time * 1.5) * 
-                  sin(position.z * 5.0 + time * 2.5);
+    // Subtle, elegant pulse
+    float pulse = sin(position.x * 2.0 + time * 1.0) * 
+                  cos(position.y * 1.5 - time * 0.8) * 
+                  sin(position.z * 2.5 + time * 1.2);
     
-    // Base alpha 0.2, peaks to 1.0
-    vAlpha = 0.2 + max(0.0, pulse * 0.8);
+    // Base alpha 0.15, peaks gently to 0.8
+    vAlpha = 0.15 + max(0.0, pulse * 0.65);
     
-    // Add tiny movement/jitter to active nodes
-    vec3 pos = position;
-    if (pulse > 0.8) {
-      pos += normal * 0.05 * sin(time * 10.0);
-    }
-    
-    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     
-    // Size attenuation
-    gl_PointSize = (25.0 * vAlpha) / -mvPosition.z;
+    // Smaller, more refined point size
+    gl_PointSize = (15.0 * vAlpha) / -mvPosition.z;
   }
 `;
 
@@ -44,8 +38,8 @@ const nodeFragmentShader = `
     float dist = distance(gl_PointCoord, vec2(0.5));
     if (dist > 0.5) discard;
     
-    // Shift color to purple accent when highly active
-    vec3 finalColor = mix(baseColor, accentColor, smoothstep(0.6, 1.0, vAlpha));
+    // Gentle shift to purple accent when active
+    vec3 finalColor = mix(baseColor, accentColor, smoothstep(0.5, 0.9, vAlpha));
     
     // Soft glowing particle
     float strength = (0.5 - dist) * 2.0;
@@ -53,46 +47,46 @@ const nodeFragmentShader = `
   }
 `;
 
-// ─── MASSIVE HIGH-DENSITY PLEXUS CORE ──────────────────────────────────────
+// ─── REFINED HIGH-DENSITY PLEXUS CORE ──────────────────────────────────────
 function HollowPlexusCore() {
   const groupRef = useRef<THREE.Group>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
   
   const shaderMaterialRef = useRef<THREE.ShaderMaterial>(null);
 
-  // 5000+ nodes (Detail 6 Icosahedron yields ~10k vertices)
+  // 5000+ nodes (Detail 6)
   const pointGeometry = useMemo(() => new THREE.IcosahedronGeometry(3.5, 6), []);
   const lineGeometry = useMemo(() => new THREE.IcosahedronGeometry(3.5, 5), []);
   const edgesGeometry = useMemo(() => new THREE.EdgesGeometry(lineGeometry, 5), [lineGeometry]);
 
   const shaderUniforms = useMemo(() => ({
     time: { value: 0 },
-    baseColor: { value: new THREE.Color("#00d4ff") },
+    baseColor: { value: new THREE.Color("#0088ff") },
     accentColor: { value: new THREE.Color("#8a2be2") }
   }), []);
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.03;
-      groupRef.current.rotation.x += delta * 0.01;
+      groupRef.current.rotation.y += delta * 0.02; // Very slow, elegant rotation
+      groupRef.current.rotation.x += delta * 0.005;
     }
     if (shaderMaterialRef.current) {
       shaderMaterialRef.current.uniforms.time.value = state.clock.elapsedTime;
     }
     if (linesRef.current && linesRef.current.material) {
-      // Subtle pulsing for the connection lines as well
-      (linesRef.current.material as THREE.LineBasicMaterial).opacity = 0.08 + Math.sin(state.clock.elapsedTime * 3) * 0.04;
+      // Extremely subtle connection lines
+      (linesRef.current.material as THREE.LineBasicMaterial).opacity = 0.03 + Math.sin(state.clock.elapsedTime * 1.5) * 0.02;
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* Intense Neural Web Connections */}
+      {/* Delicate Neural Web Connections */}
       <lineSegments ref={linesRef} geometry={edgesGeometry}>
         <lineBasicMaterial 
-          color="#0088ff" 
+          color="#0066cc" 
           transparent 
-          opacity={0.1} 
+          opacity={0.03} 
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -114,122 +108,75 @@ function HollowPlexusCore() {
   );
 }
 
-// ─── 10 ADVANCED ORBITAL RINGS WITH GLOW TRAILS ─────────────────────────────
+// ─── EXACTLY 2 MINIMAL ORBITAL RINGS ───────────────────────────────────────
 function OrbitalRings() {
-  const groupRef = useRef<THREE.Group>(null);
+  const ring1Ref = useRef<THREE.Mesh>(null);
+  const ring2Ref = useRef<THREE.Mesh>(null);
 
   useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.children.forEach((child, i) => {
-        const speed = (i % 2 === 0 ? 1 : -1) * (0.04 + i * 0.01);
-        child.rotation.x += delta * speed * 0.3;
-        child.rotation.y += delta * speed;
-        child.rotation.z += delta * speed * 0.2;
-      });
+    if (ring1Ref.current) {
+      // Slow rotation for the large cyan ring
+      ring1Ref.current.rotation.z += delta * 0.05;
     }
-  });
-
-  // 10 diverse rings acting as data orbits passing around the 3.5 radius sphere
-  const rings = [
-    { radius: 4.0, tube: 0.003, color: "#ffffff", opacity: 0.2, rotation: [Math.PI/3, 0, 0] },
-    { radius: 4.2, tube: 0.006, color: "#00d4ff", opacity: 0.15, rotation: [0, Math.PI/4, 0] },
-    { radius: 4.4, tube: 0.002, color: "#8a2be2", opacity: 0.3, rotation: [-Math.PI/4, 0, Math.PI/6] },
-    { radius: 4.7, tube: 0.008, color: "#0088ff", opacity: 0.1, rotation: [Math.PI/2, Math.PI/8, 0] },
-    { radius: 5.0, tube: 0.002, color: "#ffffff", opacity: 0.25, rotation: [0, -Math.PI/3, 0] },
-    { radius: 5.3, tube: 0.004, color: "#8a2be2", opacity: 0.2, rotation: [Math.PI/6, Math.PI/2, 0] },
-    { radius: 5.6, tube: 0.001, color: "#00d4ff", opacity: 0.4, rotation: [-Math.PI/3, Math.PI/5, Math.PI/4] },
-    { radius: 5.9, tube: 0.005, color: "#ffffff", opacity: 0.1, rotation: [0, 0, Math.PI/2] },
-    { radius: 6.2, tube: 0.002, color: "#8a2be2", opacity: 0.25, rotation: [Math.PI/8, Math.PI/3, 0] },
-    { radius: 6.5, tube: 0.003, color: "#00d4ff", opacity: 0.15, rotation: [-Math.PI/2, 0, Math.PI/6] },
-  ];
-
-  return (
-    <group ref={groupRef}>
-      {rings.map((ring, i) => (
-        <Torus 
-          key={i} 
-          args={[ring.radius, ring.tube, 32, 256]} 
-          rotation={ring.rotation as [number, number, number]}
-        >
-          <meshBasicMaterial 
-            color={ring.color} 
-            transparent 
-            opacity={ring.opacity} 
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </Torus>
-      ))}
-    </group>
-  );
-}
-
-// ─── HOLOGRAPHIC GROUND PROJECTION & FOG ────────────────────────────────────
-function GroundProjection() {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.z -= delta * 0.08;
-      groupRef.current.children.forEach((child: any) => {
-        if (child.material) {
-           child.material.opacity = 0.08 + Math.sin(state.clock.elapsedTime * 2) * 0.04;
-        }
-      });
+    if (ring2Ref.current) {
+      // Independent rotation for the smaller purple ring
+      ring2Ref.current.rotation.z -= delta * 0.08;
     }
   });
 
   return (
-    <group position={[0, -5.0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      {/* Outer ambient floor glow */}
-      <Ring args={[0.5, 7.0, 128]}>
-         <meshBasicMaterial 
-           color="#0088ff" 
-           transparent 
-           opacity={0.02} 
-           side={THREE.DoubleSide} 
-           blending={THREE.AdditiveBlending}
-           depthWrite={false}
-         />
-      </Ring>
-      <group ref={groupRef}>
-        <Ring args={[4.0, 4.02, 128]}>
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.1} blending={THREE.AdditiveBlending} depthWrite={false} />
-        </Ring>
-        <Ring args={[4.8, 4.82, 128]}>
-          <meshBasicMaterial color="#00d4ff" transparent opacity={0.15} blending={THREE.AdditiveBlending} depthWrite={false} />
-        </Ring>
-        <Ring args={[5.8, 5.81, 128]}>
-          <lineBasicMaterial color="#8a2be2" transparent opacity={0.2} blending={THREE.AdditiveBlending} />
-        </Ring>
-      </group>
-      <mesh position={[0, 0, 0.1]}>
-         <circleGeometry args={[2.5, 64]} />
-         <meshBasicMaterial color="#00d4ff" transparent opacity={0.08} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
+    <group>
+      {/* Orbit Ring 1: Large, Cyan, Horizontal tilt */}
+      <Torus 
+        ref={ring1Ref as any}
+        args={[4.4, 0.003, 32, 256]} 
+        rotation={[Math.PI/2 - 0.2, 0, 0]}
+      >
+        <meshBasicMaterial 
+          color="#00d4ff" 
+          transparent 
+          opacity={0.15} 
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </Torus>
+
+      {/* Orbit Ring 2: Slightly smaller, Purple-blue gradient, Different angle */}
+      <Torus 
+        ref={ring2Ref as any}
+        args={[4.1, 0.002, 32, 256]} 
+        rotation={[Math.PI/3, Math.PI/6, 0]}
+      >
+        <meshBasicMaterial 
+          color="#8a2be2" 
+          transparent 
+          opacity={0.2} 
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </Torus>
     </group>
   );
 }
 
-// ─── FOREGROUND & BACKGROUND PARALLAX PARTICLES ────────────────────────────
-function ParticleSystem({ count, size, color, depth, speed }: { count: number, size: number, color: string, depth: number, speed: number }) {
+// ─── BACKGROUND PARALLAX PARTICLES ─────────────────────────────────────────
+function BackgroundParticles() {
   const pointsRef = useRef<THREE.Points>(null);
 
   const [positions] = useMemo(() => {
+    const count = 3000;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 50; 
       positions[i * 3 + 1] = (Math.random() - 0.5) * 50; 
-      positions[i * 3 + 2] = depth + (Math.random() - 0.5) * 10; 
+      positions[i * 3 + 2] = -15 + (Math.random() - 0.5) * 10; 
     }
     return [positions];
-  }, [count, depth]);
+  }, []);
 
   useFrame((state, delta) => {
     if (pointsRef.current) {
-      pointsRef.current.position.y += delta * speed;
-      pointsRef.current.rotation.y += delta * 0.01;
-      // Loop particles
+      pointsRef.current.position.y += delta * 0.05; // Very slow, gentle movement
       if (pointsRef.current.position.y > 20) pointsRef.current.position.y = -20;
     }
   });
@@ -238,26 +185,26 @@ function ParticleSystem({ count, size, color, depth, speed }: { count: number, s
     <Points ref={pointsRef} positions={positions}>
       <PointMaterial
         transparent
-        color={color}
-        size={size}
+        color="#ffffff"
+        size={0.03}
         sizeAttenuation={true}
         depthWrite={false}
-        opacity={0.4}
+        opacity={0.15}
         blending={THREE.AdditiveBlending}
       />
     </Points>
   );
 }
 
-// ─── BACKGROUND VOLUMETRIC RADIAL GLOW ─────────────────────────────────────
+// ─── SOFT BACKGROUND VOLUMETRIC GLOW ───────────────────────────────────────
 function RadialGlow() {
   return (
-    <mesh position={[0, 0, -5]}>
-      <planeGeometry args={[30, 30]} />
+    <mesh position={[0, 0, -8]}>
+      <planeGeometry args={[25, 25]} />
       <meshBasicMaterial 
-        color="#0066ff" 
+        color="#004488" 
         transparent 
-        opacity={0.03} 
+        opacity={0.05} 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -265,45 +212,44 @@ function RadialGlow() {
   );
 }
 
-// ─── FURTHER REDUCED INTEGRATED 3D CARD ────────────────────────────────────
+// ─── 50% SMALLER INTEGRATED 3D CARD ────────────────────────────────────────
 function IntegratedVerificationCard() {
   return (
     <Html 
-      // Repositioned further out to upper right so it integrates but doesn't block the globe
-      position={[3.8, 2.8, 0]} 
-      // Size reduced by another 40% (scale 0.45 down to 0.35)
-      scale={0.35} 
+      // Upper right, positioned so it never touches viewport edges and barely overlaps the sphere
+      position={[3.8, 2.5, 1.0]} 
+      scale={0.25} 
       transform 
       occlude 
       className="pointer-events-none"
     >
-      <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-2xl p-6 shadow-[0_40px_80px_rgba(0,0,0,0.9)] w-64 transform transition-all">
-        <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
-           <div className="w-8 h-8 rounded bg-[#00d4ff]/10 flex items-center justify-center border border-[#00d4ff]/20 shadow-[0_0_15px_rgba(0,212,255,0.2)]">
+      <div className="bg-[#02050D]/80 backdrop-blur-3xl border border-[rgba(255,255,255,0.06)] rounded-xl p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)] w-64 transform transition-all">
+        <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
+           <div className="w-8 h-8 rounded bg-[#00d4ff]/5 flex items-center justify-center border border-[#00d4ff]/10">
              <Shield size={16} className="text-[#00d4ff]" />
            </div>
-           <span className="text-xs font-bold text-white tracking-wide shadow-black drop-shadow-md">Verification Engine</span>
+           <span className="text-xs font-medium text-slate-300 tracking-wide">Verification Engine</span>
         </div>
-        <div className="space-y-4 text-[10px] font-mono uppercase tracking-widest text-slate-300 shadow-black drop-shadow-md">
+        <div className="space-y-4 text-[10px] font-mono uppercase tracking-widest text-slate-500">
            <div className="flex items-center justify-between">
               <span>Liveness</span>
-              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_8px_rgba(0,255,136,0.6)]">PASS</span>
+              <span className="text-white font-medium">PASS</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Blink</span>
-              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_8px_rgba(0,255,136,0.6)]">VERIFIED</span>
+              <span className="text-white font-medium">VERIFIED</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Head Rotation</span>
-              <span className="text-[#00ff88] font-bold drop-shadow-[0_0_8px_rgba(0,255,136,0.6)]">VERIFIED</span>
+              <span className="text-white font-medium">VERIFIED</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Spoof Risk</span>
-              <span className="text-[#00d4ff] font-bold">0.2%</span>
+              <span className="text-[#00d4ff] font-medium">0.2%</span>
            </div>
            <div className="flex items-center justify-between">
               <span>Identity Match</span>
-              <span className="text-[#00d4ff] font-bold animate-pulse">98.7%</span>
+              <span className="text-[#00d4ff] font-medium animate-pulse">98.7%</span>
            </div>
         </div>
       </div>
@@ -317,28 +263,21 @@ function SceneContainer() {
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Very subtle interpolation for parallax
-      const targetX = (state.pointer.x * Math.PI) / 12;
-      const targetY = (state.pointer.y * Math.PI) / 12;
+      // Extremely subtle, elegant parallax
+      const targetX = (state.pointer.x * Math.PI) / 24;
+      const targetY = (state.pointer.y * Math.PI) / 24;
       
-      groupRef.current.rotation.y += (targetX - groupRef.current.rotation.y) * 0.02;
-      groupRef.current.rotation.x += (-targetY - groupRef.current.rotation.x) * 0.02;
+      groupRef.current.rotation.y += (targetX - groupRef.current.rotation.y) * 0.01;
+      groupRef.current.rotation.x += (-targetY - groupRef.current.rotation.x) * 0.01;
     }
   });
 
   return (
     <group ref={groupRef}>
       <RadialGlow />
-      {/* Background Neural Stream */}
-      <ParticleSystem count={4000} size={0.08} color="#8a2be2" depth={-25} speed={0.2} />
-      
+      <BackgroundParticles />
       <HollowPlexusCore />
       <OrbitalRings />
-      <GroundProjection />
-      
-      {/* Foreground Scan Pulses */}
-      <ParticleSystem count={1500} size={0.04} color="#00d4ff" depth={5} speed={0.4} />
-      
       <IntegratedVerificationCard />
     </group>
   );
@@ -353,19 +292,18 @@ export default function BiometricSphere3D() {
       >
         <SceneContainer />
         
-        {/* Cinematic Postprocessing */}
+        {/* Refined, softer postprocessing */}
         <EffectComposer multisampling={4}>
           <Bloom 
-            luminanceThreshold={0.2} 
+            luminanceThreshold={0.4} 
             luminanceSmoothing={0.9} 
-            intensity={2.0} 
+            intensity={0.8} 
             mipmapBlur 
           />
-          {/* Depth of field for strong cinematic depth - foreground blurs slightly, deep background blurs heavily */}
           <DepthOfField 
-            focusDistance={0.01} 
+            focusDistance={0.02} 
             focalLength={0.05} 
-            bokehScale={3} 
+            bokehScale={2} 
             height={480} 
           />
         </EffectComposer>

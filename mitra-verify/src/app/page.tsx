@@ -5,8 +5,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import BiometricCore3D from '@/components/BiometricCore3D';
+import dynamic from 'next/dynamic';
 import StatisticsStrip from '@/components/StatisticsStrip';
+
+const BiometricCore3D = dynamic(() => import('@/components/BiometricCore3D'), { 
+  ssr: false, 
+  loading: () => <div className="w-full h-[600px] bg-transparent" /> 
+});
 import EnterpriseTrust from '@/components/EnterpriseTrust';
 import VerificationPipeline from '@/components/VerificationPipeline';
 import ApiProducts from '@/components/ApiProducts';

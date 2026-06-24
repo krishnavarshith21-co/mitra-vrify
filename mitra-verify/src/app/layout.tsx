@@ -3,7 +3,6 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import Global3DBackground from '@/components/cyber/Global3DBackground';
 import ClientLayout from '@/components/ClientLayout';
 
 const inter = Inter({
@@ -69,11 +68,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} noise`}>
-        {/* AuthProvider reads from localStorage credentials */}
         <AuthProvider>
           {/* ErrorBoundary catches render-time crashes */}
           <ErrorBoundary>
-            <Global3DBackground />
             <ClientLayout>
               {children}
             </ClientLayout>

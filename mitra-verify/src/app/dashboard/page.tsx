@@ -12,6 +12,12 @@ import { useState, useEffect, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+const BiometricCore3D = dynamic(() => import('@/components/BiometricCore3D'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center"><div className="w-8 h-8 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin" /></div>
+});
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 interface TelemetryData {
@@ -222,14 +228,16 @@ export default function DashboardPage() {
                  {/* SECTION 2: Live Verification Center */}
                  <motion.section variants={itemVariants} initial="hidden" animate="visible" className="relative w-full h-[320px] rounded-xl bg-[rgba(5,10,25,0.8)] border border-[rgba(0,255,255,0.1)] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] group">
                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 mix-blend-screen" />
-                   {/* Animated Biometric Core */}
-                   <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border border-[#00d4ff]/30 rounded-full animate-[spin_10s_linear_infinite]" />
-                   <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-[#00d4ff]/10 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
-                   <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-[#00d4ff]/5 rounded-full animate-[spin_20s_linear_infinite]" />
-                   <div className="absolute inset-x-0 top-1/2 h-0.5 bg-[#00d4ff]/50 shadow-[0_0_30px_#00d4ff] animate-[scan_3s_ease-in-out_infinite]" style={{ transformOrigin: 'center' }} />
+                   
+                   {/* 3D Biometric Core Background */}
+                   <div className="absolute inset-0 z-0 opacity-40 mix-blend-screen pointer-events-none group-hover:opacity-60 transition-opacity duration-700">
+                      <div className="absolute inset-0 scale-[1.5] md:scale-[2.0] origin-center -translate-y-8">
+                         <BiometricCore3D />
+                      </div>
+                   </div>
                    
                    {/* Overlay UI */}
-                   <div className="absolute inset-0 p-6 flex flex-col items-center justify-center text-center z-10 bg-gradient-to-t from-[#030712] via-transparent to-transparent">
+                   <div className="absolute inset-0 p-6 flex flex-col items-center justify-center text-center z-10 bg-gradient-to-t from-[#030712] via-transparent to-[rgba(3,7,18,0.3)]">
                       <Shield size={40} className="text-[#00d4ff] mb-4 opacity-80 filter drop-shadow-[0_0_15px_rgba(0,212,255,0.5)]" />
                       <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Mission Control: Biometric Core</h2>
                       <p className="text-slate-400 text-sm max-w-md mb-8 font-light">Global edge network primed for ultra-low latency liveness detection and identity resolution.</p>

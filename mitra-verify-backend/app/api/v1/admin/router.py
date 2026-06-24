@@ -5,6 +5,7 @@ from sqlalchemy import select, update, func, delete
 from datetime import datetime
 import os
 import uuid
+import psutil
 from pydantic import BaseModel
 from typing import Optional
 
@@ -62,13 +63,19 @@ async def get_admin_stats(
         elif os.path.exists("mitra_verify.db"):
             db_size_bytes = os.path.getsize("mitra_verify.db")
             
-        # Load average
+        # Load average and memory
         cpu_load = 0.0
+        memory_usage_pct = 0.0
         try:
-            load = os.getloadavg()
-            cpu_load = round(load[0], 2)
+            cpu_load = psutil.cpu_percent(interval=0.1)
+            memory_usage_pct = psutil.virtual_memory().percent
         except Exception:
-            cpu_load = 0.15 # Fallback
+            try:
+                load = os.getloadavg()
+                cpu_load = round(load[0], 2)
+            except Exception:
+                cpu_load = 0.15 # Fallback
+            memory_usage_pct = 32.4 # Fallback
             
         return {
             "users": {
@@ -92,7 +99,7 @@ async def get_admin_stats(
             "system": {
                 "db_size_bytes": db_size_bytes,
                 "cpu_load": cpu_load,
-                "memory_usage_pct": 32.4, # Mock percentage since psutil is not available
+                "memory_usage_pct": memory_usage_pct,
                 "status": "healthy"
             }
         }

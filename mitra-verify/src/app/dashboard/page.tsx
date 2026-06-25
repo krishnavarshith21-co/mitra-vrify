@@ -3,8 +3,8 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { 
   CheckCircle2, ShieldAlert, Activity, Search,
-  EyeOff, Clock, Monitor, Smartphone, Tablet,
-  Download, Filter, ChevronLeft, ChevronRight, AlertCircle, Bell, Clock4, AlertTriangle
+  EyeOff, Clock, Server, Monitor, Smartphone, Tablet,
+  Download, Filter, ChevronLeft, ChevronRight, AlertCircle, AlertTriangle
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
@@ -32,6 +32,7 @@ interface BottomAnalytics {
     low_light: number;
     blur: number;
     occlusion: number;
+    head_rotation_fail: number;
   };
   device_analytics: {
     desktop: number;
@@ -47,18 +48,6 @@ interface FailureReason {
   percentage: number;
 }
 
-interface Alert {
-  type: string;
-  message: string;
-  time: string;
-  severity: 'critical' | 'warning' | 'info';
-}
-
-interface TimelineData {
-  hour: string;
-  volume: number;
-}
-
 interface TelemetryData {
   executive_overview: {
     total_verifications: number;
@@ -72,8 +61,6 @@ interface TelemetryData {
   analytics_chart: any[];
   bottom_analytics: BottomAnalytics;
   top_failure_reasons: FailureReason[];
-  recent_alerts: Alert[];
-  timeline_heatmap: TimelineData[];
 }
 
 interface VerificationEvent {
@@ -89,6 +76,7 @@ interface VerificationEvent {
   failureReason?: string;
   multipleFaces?: boolean;
   device?: string;
+  ip?: string;
 }
 
 // --- Colors based on prompt ---
@@ -104,6 +92,8 @@ const COLORS = {
   border: '#1F2B45'
 };
 
+const PIE_COLORS = [COLORS.accent, '#A855F7', COLORS.success];
+
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
@@ -111,7 +101,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [timeframe, setTimeframe] = useState('24 Hours');
+  const [timeframe, setTimeframe] = useState('24h');
   const [lastUpdate, setLastUpdate] = useState<string>('Just now');
 
   const fetchData = async () => {
@@ -150,7 +140,7 @@ export default function DashboardPage() {
       return ev.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
              (ev.user && ev.user.toLowerCase().includes(searchQuery.toLowerCase())) ||
              ev.apiType.toLowerCase().includes(searchQuery.toLowerCase());
-    }).slice(0, 8);
+    }).slice(0, 15);
   }, [events, searchQuery]);
 
   if (!mounted || loading) {
@@ -166,9 +156,7 @@ export default function DashboardPage() {
     api_performance, 
     analytics_chart = [], 
     bottom_analytics,
-    top_failure_reasons = [],
-    recent_alerts = [],
-    timeline_heatmap = []
+    top_failure_reasons = []
   } = telemetry || {
     executive_overview: { total_verifications: 0, successful_verifications: 0, failed_verifications: 0, spoof_attempts_blocked: 0, face_lost_events: 0, avg_processing_time_ms: 0 },
     api_performance: {
@@ -178,33 +166,29 @@ export default function DashboardPage() {
     },
     analytics_chart: [],
     bottom_analytics: {
-      face_quality: { average: 0, low_light: 0, blur: 0, occlusion: 0 },
+      face_quality: { average: 0, low_light: 0, blur: 0, occlusion: 0, head_rotation_fail: 0 },
       device_analytics: { desktop: 0, mobile: 0, tablet: 0 },
       country_analytics: []
     },
-    top_failure_reasons: [],
-    recent_alerts: [],
-    timeline_heatmap: []
+    top_failure_reasons: []
   };
 
   const trueFailed = executive_overview.failed_verifications - executive_overview.spoof_attempts_blocked - executive_overview.face_lost_events;
 
-  // Pie Chart Data
-  const pieData = [
-    { name: 'Passed', value: executive_overview.successful_verifications, color: COLORS.success },
-    { name: 'Failed', value: trueFailed > 0 ? trueFailed : 0, color: COLORS.failed },
-    { name: 'Spoof', value: executive_overview.spoof_attempts_blocked, color: COLORS.spoof },
-    { name: 'Face Lost', value: executive_overview.face_lost_events, color: COLORS.warning }
-  ].filter(d => d.value > 0);
-  
-  if (pieData.length === 0) pieData.push({ name: 'No Data', value: 1, color: COLORS.neutral });
-
-  const successRate = executive_overview.total_verifications > 0 
-    ? ((executive_overview.successful_verifications / executive_overview.total_verifications) * 100).toFixed(1)
-    : '0.0';
-
-  // Generate sparkline data
   const sparklineData = analytics_chart.slice(-15);
+
+  const getPct = (val: number) => executive_overview.total_verifications > 0 ? ((val / executive_overview.total_verifications) * 100).toFixed(1) : '0.0';
+
+  const passPct = getPct(executive_overview.successful_verifications);
+  const failPct = getPct(trueFailed > 0 ? trueFailed : 0);
+  const spoofPct = getPct(executive_overview.spoof_attempts_blocked);
+  const faceLostPct = getPct(executive_overview.face_lost_events);
+
+  const apiDistributionData = [
+    { name: 'API 1', value: api_performance['Basic']?.requests || 0 },
+    { name: 'API 2', value: api_performance['Advanced']?.requests || 0 },
+    { name: 'API 3', value: api_performance['Enterprise']?.requests || 0 }
+  ];
 
   return (
     <ProtectedRoute>
@@ -219,13 +203,9 @@ export default function DashboardPage() {
            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                  <h1 className="text-[32px] font-bold text-white tracking-tight leading-tight">
-                   Overview
+                   Verification Analytics
                  </h1>
-                 <p className="text-slate-500 text-[14px]">Platform analytics and biometric telemetry</p>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] text-[13px] font-medium transition-all hover:bg-[#10B981]/20 cursor-default">
-                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-                Platform Operational
+                 <p className="text-slate-500 text-[14px]">Real-time overview of your API usage.</p>
               </div>
            </div>
 
@@ -233,25 +213,25 @@ export default function DashboardPage() {
            {/* KPI CARDS */}
            {/* ========================================================= */}
            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-             <KpiCard title="Total Verifications" value={executive_overview.total_verifications.toLocaleString()} trend="▲ 8%" trendUp icon={Activity} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="count" color={COLORS.accent} />
-             <KpiCard title="Successful" value={executive_overview.successful_verifications.toLocaleString()} trend="▲ 12%" trendUp icon={CheckCircle2} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="pass" color={COLORS.success} />
+             <KpiCard title="Total Requests" value={executive_overview.total_verifications.toLocaleString()} trend="▲ 8%" trendUp icon={Activity} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="count" color={COLORS.accent} />
+             <KpiCard title="Passed" value={executive_overview.successful_verifications.toLocaleString()} trend="▲ 12%" trendUp icon={CheckCircle2} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="pass" color={COLORS.success} />
              <KpiCard title="Failed" value={(trueFailed > 0 ? trueFailed : 0).toLocaleString()} trend="▼ 2%" trendUp={false} icon={AlertCircle} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="failed" color={COLORS.failed} />
-             <KpiCard title="Spoofs Blocked" value={executive_overview.spoof_attempts_blocked.toLocaleString()} trend="▲ 4%" trendUp icon={ShieldAlert} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="spoof" color={COLORS.spoof} />
+             <KpiCard title="Spoof Attempts" value={executive_overview.spoof_attempts_blocked.toLocaleString()} trend="▲ 4%" trendUp icon={ShieldAlert} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="spoof" color={COLORS.spoof} />
              <KpiCard title="Face Lost" value={executive_overview.face_lost_events.toLocaleString()} trend="▼ 1%" trendUp={false} icon={EyeOff} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="faceLost" color={COLORS.warning} />
-             <KpiCard title="Avg Latency" value={`${executive_overview.avg_processing_time_ms}ms`} trend="▼ 5ms" trendUp={false} icon={Clock} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="latency" color={COLORS.neutral} />
+             <KpiCard title="Average Response Time" value={`${executive_overview.avg_processing_time_ms}ms`} trend="▼ 5ms" trendUp={false} icon={Clock} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="latency" color={COLORS.neutral} />
            </div>
 
            {/* ========================================================= */}
-           {/* MAIN ANALYTICS */}
+           {/* MAIN SECTION */}
            {/* ========================================================= */}
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              
-             {/* Left: Verification Trend (Line Chart) */}
+             {/* Left (70%): Verification Requests */}
              <div className="lg:col-span-2 bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col">
                <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-[16px] font-semibold text-white">Verification Trend</h3>
+                 <h3 className="text-[16px] font-semibold text-white">Verification Requests</h3>
                  <div className="flex items-center gap-1 bg-[#1F2B45]/40 p-1 rounded-lg border border-[#1F2B45]">
-                    {['24h', '7d', '30d'].map(t => (
+                    {['24h', '7d', '30d', '90d'].map(t => (
                       <button 
                         key={t}
                         onClick={() => setTimeframe(t)}
@@ -262,7 +242,7 @@ export default function DashboardPage() {
                     ))}
                  </div>
                </div>
-               <div className="h-[240px] w-full mt-2">
+               <div className="h-[260px] w-full mt-2">
                  <ResponsiveContainer width="100%" height="100%">
                    <AreaChart data={analytics_chart}>
                      <defs>
@@ -288,121 +268,118 @@ export default function DashboardPage() {
                </div>
              </div>
 
-             {/* Right: Donut Chart */}
-             <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 flex flex-col shadow-sm">
-               <h3 className="text-[16px] font-semibold text-white mb-1">Verification Distribution</h3>
-               <p className="text-[13px] text-slate-500 mb-4">Total attempts breakdown</p>
+             {/* Right (30%): Verification Summary */}
+             <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col justify-center">
+               <h3 className="text-[16px] font-semibold text-white mb-6">Verification Summary</h3>
                
-               <div className="flex-1 relative flex items-center justify-center min-h-[180px]">
-                 <ResponsiveContainer width="100%" height="100%">
-                   <PieChart>
-                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={2} dataKey="value" stroke="none" isAnimationActive={true}>
-                       {pieData.map((entry, index) => (
-                         <Cell key={`cell-${index}`} fill={entry.color} />
-                       ))}
-                     </Pie>
-                     <Tooltip contentStyle={{ backgroundColor: '#0A1224', border: '1px solid #1F2B45', borderRadius: '12px', fontSize: '13px' }} />
-                   </PieChart>
-                 </ResponsiveContainer>
-                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[28px] font-bold text-white tracking-tight leading-none">{successRate}%</span>
-                    <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider mt-1">Success Rate</span>
+               <div className="space-y-5">
+                 {/* Passed */}
+                 <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="text-slate-300 font-medium">Passed</span>
+                       <span className="text-white font-mono font-medium">{passPct}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-[#1F2B45]/50 rounded-sm flex">
+                       <div className="h-full bg-[#10B981] rounded-sm transition-all duration-1000" style={{ width: `${passPct}%` }} />
+                    </div>
                  </div>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-y-3 gap-x-2 mt-4">
-                  {pieData.map((d) => {
-                    const pct = executive_overview.total_verifications > 0 ? ((d.value / executive_overview.total_verifications) * 100).toFixed(1) : '0';
-                    return (
-                      <div key={d.name} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/[0.02]">
-                         <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                            <span className="text-[12px] text-slate-400 font-medium">{d.name}</span>
-                         </div>
-                         <span className="text-[12px] font-bold text-white">{pct}%</span>
-                      </div>
-                    )
-                  })}
+
+                 {/* Failed */}
+                 <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="text-slate-300 font-medium">Failed</span>
+                       <span className="text-white font-mono font-medium">{failPct}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-[#1F2B45]/50 rounded-sm flex">
+                       <div className="h-full bg-[#EF4444] rounded-sm transition-all duration-1000" style={{ width: `${failPct}%` }} />
+                    </div>
+                 </div>
+
+                 {/* Spoof */}
+                 <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="text-slate-300 font-medium">Spoof</span>
+                       <span className="text-white font-mono font-medium">{spoofPct}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-[#1F2B45]/50 rounded-sm flex">
+                       <div className="h-full bg-[#EC4899] rounded-sm transition-all duration-1000" style={{ width: `${spoofPct}%` }} />
+                    </div>
+                 </div>
+
+                 {/* Face Lost */}
+                 <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="text-slate-300 font-medium">Face Lost</span>
+                       <span className="text-white font-mono font-medium">{faceLostPct}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-[#1F2B45]/50 rounded-sm flex">
+                       <div className="h-full bg-[#F59E0B] rounded-sm transition-all duration-1000" style={{ width: `${faceLostPct}%` }} />
+                    </div>
+                 </div>
                </div>
              </div>
            </div>
 
            {/* ========================================================= */}
-           {/* SECOND ROW (API USAGE & STATUS) */}
+           {/* API ANALYTICS */}
            {/* ========================================================= */}
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Left: API Usage (Progress Bars) */}
-              <div className="lg:col-span-2 bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col justify-center">
-                 <h3 className="text-[16px] font-semibold text-white mb-6">API Utilization</h3>
-                 <div className="space-y-5">
-                    {['Basic', 'Advanced', 'Enterprise'].map((api, idx) => {
-                       const reqs = api_performance[api]?.requests || 0;
-                       const totalReqs = ['Basic', 'Advanced', 'Enterprise'].reduce((acc, curr) => acc + (api_performance[curr]?.requests || 0), 0);
-                       const pct = totalReqs > 0 ? (reqs / totalReqs) * 100 : 0;
-                       const label = api === 'Basic' ? 'API 1 - Fast' : api === 'Advanced' ? 'API 2 - Secure' : 'API 3 - Enterprise';
-                       
-                       return (
-                          <div key={api} className="flex flex-col gap-2 group">
-                             <div className="flex items-center justify-between">
-                                <span className="text-[13px] font-medium text-slate-300">{label}</span>
-                                <span className="text-[13px] font-mono text-slate-400">{reqs.toLocaleString()} reqs</span>
-                             </div>
-                             <div className="w-full h-2.5 bg-[#1F2B45]/50 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full transition-all duration-1000 ease-out" 
-                                  style={{ width: `${pct}%`, backgroundColor: idx === 0 ? COLORS.accent : idx === 1 ? '#A855F7' : COLORS.success }} 
-                                />
-                             </div>
+              {['Basic', 'Advanced', 'Enterprise'].map((key, idx) => {
+                 const perf = api_performance[key] || { requests: 0, pass: 0, fail: 0, spoof: 0, faceLost: 0, errors: 0, totalLatency: 0, lastRequest: null };
+                 const label = key === 'Basic' ? 'API 1' : key === 'Advanced' ? 'API 2' : 'API 3';
+                 const color = idx === 0 ? COLORS.accent : idx === 1 ? '#A855F7' : COLORS.success;
+                 const avgTime = perf.requests > 0 ? Math.round(perf.totalLatency / perf.requests) : 0;
+                 const sr = perf.requests > 0 ? ((perf.pass / perf.requests) * 100).toFixed(1) : "0.0";
+                 
+                 return (
+                    <div key={key} className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm hover:border-slate-700 transition-colors">
+                       <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-[15px] font-semibold text-white flex items-center gap-2">
+                            <Server size={14} style={{ color }} /> {label}
+                          </h3>
+                          <span className="text-[12px] text-slate-500 bg-[#1F2B45]/40 px-2 py-0.5 rounded">▲ +{Math.floor(Math.random() * 10) + 1}%</span>
+                       </div>
+                       <div className="grid grid-cols-3 gap-4 mb-4">
+                          <div className="flex flex-col gap-1">
+                             <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Requests</span>
+                             <span className="text-[16px] text-white font-mono">{perf.requests.toLocaleString()}</span>
                           </div>
-                       )
-                    })}
-                 </div>
-              </div>
-
-              {/* Right: System Status */}
-              <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col">
-                 <h3 className="text-[16px] font-semibold text-white mb-4">System Status</h3>
-                 <div className="flex-1 flex flex-col justify-between space-y-3">
-                    <StatusItem label="API 1 Endpoint" status="Online" latency={`${Math.round((api_performance['Basic']?.totalLatency || 0) / (api_performance['Basic']?.requests || 1))}ms`} color={COLORS.success} />
-                    <StatusItem label="API 2 Endpoint" status="Online" latency={`${Math.round((api_performance['Advanced']?.totalLatency || 0) / (api_performance['Advanced']?.requests || 1))}ms`} color={COLORS.success} />
-                    <StatusItem label="API 3 Endpoint" status="Online" latency={`${Math.round((api_performance['Enterprise']?.totalLatency || 0) / (api_performance['Enterprise']?.requests || 1))}ms`} color={COLORS.success} />
-                    <StatusItem label="Webhook Engine" status="Connected" latency="45ms" color={COLORS.success} />
-                    <StatusItem label="Liveness DB" status="Healthy" latency="12ms" color={COLORS.success} />
-                 </div>
-              </div>
+                          <div className="flex flex-col gap-1">
+                             <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Success</span>
+                             <span className="text-[16px] text-white font-mono">{sr}%</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                             <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Avg Time</span>
+                             <span className="text-[16px] text-white font-mono">{avgTime}ms</span>
+                          </div>
+                       </div>
+                       <div className="w-full h-1.5 bg-[#1F2B45]/50 rounded-full mt-2 overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${sr}%`, backgroundColor: color }} />
+                       </div>
+                    </div>
+                 )
+              })}
            </div>
 
            {/* ========================================================= */}
-           {/* RECENT ACTIVITY & API PERFORMANCE */}
+           {/* RECENT VERIFICATIONS */}
            {/* ========================================================= */}
-           <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] shadow-sm overflow-hidden">
-              <div className="p-5 md:p-6 border-b border-[#1F2B45] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0A1224]">
-                 <div>
-                   <h3 className="text-[16px] font-semibold text-white">Recent Activity</h3>
-                   <p className="text-[13px] text-slate-500 mt-1">Live feed of verification attempts.</p>
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <div className="relative">
-                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                       <input 
-                         type="text" 
-                         placeholder="Search ID or User..." 
-                         value={searchQuery}
-                         onChange={(e) => setSearchQuery(e.target.value)}
-                         className="bg-[#050B18] border border-[#1F2B45] rounded-[8px] pl-8 pr-3 py-1.5 text-[12px] text-white placeholder-slate-500 focus:outline-none focus:border-[#00D4FF]/50 w-full md:w-56 transition-colors"
-                       />
-                    </div>
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] border border-[#1F2B45] hover:bg-white/5 text-slate-300 text-[12px] font-medium transition-colors bg-[#050B18]">
-                      <Filter size={14} /> Filters
-                    </button>
-                    <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[8px] border border-[#1F2B45] hover:bg-white/5 text-slate-300 text-[12px] font-medium transition-colors bg-[#050B18]">
-                      <Download size={14} /> CSV
-                    </button>
+           <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] shadow-sm overflow-hidden flex flex-col">
+              <div className="p-5 border-b border-[#1F2B45] flex items-center justify-between gap-4">
+                 <h3 className="text-[16px] font-semibold text-white">Recent Verifications</h3>
+                 <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search ID..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-[#050B18] border border-[#1F2B45] rounded-[8px] pl-8 pr-3 py-1.5 text-[12px] text-white placeholder-slate-500 focus:outline-none focus:border-slate-600 w-full md:w-64 transition-colors"
+                    />
                  </div>
               </div>
               <div className="overflow-x-auto">
-                 <table className="w-full text-left whitespace-nowrap">
+                 <table className="w-full text-left whitespace-nowrap min-w-max">
                     <thead className="bg-[#050B18]/50 border-b border-[#1F2B45] text-slate-500">
                        <tr>
                           <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Time</th>
@@ -410,14 +387,16 @@ export default function DashboardPage() {
                           <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">User</th>
                           <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">API</th>
                           <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Failure Reason</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Latency</th>
+                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Reason</th>
+                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Duration</th>
+                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">IP</th>
+                          <th className="px-6 py-3 text-[11px] font-semibold uppercase tracking-wider">Device</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1F2B45]">
                        {filteredEvents.length === 0 ? (
                          <tr>
-                           <td colSpan={7} className="px-6 py-8 text-center text-[13px] text-slate-500">No recent activity found.</td>
+                           <td colSpan={9} className="px-6 py-10 text-center text-[13px] text-slate-500">No verifications matched.</td>
                          </tr>
                        ) : (
                          filteredEvents.map(ev => {
@@ -434,18 +413,23 @@ export default function DashboardPage() {
                            else { badgeClass = "bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/20"; badgeText = "Failed"; }
 
                            return (
-                             <tr key={ev.id} className="hover:bg-white/[0.04] transition-colors group cursor-default">
+                             <tr key={ev.id} className="hover:bg-white/[0.04] transition-colors group cursor-pointer">
                                 <td className="px-6 py-3 text-[12px] text-slate-400 font-mono">{new Date(ev.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}</td>
-                                <td className="px-6 py-3 text-[13px] font-mono text-[#00D4FF] hover:underline cursor-pointer transition-colors">VRF-{ev.id.substring(0, 5).toUpperCase()}</td>
+                                <td className="px-6 py-3 text-[13px] font-mono text-[#00D4FF] group-hover:underline transition-colors">VRF-{ev.id.substring(0, 5).toUpperCase()}</td>
                                 <td className="px-6 py-3 text-[13px] text-white font-medium">{ev.user || '—'}</td>
-                                <td className="px-6 py-3 text-[12px] text-slate-300 bg-white/[0.02] inline-flex m-3 rounded px-2 py-0.5">{ev.apiType === 'Basic' ? 'API 1' : ev.apiType === 'Advanced' ? 'API 2' : 'API 3'}</td>
+                                <td className="px-6 py-3 text-[12px] text-slate-300">{ev.apiType === 'Basic' ? 'API 1' : ev.apiType === 'Advanced' ? 'API 2' : 'API 3'}</td>
                                 <td className="px-6 py-3 text-[12px]">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md border ${badgeClass} font-medium`}>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded border ${badgeClass} font-medium`}>
                                     {badgeText}
                                   </span>
                                 </td>
                                 <td className="px-6 py-3 text-[12px] text-slate-400">{ev.failureReason || '—'}</td>
                                 <td className="px-6 py-3 text-[12px] text-slate-400 font-mono">{ev.processingTimeMs} ms</td>
+                                <td className="px-6 py-3 text-[12px] text-slate-500 font-mono">{ev.ip || '—'}</td>
+                                <td className="px-6 py-3 text-[12px] text-slate-500 flex items-center gap-1.5">
+                                   {ev.device === 'Desktop' ? <Monitor size={12}/> : ev.device === 'Mobile' ? <Smartphone size={12}/> : <Tablet size={12}/>}
+                                   {ev.device || 'Unknown'}
+                                </td>
                              </tr>
                            )
                          })
@@ -453,35 +437,28 @@ export default function DashboardPage() {
                     </tbody>
                  </table>
               </div>
-              <div className="p-3 border-t border-[#1F2B45] flex items-center justify-between text-[12px] text-slate-500 bg-[#050B18]/50">
-                 <span className="px-3">Showing {filteredEvents.length} results</span>
-                 <div className="flex items-center gap-1 pr-3">
-                    <button className="p-1 hover:text-white transition-colors hover:bg-white/5 rounded"><ChevronLeft size={14} /></button>
-                    <button className="p-1 hover:text-white transition-colors hover:bg-white/5 rounded"><ChevronRight size={14} /></button>
-                 </div>
-              </div>
            </div>
 
            {/* ========================================================= */}
-           {/* BOTTOM WIDGETS */}
+           {/* BOTTOM ANALYTICS */}
            {/* ========================================================= */}
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Failure Reasons */}
               <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm">
-                 <h4 className="text-[15px] font-semibold text-white mb-5 flex items-center gap-2"><AlertTriangle size={16} className="text-[#F59E0B]"/> Top Failure Reasons</h4>
+                 <h4 className="text-[15px] font-semibold text-white mb-5 flex items-center gap-2"><AlertTriangle size={16} className="text-[#F59E0B]"/> Failure Reasons</h4>
                  <div className="space-y-4">
                     {top_failure_reasons.length === 0 ? (
                        <p className="text-[13px] text-slate-500">No failures recorded yet.</p>
                     ) : (
                        top_failure_reasons.map((fr) => (
                          <div key={fr.reason} className="flex flex-col gap-1.5">
-                            <div className="flex justify-between text-[12px]">
-                               <span className="text-slate-300">{fr.reason}</span>
-                               <span className="text-slate-500 font-mono">{fr.percentage}% ({fr.count})</span>
+                            <div className="flex justify-between text-[13px]">
+                               <span className="text-slate-300 font-medium">{fr.reason}</span>
+                               <span className="text-slate-500 font-mono">{fr.percentage}%</span>
                             </div>
-                            <div className="w-full h-1.5 bg-[#1F2B45]/50 rounded-full overflow-hidden">
-                               <div className="h-full bg-[#EF4444] rounded-full" style={{ width: `${fr.percentage}%` }} />
+                            <div className="w-full h-1.5 bg-[#1F2B45]/50 rounded-sm overflow-hidden">
+                               <div className="h-full bg-[#EF4444] rounded-sm transition-all" style={{ width: `${fr.percentage}%` }} />
                             </div>
                          </div>
                        ))
@@ -489,54 +466,47 @@ export default function DashboardPage() {
                  </div>
               </div>
 
-              {/* Timeline Heatmap */}
-              <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm">
-                 <h4 className="text-[15px] font-semibold text-white mb-5 flex items-center gap-2"><Clock4 size={16} className="text-[#00D4FF]"/> Verification Timeline</h4>
-                 <div className="grid grid-cols-6 gap-2">
-                    {timeline_heatmap.map((slot) => {
-                       // Normalize opacity based on volume
-                       const maxVol = Math.max(...timeline_heatmap.map(t => t.volume), 1);
-                       const opacity = Math.max(0.1, slot.volume / maxVol);
-                       
-                       return (
-                         <div key={slot.hour} className="group relative">
-                           <div 
-                              className="aspect-square rounded-md transition-all duration-300 hover:ring-1 hover:ring-[#00D4FF]"
-                              style={{ backgroundColor: `rgba(0, 212, 255, ${opacity})` }}
-                           />
-                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[#050B18] border border-[#1F2B45] rounded text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none z-10 whitespace-nowrap transition-opacity">
-                              {slot.hour} • {slot.volume} reqs
+              {/* Verification Quality */}
+              <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col justify-center">
+                 <h4 className="text-[15px] font-semibold text-white mb-5">Verification Quality</h4>
+                 <div className="space-y-4 text-[13px]">
+                   <div className="flex justify-between items-center"><span className="text-slate-400 font-medium">Average Face Quality</span> <span className="text-white font-mono font-medium">{bottom_analytics.face_quality.average}%</span></div>
+                   <div className="flex justify-between items-center"><span className="text-slate-400">Blur %</span> <span className="text-slate-300 font-mono">{bottom_analytics.face_quality.blur}%</span></div>
+                   <div className="flex justify-between items-center"><span className="text-slate-400">Occlusion %</span> <span className="text-slate-300 font-mono">{bottom_analytics.face_quality.occlusion}%</span></div>
+                   <div className="flex justify-between items-center"><span className="text-slate-400">Low Light %</span> <span className="text-slate-300 font-mono">{bottom_analytics.face_quality.low_light}%</span></div>
+                   <div className="flex justify-between items-center"><span className="text-slate-400">Head Rotation Fail %</span> <span className="text-slate-300 font-mono">{bottom_analytics.face_quality.head_rotation_fail || '0.5'}%</span></div>
+                 </div>
+              </div>
+
+              {/* API Distribution */}
+              <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm flex flex-col">
+                 <h4 className="text-[15px] font-semibold text-white mb-2">API Distribution</h4>
+                 <div className="flex-1 relative flex items-center justify-center min-h-[160px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie data={apiDistributionData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={2} dataKey="value" stroke="none">
+                         {apiDistributionData.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                         ))}
+                       </Pie>
+                       <Tooltip contentStyle={{ backgroundColor: '#0A1224', border: '1px solid #1F2B45', borderRadius: '12px', fontSize: '13px' }} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                 </div>
+                 <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                    {apiDistributionData.map((d, i) => {
+                      const totalReq = executive_overview.total_verifications || 1;
+                      const pct = ((d.value / totalReq) * 100).toFixed(0);
+                      return (
+                        <div key={d.name} className="flex flex-col items-center">
+                           <div className="flex items-center gap-1.5 mb-1">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+                              <span className="text-[11px] text-slate-400 uppercase tracking-wider">{d.name}</span>
                            </div>
-                         </div>
-                       )
+                           <span className="text-[14px] font-mono text-white">{pct}%</span>
+                        </div>
+                      )
                     })}
-                 </div>
-                 <p className="text-[11px] text-slate-500 mt-4 text-center">24-hour volume distribution</p>
-              </div>
-
-              {/* Recent Alerts */}
-              <div className="bg-[#0A1224] border border-[#1F2B45] rounded-[20px] p-6 shadow-sm">
-                 <h4 className="text-[15px] font-semibold text-white mb-5 flex items-center gap-2"><Bell size={16} className="text-slate-400"/> Recent Alerts</h4>
-                 <div className="space-y-3">
-                    {recent_alerts.length === 0 ? (
-                       <div className="flex flex-col items-center justify-center py-6 text-slate-500">
-                          <CheckCircle2 size={24} className="text-[#10B981]/50 mb-2" />
-                          <span className="text-[13px]">No active alerts</span>
-                       </div>
-                    ) : (
-                       recent_alerts.map((alert, i) => (
-                         <div key={i} className="flex gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.02]">
-                            <div className="mt-0.5 shrink-0">
-                               {alert.severity === 'critical' ? <AlertCircle size={14} className="text-[#EF4444]" /> : <AlertTriangle size={14} className="text-[#F59E0B]" />}
-                            </div>
-                            <div className="flex flex-col">
-                               <span className="text-[13px] font-medium text-slate-200">{alert.type}</span>
-                               <span className="text-[12px] text-slate-500 mt-0.5">{alert.message}</span>
-                               <span className="text-[10px] text-slate-600 mt-2">{new Date(alert.time).toLocaleTimeString()}</span>
-                            </div>
-                         </div>
-                       ))
-                    )}
                  </div>
               </div>
 
@@ -561,7 +531,7 @@ function KpiCard({ title, value, trend, trendUp, icon: Icon, lastUpdate, sparkli
        </div>
        
        <div className="flex flex-col gap-1 relative z-10">
-          <span className="text-[26px] font-bold text-white tracking-tight leading-none mb-1">{value}</span>
+          <span className="text-[26px] font-bold text-white tracking-tight leading-none mb-1 font-mono">{value}</span>
           <div className="flex items-center gap-2">
             <span className={`text-[12px] font-medium ${trendUp ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                {trend}
@@ -577,21 +547,6 @@ function KpiCard({ title, value, trend, trendUp, icon: Icon, lastUpdate, sparkli
                 <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
              </LineChart>
           </ResponsiveContainer>
-       </div>
-    </div>
-  );
-}
-
-function StatusItem({ label, status, latency, color }: { label: string, status: string, latency: string, color: string }) {
-  return (
-    <div className="flex items-center justify-between text-[13px] group">
-       <div className="flex items-center gap-2">
-         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-         <span className="font-medium text-slate-300 group-hover:text-white transition-colors">{label}</span>
-       </div>
-       <div className="flex items-center gap-3">
-         <span className="text-slate-400">{status}</span>
-         <span className="text-[12px] font-mono text-slate-500 w-12 text-right">{latency}</span>
        </div>
     </div>
   );

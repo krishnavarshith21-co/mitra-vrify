@@ -194,7 +194,8 @@ export async function GET() {
           average: 98.4,
           low_light: 4.2,
           blur: 1.8,
-          occlusion: 2.0
+          occlusion: 2.0,
+          head_rotation_fail: 0.5
         },
         device_analytics: deviceAnalytics,
         country_analytics: [

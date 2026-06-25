@@ -27,7 +27,7 @@ export async function GET() {
   };
 
   // Group events by 10-second intervals for the chart
-  const temporalDataMap: Record<string, { time: string, verified: number, failed: number, spoof: number }> = {};
+  const temporalDataMap: Record<string, { time: string, verified: number, failed: number, spoof: number, count: number, totalLatency: number }> = {};
 
   // For audit logs, we map the most recent 10 events
   const auditLogs = verificationEvents.slice(-10).reverse().map(ev => ({
@@ -79,8 +79,11 @@ export async function GET() {
     const timeKey = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${roundedSeconds.toString().padStart(2, '0')}`;
 
     if (!temporalDataMap[timeKey]) {
-      temporalDataMap[timeKey] = { time: timeKey, verified: 0, failed: 0, spoof: 0 };
+      temporalDataMap[timeKey] = { time: timeKey, verified: 0, failed: 0, spoof: 0, count: 0, totalLatency: 0 };
     }
+    
+    temporalDataMap[timeKey].count++;
+    temporalDataMap[timeKey].totalLatency += event.processingTimeMs;
     
     if (event.status === 'VERIFIED' || event.status === 'IDENTITY MATCHED') {
        temporalDataMap[timeKey].verified++;
@@ -96,7 +99,14 @@ export async function GET() {
   const avgProcessingTime = total > 0 ? Math.round(totalProcessingTime / total) : 0;
   
   // Sort temporal data by time
-  const temporalData = Object.values(temporalDataMap).sort((a, b) => a.time.localeCompare(b.time)).slice(-20); // last 20 intervals
+  const temporalData = Object.values(temporalDataMap).sort((a, b) => a.time.localeCompare(b.time)).slice(-20).map(t => ({
+    time: t.time,
+    pass: t.verified,
+    failed: t.failed,
+    spoof: t.spoof,
+    latency: t.count > 0 ? Math.round(t.totalLatency / t.count) : 0,
+    throughput: t.count * 360 // Extrapolate 10s count to req/hr
+  }));
 
   return NextResponse.json({
     data: {

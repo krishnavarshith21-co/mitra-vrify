@@ -48,6 +48,7 @@ interface VerificationEvent {
   confidence: number;
   processingTimeMs: number;
   spoofFlag: boolean;
+  faceDetectedFlag?: boolean;
   identityMatchedFlag: boolean;
 }
 
@@ -86,6 +87,7 @@ export default function DashboardPage() {
       const eventsData = await eventsRes.json();
       
       setTelemetry(overviewData.data);
+      setChartData(overviewData.data.analytics_chart || []);
       setEvents(Array.isArray(eventsData) ? eventsData : []);
     } catch (err) {
       console.error('Failed to fetch dashboard data', err);
@@ -97,33 +99,10 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     fetchData();
-    // Generate initial chart data
-    const initialChart = Array.from({ length: 20 }, (_, i) => ({
-      time: i,
-      latency: 80 + Math.random() * 40,
-      throughput: 500 + Math.random() * 200,
-      pass: 450 + Math.random() * 100,
-      failed: 30 + Math.random() * 20,
-      spoof: 10 + Math.random() * 10,
-    }));
-    setChartData(initialChart);
 
     const interval = setInterval(() => {
       fetchData();
-      // Update chart data smoothly
-      setChartData(prev => {
-        const newData = [...prev.slice(1)];
-        newData.push({
-          time: prev[prev.length - 1].time + 1,
-          latency: 80 + Math.random() * 40,
-          throughput: 500 + Math.random() * 200,
-          pass: 450 + Math.random() * 100,
-          failed: 30 + Math.random() * 20,
-          spoof: 10 + Math.random() * 10,
-        });
-        return newData;
-      });
-    }, 3000); // Faster polling for "live" feel
+    }, 3000); // Poll real data every 3 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -402,30 +381,30 @@ export default function DashboardPage() {
                     </h3>
                     
                     <div className="space-y-6 relative z-10">
-                       <BiometricMetric label="Face Detection" value="Active" status="good" />
-                       <BiometricMetric label="Landmark Tracking" value="478 points" status="good" />
-                       <BiometricMetric label="Blink Detection" value="Natural" status="good" />
-                       <BiometricMetric label="Head Rotation" value="Yaw 2° / Pitch -1°" status="neutral" />
-                       <BiometricMetric label="Texture Analysis" value="Organic" status="good" />
+                       <BiometricMetric label="Face Detection" value={events[0]?.faceDetectedFlag !== false ? "Active" : "Not Found"} status={events[0]?.faceDetectedFlag !== false ? "good" : "bad"} />
+                       <BiometricMetric label="Liveness Confidence" value={`${Math.round(events[0]?.confidence || 0)}%`} status={(events[0]?.confidence || 0) > 85 ? "good" : "bad"} />
+                       <BiometricMetric label="Spoof Flag" value={events[0]?.spoofFlag ? "Detected" : "Clean"} status={events[0]?.spoofFlag ? "bad" : "good"} />
+                       <BiometricMetric label="Processing Time" value={`${events[0]?.processingTimeMs || 0} ms`} status={(events[0]?.processingTimeMs || 0) < 500 ? "good" : "neutral"} />
+                       <BiometricMetric label="Identity Matching" value={events[0]?.identityMatchedFlag ? "Matched" : (events[0]?.apiType === "Enterprise" ? "Mismatched" : "N/A")} status={events[0]?.identityMatchedFlag ? "good" : (events[0]?.apiType === "Enterprise" ? "bad" : "neutral")} />
                        
                        <div className="pt-6 border-t border-white/10 mt-6 space-y-6">
                          <div className="flex justify-between items-end">
                            <div>
-                             <p className="text-sm text-slate-400 mb-1">Confidence Score</p>
-                             <p className="text-4xl font-semibold text-white tracking-tighter">99.8<span className="text-xl text-slate-500">%</span></p>
+                             <p className="text-sm text-slate-400 mb-1">Latest API Used</p>
+                             <p className="text-3xl font-semibold text-white tracking-tight">{events[0]?.apiType || 'N/A'}</p>
                            </div>
-                           <div className="w-16 h-16 rounded-full border-4 border-[#00ff88]/20 border-t-[#00ff88] flex items-center justify-center animate-[spin_4s_linear_infinite]">
-                             <Shield size={24} className="text-[#00ff88] animate-[spin_4s_linear_infinite_reverse]" />
+                           <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center animate-[spin_4s_linear_infinite] ${events[0]?.spoofFlag ? 'border-[#ff3366]/20 border-t-[#ff3366]' : 'border-[#00ff88]/20 border-t-[#00ff88]'}`}>
+                             <Shield size={24} className={`${events[0]?.spoofFlag ? 'text-[#ff3366]' : 'text-[#00ff88]'} animate-[spin_4s_linear_infinite_reverse]`} />
                            </div>
                          </div>
 
                          <div>
                             <div className="flex justify-between text-sm mb-2">
-                               <span className="text-slate-400">Risk Assessment</span>
-                               <span className="text-[#00ff88] font-medium">Low Risk</span>
+                               <span className="text-slate-400">Latest Event Risk</span>
+                               <span className={events[0]?.spoofFlag ? "text-[#ff3366] font-medium" : "text-[#00ff88] font-medium"}>{events[0]?.spoofFlag ? "High Risk" : "Low Risk"}</span>
                             </div>
                             <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
-                               <div className="h-full w-[5%] bg-[#00ff88]" />
+                               <div className={`h-full ${events[0]?.spoofFlag ? 'bg-[#ff3366]' : 'bg-[#00ff88]'}`} style={{ width: events[0]?.spoofFlag ? '100%' : '5%' }} />
                             </div>
                          </div>
                        </div>

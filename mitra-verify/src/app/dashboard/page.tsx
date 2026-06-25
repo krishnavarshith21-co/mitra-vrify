@@ -6,14 +6,14 @@ import {
   Shield, Activity, CheckCircle2, ShieldAlert, Fingerprint, 
   Eye, Network, AlertTriangle, 
   Lock, Search, Download, ChevronLeft, ChevronRight,
-  Crosshair, Zap
+  Crosshair, Zap, Server, Database, Code, GitBranch, Key
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const BiometricCore3D = dynamic(() => import('@/components/BiometricCore3D'), { 
   ssr: false,
@@ -28,16 +28,14 @@ interface TelemetryData {
     failed_verifications: number;
     spoof_attempts_blocked: number;
     identity_matches: number;
+    face_enrollments: number;
+    webhook_deliveries: number;
     avg_processing_time_ms: number;
     active_api_keys: number;
   };
-  security_events: {
-    deepfake: number;
-    replay_attack: number;
-    identity_mismatch: number;
-    multiple_faces: number;
-    face_not_found: number;
-  };
+  api_usage: Record<string, number>;
+  analytics_chart: any[];
+  security_events: any;
 }
 
 interface VerificationEvent {
@@ -60,8 +58,10 @@ const containerVariants: any = {
 
 const itemVariants: any = {
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } } // Premium easing
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
 };
+
+const PIE_COLORS = ['#00E5FF', '#7c3aed', '#00ff88'];
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -73,9 +73,11 @@ export default function DashboardPage() {
 
   // Activity Feed State
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8; // Slightly less to give more whitespace
+  const itemsPerPage = 8; 
+
+  // Biometric Console segmented control
+  const [selectedApi, setSelectedApi] = useState<string>('Enterprise');
 
   const fetchData = async () => {
     try {
@@ -109,17 +111,10 @@ export default function DashboardPage() {
   // Filter & Pagination Logic
   const filteredEvents = useMemo(() => {
     return events.filter(ev => {
-      const matchesSearch = ev.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            ev.apiType.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      let matchesStatus = true;
-      if (statusFilter === 'VERIFIED') matchesStatus = !ev.spoofFlag && ev.status === 'VERIFIED';
-      if (statusFilter === 'SPOOF') matchesStatus = ev.spoofFlag;
-      if (statusFilter === 'FAILED') matchesStatus = ev.status === 'FAILED';
-      
-      return matchesSearch && matchesStatus;
+      return ev.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+             ev.apiType.toLowerCase().includes(searchQuery.toLowerCase());
     });
-  }, [events, searchQuery, statusFilter]);
+  }, [events, searchQuery]);
 
   const paginatedEvents = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -127,6 +122,11 @@ export default function DashboardPage() {
   }, [filteredEvents, currentPage]);
 
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+
+  // Biometric Console selected event
+  const latestSelectedApiEvent = useMemo(() => {
+    return events.find(ev => ev.apiType === selectedApi) || events[0];
+  }, [events, selectedApi]);
 
   const exportCSV = () => {
     const headers = ['ID,Timestamp,API,Status,Liveness Confidence,Processing Time (ms),Spoof Flag,Identity Match Flag\n'];
@@ -152,6 +152,13 @@ export default function DashboardPage() {
 
   const hasData = telemetry && telemetry.executive_overview.total_verifications > 0;
 
+  // Pie chart data formatting
+  const pieData = telemetry ? [
+    { name: 'API 1 (Fast)', value: telemetry.api_usage['Basic'] || 0 },
+    { name: 'API 2 (Secure)', value: telemetry.api_usage['Advanced'] || 0 },
+    { name: 'API 3 (Enterprise)', value: telemetry.api_usage['Enterprise'] || 0 },
+  ] : [];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-[#01081A] font-sans selection:bg-[#00E5FF]/30 text-slate-300 overflow-x-hidden relative">
@@ -161,26 +168,109 @@ export default function DashboardPage() {
         <div className="fixed inset-0 pointer-events-none z-0">
            <div className="absolute top-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-[#00E5FF]/5 blur-[250px] rounded-full mix-blend-screen" />
            <div className="absolute bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[#0066ff]/5 blur-[250px] rounded-full mix-blend-screen" />
-           
            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)]" />
         </div>
 
         <main className="relative z-10 pt-32 pb-24 px-6 md:px-12 max-w-[1920px] mx-auto space-y-12">
            
-           {/* SECTION 1: Premium Hero */}
+           {/* HERO SECTION */}
            <motion.section 
              variants={containerVariants} initial="hidden" animate="visible"
-             className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pb-8"
+             className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pb-4"
            >
               <motion.div variants={itemVariants} className="max-w-4xl">
+                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20 text-xs font-semibold uppercase tracking-wider mb-6">
+                   <Globe size={14} /> Ecosystem Control Center
+                 </div>
                  <h1 className="text-5xl md:text-7xl font-semibold text-white tracking-tighter mb-6 flex flex-col gap-2 leading-[1.1]">
-                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">Enterprise</span>
-                   <span>Security Console</span>
+                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">Platform</span>
+                   <span>Overview</span>
                  </h1>
                  <p className="text-lg md:text-xl text-slate-400 font-light mb-8 max-w-2xl leading-relaxed">
-                   Real-time biometric authentication, zero-trust liveness intelligence, and identity verification infrastructure.
+                   Comprehensive telemetry across all MITRA VERIFY APIs. Monitor high-volume authentication, active anti-spoofing, and zero-trust identity deployments.
                  </p>
               </motion.div>
+           </motion.section>
+
+           {/* EXECUTIVE SUMMARY */}
+           <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[#010A20]/60 ring-1 ring-white/5 rounded-2xl p-8 backdrop-blur-sm">
+              <h3 className="text-lg font-semibold text-white tracking-tight mb-8">
+                Executive Platform Summary
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-y-8 gap-x-6">
+                <SummaryStat label="API 1 Requests" value={telemetry?.api_usage['Basic']?.toLocaleString() || "0"} color="text-white" />
+                <SummaryStat label="API 2 Requests" value={telemetry?.api_usage['Advanced']?.toLocaleString() || "0"} color="text-white" />
+                <SummaryStat label="API 3 Requests" value={telemetry?.api_usage['Enterprise']?.toLocaleString() || "0"} color="text-[#00E5FF]" />
+                <SummaryStat label="Liveness Checks" value={telemetry?.executive_overview.total_verifications.toLocaleString() || "0"} color="text-[#7c3aed]" />
+                <SummaryStat label="Face Enrollments" value={telemetry?.executive_overview.face_enrollments.toLocaleString() || "0"} color="text-[#00ff88]" />
+                <SummaryStat label="Identity Matches" value={telemetry?.executive_overview.identity_matches.toLocaleString() || "0"} color="text-white" />
+                <SummaryStat label="Spoofs Blocked" value={telemetry?.executive_overview.spoof_attempts_blocked.toLocaleString() || "0"} color="text-[#ff3366]" />
+                <SummaryStat label="Webhook Deliveries" value={telemetry?.executive_overview.webhook_deliveries.toLocaleString() || "0"} color="text-slate-400" />
+              </div>
+           </motion.section>
+
+           {/* PLATFORM PRODUCTS CARDS */}
+           <motion.section variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <ProductCard 
+               name="API 1 – Fast Verification" 
+               icon={Zap} color="#00E5FF" 
+               features={['Face Detection', 'Basic Liveness', 'Fastest Response', 'High-volume Authentication']}
+             />
+             <ProductCard 
+               name="API 2 – Secure Verification" 
+               icon={ShieldAlert} color="#7c3aed" 
+               features={['Multi-step Liveness', 'Anti-Spoof Protection', 'Risk Analysis', 'Enterprise Authentication']}
+             />
+             <ProductCard 
+               name="API 3 – Enterprise Identity" 
+               icon={Fingerprint} color="#00ff88" 
+               features={['Face Enrollment', 'Identity Matching', 'Maximum Security', 'Continuous Verification']}
+             />
+           </motion.section>
+
+           {/* VERIFICATION SERVICES GRID */}
+           <motion.section variants={itemVariants} initial="hidden" animate="visible">
+             <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-6 ml-2">Modular Verification Services</h3>
+             <div className="flex flex-wrap gap-4">
+               {['Face Detection', 'Face Recognition', 'Face Enrollment', 'Liveness Detection', 'Anti-Spoof Engine', 'Identity Matching', 'API Gateway', 'Webhooks', 'SDKs', 'Developer Portal'].map(service => (
+                 <div key={service} className="px-5 py-3 rounded-xl bg-[#010A20]/40 ring-1 ring-white/5 flex items-center gap-3 text-sm font-medium text-slate-300 hover:ring-[#00E5FF]/30 hover:bg-[#00E5FF]/5 transition-all cursor-default">
+                   <div className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]" />
+                   {service}
+                 </div>
+               ))}
+             </div>
+           </motion.section>
+
+           {/* BRANCHING ARCHITECTURE DIAGRAM */}
+           <motion.section variants={itemVariants} initial="hidden" animate="visible" className="py-12 bg-[#010A20]/40 ring-1 ring-white/5 rounded-2xl px-8 backdrop-blur-sm relative overflow-hidden">
+             <h3 className="text-sm font-medium text-slate-300 mb-8 flex items-center gap-2">
+               <GitBranch size={16} className="text-[#00E5FF]" /> Platform Architecture
+             </h3>
+             <div className="flex flex-col md:flex-row items-center justify-center gap-12 relative z-10 w-full max-w-5xl mx-auto">
+                
+                {/* Input Node */}
+                <div className="flex flex-col items-center">
+                  <div className="w-14 h-14 rounded-2xl bg-white/5 ring-1 ring-white/10 flex items-center justify-center mb-3">
+                    <Eye size={20} className="text-slate-400" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-300">Camera Input</span>
+                </div>
+
+                {/* Arrow / Gateway */}
+                <div className="flex-1 h-[2px] bg-gradient-to-r from-transparent via-[#00E5FF]/50 to-transparent relative hidden md:block">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#010A20] ring-1 ring-[#00E5FF]/30 flex items-center justify-center z-20">
+                    <Server size={12} className="text-[#00E5FF]" />
+                  </div>
+                  <span className="absolute top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono text-[#00E5FF] uppercase tracking-widest whitespace-nowrap">API Gateway</span>
+                </div>
+
+                {/* API Nodes */}
+                <div className="flex flex-col gap-6">
+                  <ApiNode name="API 1 (Fast)" icon={Zap} color="#00E5FF" delay={0} />
+                  <ApiNode name="API 2 (Secure)" icon={ShieldAlert} color="#7c3aed" delay={0.5} />
+                  <ApiNode name="API 3 (Enterprise)" icon={Fingerprint} color="#00ff88" delay={1} />
+                </div>
+             </div>
            </motion.section>
 
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
@@ -188,59 +278,43 @@ export default function DashboardPage() {
               {/* LEFT COLUMN: Data & Operations (Col 1-8) */}
               <div className="xl:col-span-8 flex flex-col gap-8">
                  
-                 {/* Executive Summary (Moved to top of left column for immediate KPI access) */}
+                 {/* API Usage Analytics */}
                  <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[#010A20]/60 ring-1 ring-white/5 rounded-2xl p-8 backdrop-blur-sm">
-                    <h3 className="text-lg font-semibold text-white tracking-tight mb-6">
-                      Executive Summary
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4">
-                      <SummaryStat label="Verified Sessions" value={telemetry?.executive_overview.successful_verifications.toLocaleString() || "0"} color="text-white" />
-                      <SummaryStat label="Blocked Spoofs" value={telemetry?.executive_overview.spoof_attempts_blocked.toLocaleString() || "0"} color="text-[#00E5FF]" />
-                      <SummaryStat label="Identity Matches" value={telemetry?.executive_overview.identity_matches.toLocaleString() || "0"} color="text-[#7c3aed]" />
-                      <SummaryStat label="Failed Sessions" value={telemetry?.executive_overview.failed_verifications.toLocaleString() || "0"} color="text-slate-500" />
-                    </div>
-                 </motion.section>
-
-                 {/* Animated Verification Pipeline */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="py-8 bg-[#010A20]/40 ring-1 ring-white/5 rounded-2xl px-8 backdrop-blur-sm">
-                   <h3 className="text-sm font-medium text-slate-300 mb-10 flex items-center gap-2">
-                     <Network size={16} className="text-[#00E5FF]" /> Live Verification Pipeline
-                   </h3>
-                   <div className="relative flex items-center justify-between w-full px-4">
-                      {/* Flowing animated line */}
-                      <svg className="absolute top-1/2 left-10 right-10 h-6 -translate-y-1/2 z-0 overflow-visible w-[calc(100%-80px)]" preserveAspectRatio="none">
-                         <path d="M0,12 L2000,12" stroke="rgba(255,255,255,0.05)" strokeWidth="2" fill="none" />
-                         {/* Animated Particles */}
-                         <motion.circle 
-                           r="3" fill="#00E5FF" 
-                           animate={{ cx: ["0%", "100%"] }} 
-                           transition={{ duration: 3, ease: "linear", repeat: Infinity }} 
-                           cy="12" className="shadow-[0_0_10px_#00E5FF]"
-                         />
-                         <motion.circle 
-                           r="3" fill="#00ff88" 
-                           animate={{ cx: ["0%", "100%"] }} 
-                           transition={{ duration: 3, ease: "linear", repeat: Infinity, delay: 1.5 }} 
-                           cy="12" className="shadow-[0_0_10px_#00ff88]"
-                         />
-                      </svg>
-
-                      {[
-                        { name: 'Camera', icon: Eye },
-                        { name: 'Face Mesh', icon: Crosshair },
-                        { name: 'Liveness', icon: Activity },
-                        { name: 'Anti-Spoof', icon: ShieldAlert },
-                        { name: 'Identity', icon: Fingerprint },
-                        { name: 'Decision', icon: Zap },
-                      ].map((node, i) => (
-                        <div key={i} className="flex flex-col items-center relative z-10 group">
-                           <div className="w-12 h-12 rounded-2xl bg-[#010A20] ring-1 ring-white/10 flex items-center justify-center mb-4 group-hover:ring-[#00E5FF]/50 transition-all group-hover:-translate-y-1 shadow-lg bg-clip-padding backdrop-filter backdrop-blur-xl">
-                              <node.icon size={18} className="text-slate-400 group-hover:text-[#00E5FF] transition-colors" />
-                           </div>
-                           <div className="text-sm font-medium text-slate-200">{node.name}</div>
+                    <h3 className="text-lg font-semibold text-white tracking-tight mb-8">API Usage Distribution</h3>
+                    <div className="flex flex-col md:flex-row items-center gap-12">
+                      <div className="w-48 h-48 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                              {pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#010A20', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} itemStyle={{ color: '#fff' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                          <span className="text-xs text-slate-500">Total</span>
+                          <span className="text-xl font-bold text-white">{telemetry?.executive_overview.total_verifications.toLocaleString() || 0}</span>
                         </div>
-                      ))}
-                   </div>
+                      </div>
+                      <div className="flex-1 flex flex-col gap-4 w-full">
+                        {pieData.map((d, i) => (
+                          <div key={d.name} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] ring-1 ring-white/5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
+                              <span className="text-sm font-medium text-slate-300">{d.name}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-bold text-white">{d.value.toLocaleString()} req</span>
+                              <span className="text-xs text-slate-500 w-12 text-right">
+                                {telemetry?.executive_overview.total_verifications ? Math.round((d.value / telemetry.executive_overview.total_verifications) * 100) : 0}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                  </motion.section>
 
                  {/* Real-time Verification Feed */}
@@ -248,16 +322,16 @@ export default function DashboardPage() {
                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
                       <div>
                         <h3 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2 mb-2">
-                          Live Verification Feed
+                          Live Platform Feed
                         </h3>
-                        <p className="text-sm text-slate-400 font-light">Real-time audit log of API events and identity decisions.</p>
+                        <p className="text-sm text-slate-400 font-light">Real-time audit log of events across all APIs.</p>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input 
                               type="text" 
-                              placeholder="Search ID..." 
+                              placeholder="Search ID or API..." 
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               className="bg-white/[0.02] ring-1 ring-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-[#00E5FF]/50 w-56 transition-all"
@@ -273,7 +347,7 @@ export default function DashboardPage() {
                       <div className="w-full h-64 rounded-xl flex flex-col items-center justify-center text-center bg-white/[0.01] ring-1 ring-white/5">
                         <Activity size={32} className="text-slate-600 mb-4 animate-pulse" />
                         <h4 className="text-lg font-medium text-white mb-2">Awaiting Telemetry</h4>
-                        <p className="text-slate-500 text-sm font-light">Listening for incoming verification requests...</p>
+                        <p className="text-slate-500 text-sm font-light">Listening for incoming API requests...</p>
                       </div>
                    ) : (
                       <div className="flex-1 flex flex-col rounded-xl overflow-hidden">
@@ -282,9 +356,9 @@ export default function DashboardPage() {
                              <thead className="bg-transparent text-slate-400 border-b border-white/5">
                                 <tr>
                                    <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Timestamp</th>
+                                   <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">API</th>
                                    <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Request ID</th>
                                    <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Liveness</th>
-                                   <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Identity</th>
                                    <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Latency</th>
                                    <th className="px-4 py-4 text-xs font-medium uppercase tracking-wider">Status</th>
                                 </tr>
@@ -300,21 +374,21 @@ export default function DashboardPage() {
                                       className="hover:bg-white/[0.02] transition-colors group"
                                    >
                                       <td className="px-4 py-4 text-sm text-slate-400">{new Date(ev.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3 })}</td>
+                                      <td className="px-4 py-4">
+                                        <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-md border ${
+                                          ev.apiType === 'Basic' ? 'bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/20' : 
+                                          ev.apiType === 'Advanced' ? 'bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/20' : 
+                                          'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20'
+                                        }`}>
+                                          {ev.apiType}
+                                        </span>
+                                      </td>
                                       <td className="px-4 py-4 font-mono text-xs text-slate-300">{ev.id.substring(0, 18)}...</td>
                                       <td className="px-4 py-4">
                                          <div className="flex items-center gap-2">
                                            <div className={`w-1.5 h-1.5 rounded-full ${ev.spoofFlag ? 'bg-[#ff3366]' : 'bg-[#00ff88]'}`} />
                                            <span className="text-sm font-medium text-slate-200">{Math.round(ev.confidence)}%</span>
                                          </div>
-                                      </td>
-                                      <td className="px-4 py-4">
-                                         {ev.apiType === 'Enterprise' ? (
-                                            <span className={`text-sm font-medium ${ev.identityMatchedFlag ? 'text-slate-200' : 'text-slate-500'}`}>
-                                               {ev.identityMatchedFlag ? 'Matched' : 'N/A'}
-                                            </span>
-                                         ) : (
-                                            <span className="text-slate-600">-</span>
-                                         )}
                                       </td>
                                       <td className="px-4 py-4 font-mono text-xs text-slate-400">{ev.processingTimeMs}ms</td>
                                       <td className="px-4 py-4">
@@ -346,21 +420,17 @@ export default function DashboardPage() {
               {/* RIGHT COLUMN: Biometric Console & Telemetry (Col 9-12) */}
               <div className="xl:col-span-4 flex flex-col gap-8">
                  
-                 {/* Mission Control 3D (Moved to right top) */}
+                 {/* Mission Control 3D */}
                  <motion.section variants={itemVariants} initial="hidden" animate="visible" className="relative w-full h-[300px] rounded-2xl bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden ring-1 ring-white/5 group bg-[#010A20]/60 backdrop-blur-sm">
-                   
-                   {/* 3D Biometric Core Background */}
                    <div className="absolute inset-0 z-0 opacity-80 group-hover:opacity-100 transition-opacity duration-1000 flex items-center justify-center">
                       <div className="w-full h-full scale-[1.1] origin-center -translate-y-4">
                          <BiometricCore3D />
                       </div>
                    </div>
-                   
-                   {/* Overlay UI */}
                    <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-end z-10 bg-gradient-to-t from-[#01081A] via-[#01081A]/40 to-transparent">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#00E5FF]/10 text-[#00E5FF]">
-                          <Shield size={14} />
+                          <Globe size={14} />
                         </div>
                         <h2 className="text-xl font-semibold text-white tracking-tight">Mission Control</h2>
                       </div>
@@ -376,35 +446,49 @@ export default function DashboardPage() {
                       <div className="w-1.5 h-4 bg-[#00E5FF] rounded-full animate-[pulse_1s_ease-in-out_infinite_0.4s]" />
                     </div>
                     
-                    <h3 className="text-lg font-semibold text-white tracking-tight mb-8">
-                       Live Biometric Console
-                    </h3>
+                    <div className="flex flex-col gap-4 mb-8">
+                      <h3 className="text-lg font-semibold text-white tracking-tight">
+                         Live Biometric Console
+                      </h3>
+                      {/* Segmented Control */}
+                      <div className="flex items-center bg-white/5 ring-1 ring-white/10 rounded-xl p-1 relative z-10">
+                        {['Basic', 'Advanced', 'Enterprise'].map(api => (
+                          <button 
+                            key={api}
+                            onClick={() => setSelectedApi(api)}
+                            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedApi === api ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
+                          >
+                            {api === 'Basic' ? 'API 1' : api === 'Advanced' ? 'API 2' : 'API 3'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     
                     <div className="space-y-6 relative z-10">
-                       <BiometricMetric label="Face Detection" value={events[0]?.faceDetectedFlag !== false ? "Active" : "Not Found"} status={events[0]?.faceDetectedFlag !== false ? "good" : "bad"} />
-                       <BiometricMetric label="Liveness Confidence" value={`${Math.round(events[0]?.confidence || 0)}%`} status={(events[0]?.confidence || 0) > 85 ? "good" : "bad"} />
-                       <BiometricMetric label="Spoof Flag" value={events[0]?.spoofFlag ? "Detected" : "Clean"} status={events[0]?.spoofFlag ? "bad" : "good"} />
-                       <BiometricMetric label="Processing Time" value={`${events[0]?.processingTimeMs || 0} ms`} status={(events[0]?.processingTimeMs || 0) < 500 ? "good" : "neutral"} />
-                       <BiometricMetric label="Identity Matching" value={events[0]?.identityMatchedFlag ? "Matched" : (events[0]?.apiType === "Enterprise" ? "Mismatched" : "N/A")} status={events[0]?.identityMatchedFlag ? "good" : (events[0]?.apiType === "Enterprise" ? "bad" : "neutral")} />
+                       <BiometricMetric label="Face Detection" value={latestSelectedApiEvent?.faceDetectedFlag !== false ? "Active" : "Not Found"} status={latestSelectedApiEvent?.faceDetectedFlag !== false ? "good" : "bad"} />
+                       <BiometricMetric label="Liveness Confidence" value={`${Math.round(latestSelectedApiEvent?.confidence || 0)}%`} status={(latestSelectedApiEvent?.confidence || 0) > 85 ? "good" : "bad"} />
+                       <BiometricMetric label="Spoof Flag" value={latestSelectedApiEvent?.spoofFlag ? "Detected" : "Clean"} status={latestSelectedApiEvent?.spoofFlag ? "bad" : "good"} />
+                       <BiometricMetric label="Processing Time" value={`${latestSelectedApiEvent?.processingTimeMs || 0} ms`} status={(latestSelectedApiEvent?.processingTimeMs || 0) < 500 ? "good" : "neutral"} />
+                       <BiometricMetric label="Identity Matching" value={latestSelectedApiEvent?.identityMatchedFlag ? "Matched" : (latestSelectedApiEvent?.apiType === "Enterprise" ? "Mismatched" : "N/A")} status={latestSelectedApiEvent?.identityMatchedFlag ? "good" : (latestSelectedApiEvent?.apiType === "Enterprise" ? "bad" : "neutral")} />
                        
                        <div className="pt-6 border-t border-white/10 mt-6 space-y-6">
                          <div className="flex justify-between items-end">
                            <div>
-                             <p className="text-sm text-slate-400 mb-1">Latest API Used</p>
-                             <p className="text-3xl font-semibold text-white tracking-tight">{events[0]?.apiType || 'N/A'}</p>
+                             <p className="text-sm text-slate-400 mb-1">Target API View</p>
+                             <p className="text-3xl font-semibold text-white tracking-tight">{latestSelectedApiEvent?.apiType || selectedApi}</p>
                            </div>
-                           <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center animate-[spin_4s_linear_infinite] ${events[0]?.spoofFlag ? 'border-[#ff3366]/20 border-t-[#ff3366]' : 'border-[#00ff88]/20 border-t-[#00ff88]'}`}>
-                             <Shield size={24} className={`${events[0]?.spoofFlag ? 'text-[#ff3366]' : 'text-[#00ff88]'} animate-[spin_4s_linear_infinite_reverse]`} />
+                           <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center animate-[spin_4s_linear_infinite] ${latestSelectedApiEvent?.spoofFlag ? 'border-[#ff3366]/20 border-t-[#ff3366]' : 'border-[#00ff88]/20 border-t-[#00ff88]'}`}>
+                             <Shield size={24} className={`${latestSelectedApiEvent?.spoofFlag ? 'text-[#ff3366]' : 'text-[#00ff88]'} animate-[spin_4s_linear_infinite_reverse]`} />
                            </div>
                          </div>
 
                          <div>
                             <div className="flex justify-between text-sm mb-2">
                                <span className="text-slate-400">Latest Event Risk</span>
-                               <span className={events[0]?.spoofFlag ? "text-[#ff3366] font-medium" : "text-[#00ff88] font-medium"}>{events[0]?.spoofFlag ? "High Risk" : "Low Risk"}</span>
+                               <span className={latestSelectedApiEvent?.spoofFlag ? "text-[#ff3366] font-medium" : "text-[#00ff88] font-medium"}>{latestSelectedApiEvent?.spoofFlag ? "High Risk" : "Low Risk"}</span>
                             </div>
                             <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
-                               <div className={`h-full ${events[0]?.spoofFlag ? 'bg-[#ff3366]' : 'bg-[#00ff88]'}`} style={{ width: events[0]?.spoofFlag ? '100%' : '5%' }} />
+                               <div className={`h-full transition-all duration-500 ${latestSelectedApiEvent?.spoofFlag ? 'bg-[#ff3366]' : 'bg-[#00ff88]'}`} style={{ width: latestSelectedApiEvent?.spoofFlag ? '100%' : '5%' }} />
                             </div>
                          </div>
                        </div>
@@ -522,6 +606,58 @@ export default function DashboardPage() {
 
 // ─── HELPER COMPONENTS ──────────────────────────────────────────────────────
 
+function SummaryStat({ label, value, color }: { label: string, value: string, color: string }) {
+  return (
+    <div className="flex flex-col">
+      <p className="text-xs text-slate-500 mb-1.5 uppercase tracking-wider font-semibold">{label}</p>
+      <p className={`text-2xl font-bold tracking-tight ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function ProductCard({ name, icon: Icon, features, color }: { name: string, icon: any, features: string[], color: string }) {
+  return (
+    <div className="bg-[#010A20]/40 ring-1 ring-white/5 rounded-2xl p-6 hover:ring-white/10 transition-all flex flex-col group">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform" style={{ color }}>
+          <Icon size={20} />
+        </div>
+        <h3 className="font-semibold text-white">{name}</h3>
+      </div>
+      <ul className="space-y-3 flex-1">
+        {features.map((feature, idx) => (
+          <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color }} />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 pt-4 border-t border-white/5">
+        <button className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2">
+          View API Docs <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ApiNode({ name, icon: Icon, color, delay }: { name: string, icon: any, color: string, delay: number }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay }}
+      className="flex items-center gap-4 relative"
+    >
+      <div className="w-8 h-[2px] bg-white/10 hidden md:block" />
+      <div className="px-5 py-3 rounded-xl bg-[#010A20] ring-1 ring-white/10 flex items-center gap-3 shadow-lg min-w-[200px]">
+        <Icon size={16} style={{ color }} />
+        <span className="text-sm font-medium text-white">{name}</span>
+      </div>
+    </motion.div>
+  );
+}
+
 function BiometricMetric({ label, value, status }: { label: string, value: string, status: 'good' | 'neutral' | 'bad' }) {
   const statusColor = status === 'good' ? 'text-[#00ff88] bg-[#00ff88]/10' : status === 'neutral' ? 'text-slate-300 bg-white/10' : 'text-[#ff3366] bg-[#ff3366]/10';
   
@@ -531,15 +667,6 @@ function BiometricMetric({ label, value, status }: { label: string, value: strin
       <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusColor}`}>
         {value}
       </span>
-    </div>
-  );
-}
-
-function SummaryStat({ label, value, color }: { label: string, value: string, color: string }) {
-  return (
-    <div>
-      <p className="text-sm text-slate-500 mb-1">{label}</p>
-      <p className={`text-2xl font-semibold tracking-tight ${color}`}>{value}</p>
     </div>
   );
 }

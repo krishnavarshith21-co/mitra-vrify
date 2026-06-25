@@ -12,10 +12,10 @@ export async function GET() {
   let identityMatches = 0;
   let totalProcessingTime = 0;
 
-  const apiUsage = {
-    Basic: 0,
-    Advanced: 0,
-    Enterprise: 0
+  const apiPerformance: Record<string, { requests: number, pass: number, fail: number, spoof: number, faceLost: number, totalLatency: number }> = {
+    Basic: { requests: 0, pass: 0, fail: 0, spoof: 0, faceLost: 0, totalLatency: 0 },
+    Advanced: { requests: 0, pass: 0, fail: 0, spoof: 0, faceLost: 0, totalLatency: 0 },
+    Enterprise: { requests: 0, pass: 0, fail: 0, spoof: 0, faceLost: 0, totalLatency: 0 }
   };
 
   const securityEvents = {
@@ -27,7 +27,7 @@ export async function GET() {
   };
 
   // Group events by 10-second intervals for the chart
-  const temporalDataMap: Record<string, { time: string, verified: number, failed: number, spoof: number, count: number, totalLatency: number }> = {};
+  const temporalDataMap: Record<string, { time: string, verified: number, failed: number, spoof: number, faceLost: number, count: number, totalLatency: number }> = {};
 
   // For audit logs, we map the most recent 10 events
   const auditLogs = verificationEvents.slice(-10).reverse().map(ev => ({
@@ -41,9 +41,22 @@ export async function GET() {
   for (const event of verificationEvents) {
     totalProcessingTime += event.processingTimeMs;
     
-    // API Usage
-    if (apiUsage[event.apiType] !== undefined) {
-      apiUsage[event.apiType]++;
+    // API Performance
+    if (apiPerformance[event.apiType]) {
+      const perf = apiPerformance[event.apiType];
+      perf.requests++;
+      perf.totalLatency += event.processingTimeMs;
+      if (event.status === 'VERIFIED' || event.status === 'IDENTITY MATCHED') {
+        perf.pass++;
+      } else if (event.spoofFlag) {
+        perf.spoof++;
+        perf.fail++;
+      } else if (event.status === 'NO FACE DETECTED' || !event.faceDetectedFlag) {
+        perf.faceLost++;
+        perf.fail++;
+      } else {
+        perf.fail++;
+      }
     }
 
     if (event.status === 'VERIFIED' || event.status === 'IDENTITY MATCHED') {
@@ -79,7 +92,7 @@ export async function GET() {
     const timeKey = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${roundedSeconds.toString().padStart(2, '0')}`;
 
     if (!temporalDataMap[timeKey]) {
-      temporalDataMap[timeKey] = { time: timeKey, verified: 0, failed: 0, spoof: 0, count: 0, totalLatency: 0 };
+      temporalDataMap[timeKey] = { time: timeKey, verified: 0, failed: 0, spoof: 0, faceLost: 0, count: 0, totalLatency: 0 };
     }
     
     temporalDataMap[timeKey].count++;
@@ -89,6 +102,9 @@ export async function GET() {
        temporalDataMap[timeKey].verified++;
     } else if (event.spoofFlag) {
        temporalDataMap[timeKey].spoof++;
+       temporalDataMap[timeKey].failed++;
+    } else if (event.status === 'NO FACE DETECTED' || !event.faceDetectedFlag) {
+       temporalDataMap[timeKey].faceLost++;
        temporalDataMap[timeKey].failed++;
     } else {
        temporalDataMap[timeKey].failed++;
@@ -104,6 +120,7 @@ export async function GET() {
     pass: t.verified,
     failed: t.failed,
     spoof: t.spoof,
+    faceLost: t.faceLost,
     latency: t.count > 0 ? Math.round(t.totalLatency / t.count) : 0,
     throughput: t.count * 360 // Extrapolate 10s count to req/hr
   }));
@@ -116,14 +133,15 @@ export async function GET() {
         failed_verifications: failed,
         spoof_attempts_blocked: spoof,
         identity_matches: identityMatches,
-        face_enrollments: apiUsage['Enterprise'] > 0 ? Math.floor(apiUsage['Enterprise'] * 0.4) : 0,
+        face_enrollments: apiPerformance['Enterprise'].requests > 0 ? Math.floor(apiPerformance['Enterprise'].requests * 0.4) : 0,
         webhook_deliveries: total,
+        face_lost_events: noFace,
         avg_processing_time_ms: avgProcessingTime,
         active_api_keys: 3,
       },
       analytics_chart: temporalData,
       security_events: securityEvents,
-      api_usage: apiUsage,
+      api_performance: apiPerformance,
       audit_logs: auditLogs,
       system_health: {
         face_detection: 'Operational',

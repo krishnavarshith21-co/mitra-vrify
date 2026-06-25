@@ -344,6 +344,8 @@ export default function EnterpriseDemoPage() {
   // Enrollment states
   const [enrolledEmbedding, setEnrolledEmbedding] = useState<number[] | null>(null);
   const [enrolling, setEnrolling] = useState(false);
+  const [isStabilizing, setIsStabilizing] = useState(false);
+  const [enrollmentSnapshot, setEnrollmentSnapshot] = useState<string | null>(null);
 
   // Verify helper indicating if verification is enabled/active
   const hasFaceEnrolled = useMemo(() => !!enrolledEmbedding, [enrolledEmbedding]);
@@ -712,12 +714,17 @@ export default function EnterpriseDemoPage() {
         setFaceVisibleDuration(0);
         setConsecutiveValidFrames(0);
         noseHistoryRef.current = [];
-        setDetectionStability(0.0);
-        
         setFaceTrackingState('SESSION_TERMINATED');
         prevTrackingStateRef.current = 'SESSION_TERMINATED';
-        console.log(`[Face Verification] Face lost timer exceeded. Terminating session. Reason: Face Lost`);
-        triggerSessionTermination('Face Lost', false);
+        
+        let exactReason = 'No Face Detected';
+        if (data && data.detected_faces > 1) exactReason = 'Multiple Faces';
+        else if (data && data.face_confidence <= 0.50) exactReason = 'Low Detection Confidence';
+        else if (data && !data.face_present) exactReason = 'Tracking Lost';
+        else if (!data) exactReason = 'Camera Interrupted';
+
+        console.log(`[Face Verification] Face lost timer exceeded. Terminating session. Reason: ${exactReason}`);
+        triggerSessionTermination(exactReason, false);
       }
     };
 
@@ -802,7 +809,7 @@ export default function EnterpriseDemoPage() {
          isFacePresentAndValid &&
         data.detected_faces === 1 &&
         inside &&
-        (!hasFaceEnrolled || (
+        (!hasFaceEnrolled || isStabilizing || (
           data.spoof_score < 0.45 &&
           data.deepfake_risk < 0.30 &&
           data.similarity_score >= 0.75
@@ -828,6 +835,12 @@ export default function EnterpriseDemoPage() {
             
             if (enrolledEmbedding) {
               const sim = cosineSimilarity(enrolledEmbedding, liveEmb);
+              if (!isStabilizing) {
+                 console.log(`Identity Match Score: ${(sim * 100).toFixed(0)}%`);
+                 if (sim >= 0.85) {
+                    console.log("Identity Match Passed");
+                 }
+              }
               console.log("Similarity:", sim);
               
               similarityHistoryRef.current.push(sim);
@@ -850,6 +863,9 @@ export default function EnterpriseDemoPage() {
           prevTrackingStateRef.current = 'FACE_PRESENT';
         }
         console.log("FACE_DETECTED: YES");
+        if (isFacePresentAndValid) {
+           console.log("Face Detected");
+        }
         console.log(`LANDMARKS_FOUND: count=${data.landmark_count}`);
         console.log("EMBEDDING_GENERATED");
         if (hasFaceEnrolled && data.similarity_score >= 0.85) {
@@ -976,6 +992,7 @@ export default function EnterpriseDemoPage() {
               stepStartTimeRef.current = Date.now();
               if (nextStep >= challenges.length) {
                 console.log("LIVENESS_COMPLETE");
+                console.log("Liveness Passed");
               }
             }
           }
@@ -1101,6 +1118,9 @@ export default function EnterpriseDemoPage() {
           identityMatchedFlag: overallResult === 'pass',
           attentionScore: gazeAvailable ? 0.95 : (overallResult === 'pass' ? 0.9 : 0.4),
         }).catch(console.error);
+        if (overallResult === 'pass') {
+           console.log("Verification Complete");
+        }
       });
     }
   }, [overallResult]);
@@ -1176,6 +1196,7 @@ export default function EnterpriseDemoPage() {
         video: { width: 640, height: 480, facingMode: 'user' }
       });
       if (stream && stream.active) {
+        console.log("Camera Started");
         console.log("CAMERA_STARTED: Web camera stream obtained successfully.");
         setCameraStatus('Active');
       } else {
@@ -1256,16 +1277,22 @@ export default function EnterpriseDemoPage() {
     if (!ctx) return;
 
     setEnrolling(true);
+    console.log("Enrollment Started");
     try {
       // Draw frame to canvas
       canvas.width = 320;
       canvas.height = 240;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const base64Image = canvas.toDataURL('image/jpeg', 0.80);
+      setEnrollmentSnapshot(base64Image);
 
       // Call API
       const res = await livenessAPI.enrollFace(base64Image);
       if (res.data && res.data.embedding_vector) {
+        console.log("Enrollment Complete");
+        console.log("Waiting for Stabilization");
+        setIsStabilizing(true);
+
         setEnrolledEmbedding(res.data.embedding_vector);
         localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
         localStorage.setItem('mv_enrolled_signature', JSON.stringify(res.data.embedding_vector));
@@ -1274,6 +1301,12 @@ export default function EnterpriseDemoPage() {
         console.log("Enrollment embedding generated");
         console.log(res.data.embedding_vector.length);
         await refreshUser();
+
+        setTimeout(() => {
+           console.log("Identity Matching Started");
+           setIsStabilizing(false);
+        }, 1000);
+
       } else {
         alert("Failed to enroll face: Invalid response from backend");
       }
@@ -1803,6 +1836,12 @@ export default function EnterpriseDemoPage() {
                       <RotateCcw size={10} /> Reset
                     </button>
                   </div>
+
+                  {enrollmentSnapshot && (
+                    <div style={{ marginBottom: 14, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', height: 80, display: 'flex', justifyContent: 'center', background: '#000' }}>
+                      <img src={enrollmentSnapshot} style={{ height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} alt="Enrolled Face" />
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

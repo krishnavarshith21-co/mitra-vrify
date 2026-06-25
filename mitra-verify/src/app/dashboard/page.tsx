@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
   const [events, setEvents] = useState<VerificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<{time: number, latency: number, throughput: number}[]>([]);
+  const [chartData, setChartData] = useState<{time: number, latency: number, throughput: number, pass: number, failed: number, spoof: number}[]>([]);
 
   // Activity Feed State
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,6 +102,9 @@ export default function DashboardPage() {
       time: i,
       latency: 80 + Math.random() * 40,
       throughput: 500 + Math.random() * 200,
+      pass: 450 + Math.random() * 100,
+      failed: 30 + Math.random() * 20,
+      spoof: 10 + Math.random() * 10,
     }));
     setChartData(initialChart);
 
@@ -114,6 +117,9 @@ export default function DashboardPage() {
           time: prev[prev.length - 1].time + 1,
           latency: 80 + Math.random() * 40,
           throughput: 500 + Math.random() * 200,
+          pass: 450 + Math.random() * 100,
+          failed: 30 + Math.random() * 20,
+          spoof: 10 + Math.random() * 10,
         });
         return newData;
       });
@@ -475,6 +481,36 @@ export default function DashboardPage() {
                              </defs>
                              <Tooltip contentStyle={{ backgroundColor: '#010A20', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} itemStyle={{ color: '#7c3aed' }} />
                              <Area type="monotone" dataKey="throughput" stroke="#7c3aed" strokeWidth={2} fillOpacity={1} fill="url(#colorThroughput)" isAnimationActive={false} />
+                           </AreaChart>
+                         </ResponsiveContainer>
+                       </div>
+                     </div>
+
+                     <div>
+                       <div className="flex justify-between items-end mb-4">
+                         <p className="text-sm text-slate-400">Verification Results</p>
+                       </div>
+                       <div className="h-32 w-full">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <AreaChart data={chartData}>
+                             <defs>
+                               <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="5%" stopColor="#00ff88" stopOpacity={0.3}/>
+                                 <stop offset="95%" stopColor="#00ff88" stopOpacity={0}/>
+                               </linearGradient>
+                               <linearGradient id="colorSpoof" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="5%" stopColor="#ff3366" stopOpacity={0.3}/>
+                                 <stop offset="95%" stopColor="#ff3366" stopOpacity={0}/>
+                               </linearGradient>
+                               <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
+                                 <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                               </linearGradient>
+                             </defs>
+                             <Tooltip contentStyle={{ backgroundColor: '#010A20', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+                             <Area type="monotone" dataKey="pass" stackId="1" stroke="#00ff88" strokeWidth={1} fillOpacity={1} fill="url(#colorPass)" isAnimationActive={false} name="Passed" />
+                             <Area type="monotone" dataKey="failed" stackId="1" stroke="#94a3b8" strokeWidth={1} fillOpacity={1} fill="url(#colorFailed)" isAnimationActive={false} name="Failed" />
+                             <Area type="monotone" dataKey="spoof" stackId="1" stroke="#ff3366" strokeWidth={1} fillOpacity={1} fill="url(#colorSpoof)" isAnimationActive={false} name="Spoofed" />
                            </AreaChart>
                          </ResponsiveContainer>
                        </div>

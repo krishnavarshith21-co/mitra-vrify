@@ -198,20 +198,7 @@ export default function DashboardPage() {
                  </p>
               </motion.div>
               
-              <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-4 pb-2">
-                 {/* Only one primary CTA */}
-                 <Link href="/demo/enterprise" className="px-8 py-4 rounded-xl bg-[#00d4ff] text-[#020610] hover:bg-white hover:scale-105 transition-all text-sm font-bold tracking-wide shadow-[0_0_40px_rgba(0,212,255,0.3)] flex items-center gap-2 group">
-                   Launch Verification <Activity size={16} className="group-hover:animate-pulse" />
-                 </Link>
-                 
-                 {/* Ghost Buttons */}
-                 <button className="px-6 py-4 rounded-xl bg-transparent hover:bg-white/5 transition-all text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <Key size={16} className="text-slate-400" /> API Keys
-                 </button>
-                 <Link href="/developer" className="px-6 py-4 rounded-xl bg-transparent hover:bg-white/5 transition-all text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <FileText size={16} className="text-slate-400" /> Docs
-                 </Link>
-              </motion.div>
+
            </motion.section>
 
            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">

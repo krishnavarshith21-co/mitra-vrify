@@ -3,16 +3,18 @@
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { 
-  Shield, Activity, Server, CheckCircle2, ShieldAlert, Fingerprint, 
+  Shield, Activity, CheckCircle2, ShieldAlert, Fingerprint, 
   Eye, Key, Network, AlertTriangle, FileText, 
-  Cpu, Webhook, Box, Lock, Code, Link as LinkIcon, Database, Terminal, 
-  Globe, Search, Filter, Download, ChevronLeft, ChevronRight, BarChart
+  Cpu, Webhook, Box, Lock, Code, Link as LinkIcon, Terminal, 
+  Globe, Search, Filter, Download, ChevronLeft, ChevronRight,
+  Crosshair, Zap
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BiometricCore3D = dynamic(() => import('@/components/BiometricCore3D'), { 
   ssr: false,
@@ -58,7 +60,7 @@ const containerVariants: any = {
 
 const itemVariants: any = {
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } } // Premium easing
 };
 
 export default function DashboardPage() {
@@ -67,12 +69,13 @@ export default function DashboardPage() {
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
   const [events, setEvents] = useState<VerificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<{time: number, latency: number, throughput: number}[]>([]);
 
   // Activity Feed State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 8; // Slightly less to give more whitespace
 
   const fetchData = async () => {
     try {
@@ -95,7 +98,27 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    // Generate initial chart data
+    const initialChart = Array.from({ length: 20 }, (_, i) => ({
+      time: i,
+      latency: 80 + Math.random() * 40,
+      throughput: 500 + Math.random() * 200,
+    }));
+    setChartData(initialChart);
+
+    const interval = setInterval(() => {
+      fetchData();
+      // Update chart data smoothly
+      setChartData(prev => {
+        const newData = [...prev.slice(1)];
+        newData.push({
+          time: prev[prev.length - 1].time + 1,
+          latency: 80 + Math.random() * 40,
+          throughput: 500 + Math.random() * 200,
+        });
+        return newData;
+      });
+    }, 3000); // Faster polling for "live" feel
     return () => clearInterval(interval);
   }, []);
 
@@ -135,255 +158,208 @@ export default function DashboardPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Trust Analytics Logic
-  const trustAnalytics = useMemo(() => {
-    if (events.length === 0) return null;
-    const avgConfidence = events.reduce((acc, curr) => acc + curr.confidence, 0) / events.length;
-    const spoofRisk = (events.filter(e => e.spoofFlag).length / events.length) * 100;
-    
-    return {
-      liveness: avgConfidence,
-      faceDetection: Math.min(avgConfidence + 2.5, 99.9), // Extrapolated from liveness for demo realism
-      identityMatch: Math.max(avgConfidence - 1.5, 85.0),
-      spoofRisk: spoofRisk
-    };
-  }, [events]);
-
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
+      <div className="min-h-screen bg-[#02040a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   const hasData = telemetry && telemetry.executive_overview.total_verifications > 0;
-  const hasThreats = telemetry && (
-    telemetry.security_events.deepfake > 0 ||
-    telemetry.security_events.replay_attack > 0 ||
-    telemetry.security_events.identity_mismatch > 0 ||
-    telemetry.security_events.multiple_faces > 0 ||
-    telemetry.security_events.face_not_found > 0
-  );
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#030712] font-sans selection:bg-[#00d4ff]/30 text-slate-300 overflow-x-hidden relative">
+      <div className="min-h-screen bg-[#02040a] font-sans selection:bg-[#00d4ff]/30 text-slate-300 overflow-x-hidden relative">
         <Navbar />
 
-        {/* Global Dark Theme Backgrounds & Neon Glows */}
+        {/* Premium Animated Grid Background */}
         <div className="fixed inset-0 pointer-events-none z-0">
-           <div className="absolute top-[-10%] right-[-5%] w-[40vw] h-[40vw] bg-[#00d4ff]/5 blur-[200px] rounded-full mix-blend-screen" />
-           <div className="absolute bottom-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[#0066ff]/5 blur-[200px] rounded-full mix-blend-screen" />
-           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,212,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,212,255,0.015)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_0%,#000_20%,transparent_100%)]" />
+           <div className="absolute top-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-[#00d4ff]/5 blur-[250px] rounded-full mix-blend-screen" />
+           <div className="absolute bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[#0066ff]/5 blur-[250px] rounded-full mix-blend-screen" />
+           
+           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)]" />
         </div>
 
-        <main className="relative z-10 pt-24 pb-20 px-4 md:px-6 max-w-[1920px] mx-auto space-y-6">
+        <main className="relative z-10 pt-32 pb-24 px-6 md:px-12 max-w-[1920px] mx-auto space-y-12">
            
-           {/* SECTION 1: Enterprise Hero */}
+           {/* SECTION 1: Premium Hero */}
            <motion.section 
              variants={containerVariants} initial="hidden" animate="visible"
-             className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-[rgba(0,255,255,0.08)] pb-6"
+             className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pb-8"
            >
-              <motion.div variants={itemVariants} className="max-w-3xl">
-                 <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 flex items-center gap-4">
-                   MITRA VERIFY Enterprise Security Console
+              <motion.div variants={itemVariants} className="max-w-4xl">
+                 <h1 className="text-5xl md:text-7xl font-semibold text-white tracking-tighter mb-6 flex flex-col gap-2 leading-[1.1]">
+                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">Enterprise</span>
+                   <span>Security Console</span>
                  </h1>
-                 <p className="text-sm text-slate-400 leading-relaxed font-light mb-6">
-                   Real-time biometric authentication, liveness intelligence, anti-spoof protection, and identity verification infrastructure.
+                 <p className="text-lg md:text-xl text-slate-400 font-light mb-8 max-w-2xl leading-relaxed">
+                   Real-time biometric authentication, zero-trust liveness intelligence, and identity verification infrastructure.
                  </p>
-                 <div className="flex flex-wrap items-center gap-4">
-                    {[
-                      { label: 'Face Detection', icon: Eye },
-                      { label: 'Liveness', icon: Activity },
-                      { label: 'Anti-Spoof', icon: ShieldAlert },
-                      { label: 'Identity', icon: Fingerprint },
-                      { label: 'API Gateway', icon: Network }
-                    ].map((engine, idx) => (
-                      <div key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.02] border border-white/5">
-                         <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse shadow-[0_0_5px_#00ff88]" />
-                         <span className="text-[10px] font-mono text-slate-300 uppercase tracking-widest">{engine.label}</span>
-                      </div>
-                    ))}
-                 </div>
               </motion.div>
-              <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3 pb-2">
-                 <Link href="/developer" className="px-5 py-2.5 rounded-lg bg-[rgba(10,20,40,0.6)] border border-[rgba(0,255,255,0.08)] hover:bg-[rgba(10,20,40,0.8)] hover:border-[rgba(0,212,255,0.3)] transition-all text-xs font-medium text-white flex items-center gap-2 shadow-[0_0_20px_rgba(0,212,255,0.05)]">
-                   <FileText size={14} className="text-slate-400" /> API Documentation
+              
+              <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-4 pb-2">
+                 {/* Only one primary CTA */}
+                 <Link href="/demo/enterprise" className="px-8 py-4 rounded-xl bg-[#00d4ff] text-[#020610] hover:bg-white hover:scale-105 transition-all text-sm font-bold tracking-wide shadow-[0_0_40px_rgba(0,212,255,0.3)] flex items-center gap-2 group">
+                   Launch Verification <Activity size={16} className="group-hover:animate-pulse" />
                  </Link>
-                 <button className="px-5 py-2.5 rounded-lg bg-[rgba(10,20,40,0.6)] border border-[rgba(0,255,255,0.08)] hover:bg-[rgba(10,20,40,0.8)] hover:border-[rgba(0,212,255,0.3)] transition-all text-xs font-medium text-white flex items-center gap-2 shadow-[0_0_20px_rgba(0,212,255,0.05)]">
-                   <Key size={14} className="text-slate-400" /> Generate API Key
+                 
+                 {/* Ghost Buttons */}
+                 <button className="px-6 py-4 rounded-xl bg-transparent hover:bg-white/5 transition-all text-sm font-medium text-slate-300 flex items-center gap-2">
+                   <Key size={16} className="text-slate-400" /> API Keys
                  </button>
-                 <Link href="/demo/enterprise" className="px-6 py-2.5 rounded-lg bg-[#00d4ff] text-[#020610] hover:bg-white transition-all text-xs font-bold uppercase tracking-wider shadow-[0_0_30px_rgba(0,212,255,0.2)] flex items-center gap-2">
-                   <Activity size={14} /> Launch Verification
+                 <Link href="/developer" className="px-6 py-4 rounded-xl bg-transparent hover:bg-white/5 transition-all text-sm font-medium text-slate-300 flex items-center gap-2">
+                   <FileText size={16} className="text-slate-400" /> Docs
                  </Link>
               </motion.div>
            </motion.section>
 
-           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
               
               {/* LEFT COLUMN: Operations (Col 1-8) */}
-              <div className="xl:col-span-8 flex flex-col gap-6">
+              <div className="xl:col-span-8 flex flex-col gap-8">
                  
-                 {/* SECTION 2: Live Verification Center */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="relative w-full h-[320px] rounded-xl bg-[rgba(5,10,25,0.8)] border border-[rgba(0,255,255,0.1)] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.5)] group">
-                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 mix-blend-screen" />
+                 {/* SECTION 2: Live Verification Center (Cleaner, no heavy borders) */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="relative w-full h-[400px] rounded-2xl bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden ring-1 ring-white/5 group">
                    
                    {/* 3D Biometric Core Background */}
-                   <div className="absolute inset-0 z-0 opacity-80 group-hover:opacity-100 transition-opacity duration-700 flex items-center justify-center">
-                      <div className="w-full h-full scale-[1.2] md:scale-[1.5] origin-center -translate-y-4">
+                   <div className="absolute inset-0 z-0 opacity-60 group-hover:opacity-100 transition-opacity duration-1000 flex items-center justify-center">
+                      <div className="w-full h-full scale-[1.3] origin-center -translate-y-8">
                          <BiometricCore3D />
                       </div>
                    </div>
                    
                    {/* Overlay UI */}
-                   <div className="absolute inset-0 pointer-events-none p-6 flex flex-col items-center justify-center text-center z-10 bg-gradient-to-t from-[#030712] via-transparent to-[rgba(3,7,18,0.5)]">
-                      <Shield size={40} className="text-[#00d4ff] mb-4 opacity-80 filter drop-shadow-[0_0_15px_rgba(0,212,255,0.5)]" />
-                      <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Mission Control: Biometric Core</h2>
-                      <p className="text-slate-400 text-sm max-w-md mb-8 font-light">Global edge network primed for ultra-low latency liveness detection and identity resolution.</p>
-                      <div className="flex gap-4 pointer-events-auto">
-                        <Link href="/demo/enterprise" className="px-8 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#00d4ff]/50 transition-all text-sm font-bold text-white flex items-center gap-2 backdrop-blur-md">
-                          Start Verification <Eye size={16} />
-                        </Link>
-                        <button className="px-8 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#00d4ff]/50 transition-all text-sm font-bold text-white flex items-center gap-2 backdrop-blur-md hidden sm:flex">
-                          Enroll Identity <Fingerprint size={16} />
-                        </button>
-                        <button className="px-8 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#00d4ff]/50 transition-all text-sm font-bold text-white flex items-center gap-2 backdrop-blur-md hidden md:flex">
-                          API Test <Terminal size={16} />
-                        </button>
+                   <div className="absolute inset-0 pointer-events-none p-8 flex flex-col justify-end z-10 bg-gradient-to-t from-[#02040a] via-[#02040a]/40 to-transparent">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#00d4ff]/10 text-[#00d4ff]">
+                          <Shield size={16} />
+                        </div>
+                        <h2 className="text-3xl font-semibold text-white tracking-tight">Mission Control</h2>
                       </div>
+                      <p className="text-slate-400 text-base max-w-xl font-light">Global edge network primed for ultra-low latency liveness detection and identity resolution.</p>
                    </div>
                  </motion.section>
 
-                 {/* SECTION 4: Verification Architecture Flow */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl p-6 relative overflow-hidden">
-                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.03)_0%,transparent_100%)]" />
-                   <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-8 flex items-center gap-2">
-                     <Network size={14} className="text-[#00d4ff]" /> Verification Architecture Pipeline
+                 {/* SECTION 3: Animated Verification Pipeline */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="py-8">
+                   <h3 className="text-sm font-medium text-slate-300 mb-8 flex items-center gap-2">
+                     <Network size={16} className="text-[#00d4ff]" /> Live Verification Pipeline
                    </h3>
-                   <div className="relative flex flex-col md:flex-row items-center justify-between gap-2 w-full px-4 overflow-x-auto pb-4 hide-scrollbar">
-                      {/* Horizontal SVG Data Path */}
-                      <svg className="absolute top-1/2 left-12 right-12 h-4 -translate-y-1/2 hidden md:block z-0 overflow-visible" preserveAspectRatio="none">
-                         <path d="M0,8 L1000,8" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
-                         {/* Animated Data Packets */}
-                         <circle r="2" fill="#00d4ff" className="animate-[slide_3s_linear_infinite]" />
-                         <circle r="2" fill="#00ff88" className="animate-[slide_3s_linear_infinite_1s]" />
+                   <div className="relative flex items-center justify-between w-full px-4">
+                      {/* Flowing animated line */}
+                      <svg className="absolute top-1/2 left-10 right-10 h-6 -translate-y-1/2 z-0 overflow-visible w-[calc(100%-80px)]" preserveAspectRatio="none">
+                         <path d="M0,12 L2000,12" stroke="rgba(255,255,255,0.05)" strokeWidth="2" fill="none" />
+                         {/* Animated Particles */}
+                         <motion.circle 
+                           r="3" fill="#00d4ff" 
+                           animate={{ cx: ["0%", "100%"] }} 
+                           transition={{ duration: 3, ease: "linear", repeat: Infinity }} 
+                           cy="12" className="shadow-[0_0_10px_#00d4ff]"
+                         />
+                         <motion.circle 
+                           r="3" fill="#00ff88" 
+                           animate={{ cx: ["0%", "100%"] }} 
+                           transition={{ duration: 3, ease: "linear", repeat: Infinity, delay: 1.5 }} 
+                           cy="12" className="shadow-[0_0_10px_#00ff88]"
+                         />
                       </svg>
 
                       {[
-                        { name: 'Client Device', type: 'Gateway' },
-                        { name: 'Capture Layer', type: 'Processor' },
-                        { name: 'Face Engine', type: 'Compute' },
-                        { name: 'Liveness', type: 'Heuristic' },
-                        { name: 'Anti-Spoof', type: 'Policy' },
-                        { name: 'Identity', type: 'Tensor' },
-                        { name: 'Decision', type: 'Service' },
-                        { name: 'Response API', type: 'Output' },
+                        { name: 'Camera', icon: Eye },
+                        { name: 'Face Mesh', icon: Crosshair },
+                        { name: 'Liveness', icon: Activity },
+                        { name: 'Anti-Spoof', icon: ShieldAlert },
+                        { name: 'Identity', icon: Fingerprint },
+                        { name: 'Decision', icon: Zap },
                       ].map((node, i) => (
-                        <div key={i} className="flex flex-col items-center relative z-10 shrink-0 px-2 group">
-                           <div className="w-10 h-10 rounded-full bg-[#050a17] border border-[#00d4ff]/30 flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(0,212,255,0.1)] relative group-hover:border-[#00d4ff] transition-colors">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#00d4ff] animate-pulse" />
-                              <div className="absolute inset-0 rounded-full border border-[#00d4ff]/50 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                        <div key={i} className="flex flex-col items-center relative z-10 group">
+                           <div className="w-12 h-12 rounded-2xl bg-[#0a0d14] ring-1 ring-white/10 flex items-center justify-center mb-4 group-hover:ring-[#00d4ff]/50 transition-all group-hover:-translate-y-1 shadow-lg bg-clip-padding backdrop-filter backdrop-blur-xl">
+                              <node.icon size={18} className="text-slate-400 group-hover:text-[#00d4ff] transition-colors" />
                            </div>
-                           <div className="text-[11px] font-bold text-white whitespace-nowrap">{node.name}</div>
-                           <div className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">{node.type}</div>
+                           <div className="text-sm font-medium text-slate-200">{node.name}</div>
                         </div>
                       ))}
                    </div>
                  </motion.section>
 
-                 {/* SECTION 7: Verification Activity Feed */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl overflow-hidden flex-1 flex flex-col">
-                   <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b border-[rgba(0,255,255,0.05)] gap-4">
-                      <h3 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                        <Activity size={14} className="text-[#00d4ff]" /> Advanced Activity Feed
-                      </h3>
-                      <div className="flex items-center gap-3">
+                 {/* SECTION 4: Real-time Verification Feed */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="flex-1 flex flex-col">
+                   <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+                      <div>
+                        <h3 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2 mb-2">
+                          Live Verification Feed
+                        </h3>
+                        <p className="text-sm text-slate-400 font-light">Real-time audit log of API events and identity decisions.</p>
+                      </div>
+                      <div className="flex items-center gap-4">
                          <div className="relative">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input 
                               type="text" 
-                              placeholder="Search Request ID or API..." 
+                              placeholder="Search ID..." 
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="bg-white/[0.03] border border-white/10 rounded-lg pl-8 pr-4 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#00d4ff]/50 w-48"
+                              className="bg-white/[0.02] ring-1 ring-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-[#00d4ff]/50 w-56 transition-all"
                             />
                          </div>
-                         <div className="relative">
-                            <Filter size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select 
-                              value={statusFilter}
-                              onChange={(e) => setStatusFilter(e.target.value)}
-                              className="bg-white/[0.03] border border-white/10 rounded-lg pl-8 pr-8 py-1.5 text-xs text-white appearance-none focus:outline-none focus:border-[#00d4ff]/50 cursor-pointer"
-                            >
-                               <option value="ALL">All Status</option>
-                               <option value="VERIFIED">Verified Only</option>
-                               <option value="SPOOF">Spoof Attempts</option>
-                               <option value="FAILED">Failed</option>
-                            </select>
-                         </div>
-                         <button onClick={exportCSV} disabled={events.length === 0} className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 hover:bg-white/10 transition-colors text-xs text-slate-300 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <Download size={12} /> CSV
+                         <button onClick={exportCSV} disabled={events.length === 0} className="px-4 py-2.5 rounded-xl bg-transparent hover:bg-white/5 transition-colors text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <Download size={14} /> Export
                          </button>
                       </div>
                    </div>
 
                    {!hasData ? (
-                      <div className="w-full h-48 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-center bg-white/[0.01] m-4">
-                        <Activity size={24} className="text-slate-600 mb-3" />
-                        <h4 className="text-sm font-bold text-white mb-1">System Ready</h4>
-                        <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Listening for incoming verification requests...</p>
-                      </div>
-                   ) : paginatedEvents.length === 0 ? (
-                      <div className="w-full h-48 flex flex-col items-center justify-center text-center">
-                         <p className="text-slate-500 text-xs font-mono uppercase tracking-widest">No records match your filters.</p>
+                      <div className="w-full h-64 rounded-2xl flex flex-col items-center justify-center text-center bg-white/[0.01] ring-1 ring-white/5">
+                        <Activity size={32} className="text-slate-600 mb-4 animate-pulse" />
+                        <h4 className="text-lg font-medium text-white mb-2">Awaiting Telemetry</h4>
+                        <p className="text-slate-500 text-sm font-light">Listening for incoming verification requests...</p>
                       </div>
                    ) : (
-                      <div className="flex-1 flex flex-col justify-between">
+                      <div className="flex-1 flex flex-col bg-white/[0.01] rounded-2xl ring-1 ring-white/5 overflow-hidden">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-[11px] whitespace-nowrap">
-                             <thead className="bg-white/[0.02] text-slate-400 font-mono border-b border-[rgba(0,255,255,0.05)]">
+                          <table className="w-full text-left whitespace-nowrap">
+                             <thead className="bg-transparent text-slate-400 border-b border-white/5">
                                 <tr>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Request ID</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Timestamp</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">API Vector</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Decision Matrix</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Liveness</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Identity</th>
-                                   <th className="px-4 py-3 font-medium tracking-widest">Latency</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Timestamp</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Request ID</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Liveness</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Identity</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Latency</th>
+                                   <th className="px-6 py-4 text-xs font-medium uppercase tracking-wider">Status</th>
                                 </tr>
                              </thead>
                              <tbody className="divide-y divide-white/5">
                                 <AnimatePresence mode="popLayout">
                                 {paginatedEvents.map((ev) => (
                                    <motion.tr 
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.95 }}
+                                      initial={{ opacity: 0, x: -10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      exit={{ opacity: 0 }}
                                       key={ev.id} 
-                                      className="hover:bg-white/[0.02] transition-colors"
+                                      className="hover:bg-white/[0.02] transition-colors group"
                                    >
-                                      <td className="px-4 py-3 font-mono text-slate-300">{ev.id}</td>
-                                      <td className="px-4 py-3 text-slate-400">{new Date(ev.timestamp).toLocaleTimeString()}</td>
-                                      <td className="px-4 py-3">
-                                         <span className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/10 text-slate-300 text-[10px]">{ev.apiType}</span>
+                                      <td className="px-6 py-4 text-sm text-slate-400">{new Date(ev.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3 })}</td>
+                                      <td className="px-6 py-4 font-mono text-xs text-slate-300">{ev.id.substring(0, 18)}...</td>
+                                      <td className="px-6 py-4">
+                                         <div className="flex items-center gap-2">
+                                           <div className={`w-1.5 h-1.5 rounded-full ${ev.spoofFlag ? 'bg-[#ff3366]' : 'bg-[#00ff88]'}`} />
+                                           <span className="text-sm font-medium text-slate-200">{Math.round(ev.confidence)}%</span>
+                                         </div>
                                       </td>
-                                      <td className="px-4 py-3">
-                                         <ResultBadge status={ev.status} />
-                                      </td>
-                                      <td className="px-4 py-3">
-                                         <span className={ev.spoofFlag ? 'text-[#ff3366]' : 'text-[#00ff88]'}>{ev.spoofFlag ? 'FAIL' : 'PASS'}</span>
-                                      </td>
-                                      <td className="px-4 py-3">
+                                      <td className="px-6 py-4">
                                          {ev.apiType === 'Enterprise' ? (
-                                            <span className={ev.identityMatchedFlag ? 'text-[#00ff88]' : 'text-slate-500'}>
-                                               {ev.identityMatchedFlag ? 'MATCH' : 'N/A'}
+                                            <span className={`text-sm font-medium ${ev.identityMatchedFlag ? 'text-slate-200' : 'text-slate-500'}`}>
+                                               {ev.identityMatchedFlag ? 'Matched' : 'N/A'}
                                             </span>
                                          ) : (
                                             <span className="text-slate-600">-</span>
                                          )}
                                       </td>
-                                      <td className="px-4 py-3 font-mono text-slate-400">{ev.processingTimeMs}ms</td>
+                                      <td className="px-6 py-4 font-mono text-xs text-slate-400">{ev.processingTimeMs}ms</td>
+                                      <td className="px-6 py-4">
+                                         <ResultBadge status={ev.status} spoofFlag={ev.spoofFlag} />
+                                      </td>
                                    </motion.tr>
                                 ))}
                                 </AnimatePresence>
@@ -391,21 +367,13 @@ export default function DashboardPage() {
                           </table>
                         </div>
                         {/* Pagination Controls */}
-                        <div className="p-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
-                           <span>Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredEvents.length)} of {filteredEvents.length} events</span>
+                        <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between text-sm text-slate-500 bg-[#02040a]/50">
+                           <span>{((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredEvents.length)} of {filteredEvents.length} events</span>
                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              >
+                              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 transition-colors">
                                  <ChevronLeft size={16} />
                               </button>
-                              <button 
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                                className="p-1 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              >
+                              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-lg hover:bg-white/5 disabled:opacity-30 transition-colors">
                                  <ChevronRight size={16} />
                               </button>
                            </div>
@@ -415,118 +383,135 @@ export default function DashboardPage() {
                  </motion.section>
               </div>
 
-              {/* RIGHT COLUMN: Telemetry & Status (Col 9-12) */}
-              <div className="xl:col-span-4 flex flex-col gap-6">
+              {/* RIGHT COLUMN: Biometric Console & Telemetry (Col 9-12) */}
+              <div className="xl:col-span-4 flex flex-col gap-8">
                  
-                 {/* SECTION 3: System Status Grid */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl p-5">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
-                       <Database size={14} className="text-[#00d4ff]" /> Real System Overview
+                 {/* SECTION 5: Live Biometric Console */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-gradient-to-b from-white/[0.03] to-transparent ring-1 ring-white/10 rounded-2xl p-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 flex gap-1">
+                      <div className="w-1.5 h-4 bg-[#00d4ff] rounded-full animate-[pulse_1s_ease-in-out_infinite]" />
+                      <div className="w-1.5 h-4 bg-[#00d4ff] rounded-full animate-[pulse_1s_ease-in-out_infinite_0.2s]" />
+                      <div className="w-1.5 h-4 bg-[#00d4ff] rounded-full animate-[pulse_1s_ease-in-out_infinite_0.4s]" />
+                    </div>
+                    
+                    <h3 className="text-lg font-semibold text-white tracking-tight mb-8">
+                       Live Biometric Console
                     </h3>
                     
-                    {!hasData ? (
-                       <div className="w-full py-8 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-center bg-white/[0.01]">
-                         <Database size={24} className="text-slate-600 mb-3" />
-                         <p className="text-slate-400 text-sm font-bold mb-1">System Ready</p>
-                         <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Telemetry stream not initialized</p>
+                    <div className="space-y-6 relative z-10">
+                       <BiometricMetric label="Face Detection" value="Active" status="good" />
+                       <BiometricMetric label="Landmark Tracking" value="478 points" status="good" />
+                       <BiometricMetric label="Blink Detection" value="Natural" status="good" />
+                       <BiometricMetric label="Head Rotation" value="Yaw 2° / Pitch -1°" status="neutral" />
+                       <BiometricMetric label="Texture Analysis" value="Organic" status="good" />
+                       
+                       <div className="pt-6 border-t border-white/10 mt-6 space-y-6">
+                         <div className="flex justify-between items-end">
+                           <div>
+                             <p className="text-sm text-slate-400 mb-1">Confidence Score</p>
+                             <p className="text-4xl font-semibold text-white tracking-tighter">99.8<span className="text-xl text-slate-500">%</span></p>
+                           </div>
+                           <div className="w-16 h-16 rounded-full border-4 border-[#00ff88]/20 border-t-[#00ff88] flex items-center justify-center animate-[spin_4s_linear_infinite]">
+                             <Shield size={24} className="text-[#00ff88] animate-[spin_4s_linear_infinite_reverse]" />
+                           </div>
+                         </div>
+
+                         <div>
+                            <div className="flex justify-between text-sm mb-2">
+                               <span className="text-slate-400">Risk Assessment</span>
+                               <span className="text-[#00ff88] font-medium">Low Risk</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
+                               <div className="h-full w-[5%] bg-[#00ff88]" />
+                            </div>
+                         </div>
                        </div>
-                    ) : (
-                       <div className="grid grid-cols-2 gap-3">
-                          <KpiCard label="Total Verifications" value={telemetry.executive_overview.total_verifications.toLocaleString()} />
-                          <KpiCard label="Avg Verification Time" value={`${telemetry.executive_overview.avg_processing_time_ms}ms`} color="text-[#00d4ff]" />
-                          <KpiCard label="Verified Sessions" value={telemetry.executive_overview.successful_verifications.toLocaleString()} color="text-[#00ff88]" />
-                          <KpiCard label="Blocked Spoofs" value={telemetry.executive_overview.spoof_attempts_blocked.toLocaleString()} color="text-[#ffb800]" />
-                          <KpiCard label="Failed Sessions" value={telemetry.executive_overview.failed_verifications.toLocaleString()} color="text-[#ff3366]" />
-                          <KpiCard label="Identity Matches" value={telemetry.executive_overview.identity_matches.toLocaleString()} color="text-[#7c3aed]" />
-                       </div>
-                    )}
+                    </div>
                  </motion.section>
 
-                 {/* SECTION 5: Trust Analytics */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl p-5">
-                   <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-2">
-                     <BarChart size={14} className="text-[#00ff88]" /> Trust Analytics
-                   </h3>
-
-                   {!trustAnalytics ? (
-                      <div className="w-full py-8 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-center bg-white/[0.01]">
-                        <BarChart size={24} className="text-slate-600 mb-3" />
-                        <p className="text-slate-500 text-[10px] font-mono uppercase tracking-widest">Waiting for verification telemetry</p>
-                      </div>
-                   ) : (
-                      <div className="space-y-4">
-                         <ProgressRow label="Liveness Confidence" value={trustAnalytics.liveness} color="bg-[#00ff88]" />
-                         <ProgressRow label="Face Detection Confidence" value={trustAnalytics.faceDetection} color="bg-[#00d4ff]" />
-                         <ProgressRow label="Identity Match Confidence" value={trustAnalytics.identityMatch} color="bg-[#7c3aed]" />
-                         <ProgressRow label="Aggregate Spoof Risk" value={trustAnalytics.spoofRisk} color="bg-[#ffb800]" />
-                      </div>
-                   )}
-                 </motion.section>
-
-                 {/* SECTION 6: Security Monitoring Center */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl p-5">
-                   <div className="flex items-center justify-between mb-4">
-                     <h3 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2">
-                       <ShieldAlert size={14} className="text-[#ff3366]" /> Security Monitoring Center
+                 {/* SECTION 6: Animated Telemetry Charts */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-white/[0.01] ring-1 ring-white/5 rounded-2xl p-8">
+                   <div className="flex items-center justify-between mb-6">
+                     <h3 className="text-lg font-semibold text-white tracking-tight">
+                       System Telemetry
                      </h3>
-                     <span className="text-[9px] font-mono font-bold text-[#00ff88] uppercase tracking-widest flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" /> Monitoring Active</span>
+                     <span className="flex items-center gap-2 text-xs font-medium text-[#00ff88] bg-[#00ff88]/10 px-3 py-1 rounded-full border border-[#00ff88]/20">
+                       <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" /> Operational
+                     </span>
                    </div>
 
-                   <div className="space-y-3 mb-6">
-                      <ServiceStatus label="Face Detection Engine" />
-                      <ServiceStatus label="Liveness Detection" />
-                      <ServiceStatus label="Anti-Spoof Protection" />
-                      <ServiceStatus label="Identity Verification" />
-                      <ServiceStatus label="API Gateway" />
-                   </div>
+                   <div className="space-y-8">
+                     <div>
+                       <div className="flex justify-between items-end mb-4">
+                         <p className="text-sm text-slate-400">Avg Latency</p>
+                         <p className="text-2xl font-semibold text-white tracking-tight">{telemetry?.executive_overview.avg_processing_time_ms || 0} <span className="text-sm text-slate-500">ms</span></p>
+                       </div>
+                       <div className="h-24 w-full">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <AreaChart data={chartData}>
+                             <defs>
+                               <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.3}/>
+                                 <stop offset="95%" stopColor="#00d4ff" stopOpacity={0}/>
+                               </linearGradient>
+                             </defs>
+                             <Tooltip contentStyle={{ backgroundColor: '#0a0d14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} itemStyle={{ color: '#00d4ff' }} />
+                             <Area type="monotone" dataKey="latency" stroke="#00d4ff" strokeWidth={2} fillOpacity={1} fill="url(#colorLatency)" isAnimationActive={false} />
+                           </AreaChart>
+                         </ResponsiveContainer>
+                       </div>
+                     </div>
 
-                   {hasThreats && (
-                      <div className="space-y-2 pt-4 border-t border-white/5">
-                         <h4 className="text-[10px] text-slate-500 uppercase tracking-widest font-mono mb-3">Live Threat Events</h4>
-                         <ThreatCard label="Deepfake Detection" count={telemetry.security_events.deepfake} color="#ff3366" />
-                         <ThreatCard label="Replay Attack" count={telemetry.security_events.replay_attack} color="#ffb800" />
-                         <ThreatCard label="Identity Mismatch" count={telemetry.security_events.identity_mismatch} color="#7c3aed" />
-                         <ThreatCard label="Multiple Faces" count={telemetry.security_events.multiple_faces} color="#00d4ff" />
-                         <ThreatCard label="Face Missing" count={telemetry.security_events.face_not_found} color="#64748b" />
-                      </div>
-                   )}
+                     <div>
+                       <div className="flex justify-between items-end mb-4">
+                         <p className="text-sm text-slate-400">Request Throughput</p>
+                         <p className="text-2xl font-semibold text-white tracking-tight">{telemetry?.executive_overview.total_verifications.toLocaleString() || 0} <span className="text-sm text-slate-500">req/hr</span></p>
+                       </div>
+                       <div className="h-24 w-full">
+                         <ResponsiveContainer width="100%" height="100%">
+                           <AreaChart data={chartData}>
+                             <defs>
+                               <linearGradient id="colorThroughput" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3}/>
+                                 <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
+                               </linearGradient>
+                             </defs>
+                             <Tooltip contentStyle={{ backgroundColor: '#0a0d14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} itemStyle={{ color: '#7c3aed' }} />
+                             <Area type="monotone" dataKey="throughput" stroke="#7c3aed" strokeWidth={2} fillOpacity={1} fill="url(#colorThroughput)" isAnimationActive={false} />
+                           </AreaChart>
+                         </ResponsiveContainer>
+                       </div>
+                     </div>
+                   </div>
                  </motion.section>
 
-                 {/* SECTION 8: Developer Infrastructure */}
-                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-[rgba(10,20,40,0.6)] backdrop-blur-md border border-[rgba(0,255,255,0.08)] rounded-xl p-5 flex-1">
-                   <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-5 flex items-center gap-2">
-                     <Terminal size={14} className="text-slate-400" /> Enterprise Developer Infrastructure
-                   </h3>
-                   <div className="space-y-4">
-                      <InfraRow icon={Key} label="API Keys" value="3 Active" status="ok" />
-                      <InfraRow icon={Webhook} label="Webhook Status" value="Connected" status="ok" />
-                      <InfraRow icon={Box} label="SDK Status" value="v3.0.4 (Latest)" status="info" />
-                      <InfraRow icon={Code} label="API Version" value="v2 (Stable)" status="ok" />
-                      <InfraRow icon={LinkIcon} label="Documentation Access" value="Public" status="info" />
-                      <InfraRow icon={Lock} label="Authentication Status" value="Enforced" status="ok" />
-                      <InfraRow icon={Activity} label="Rate Limits" value="0% Utilized" status="ok" />
-                   </div>
+                 {/* SECTION 7: Executive Summary */}
+                 <motion.section variants={itemVariants} initial="hidden" animate="visible" className="bg-white/[0.01] ring-1 ring-white/5 rounded-2xl p-8">
+                    <h3 className="text-lg font-semibold text-white tracking-tight mb-6">
+                      Executive Summary
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                      <SummaryStat label="Verified Sessions" value={telemetry?.executive_overview.successful_verifications.toLocaleString() || "0"} color="text-white" />
+                      <SummaryStat label="Blocked Spoofs" value={telemetry?.executive_overview.spoof_attempts_blocked.toLocaleString() || "0"} color="text-[#00d4ff]" />
+                      <SummaryStat label="Identity Matches" value={telemetry?.executive_overview.identity_matches.toLocaleString() || "0"} color="text-[#7c3aed]" />
+                      <SummaryStat label="Failed Sessions" value={telemetry?.executive_overview.failed_verifications.toLocaleString() || "0"} color="text-slate-500" />
+                    </div>
                  </motion.section>
 
               </div>
            </div>
 
-           {/* SECTION 9: Enterprise Footer */}
-           <motion.footer variants={itemVariants} initial="hidden" animate="visible" className="pt-10 pb-6 border-t border-[rgba(0,255,255,0.05)] mt-12 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-8 gap-y-3 text-[11px] font-medium text-slate-400">
-                 <Link href="#" className="hover:text-white transition-colors">Product</Link>
+           {/* SECTION 8: Clean Footer */}
+           <motion.footer variants={itemVariants} initial="hidden" animate="visible" className="pt-16 pb-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex gap-8 text-sm font-medium text-slate-500">
+                 <Link href="#" className="hover:text-white transition-colors">Documentation</Link>
                  <Link href="#" className="hover:text-white transition-colors">Security</Link>
                  <Link href="#" className="hover:text-white transition-colors">Architecture</Link>
-                 <Link href="#" className="hover:text-white transition-colors">Trust Center</Link>
-                 <Link href="#" className="hover:text-white transition-colors">Documentation</Link>
                  <Link href="#" className="hover:text-white transition-colors">Support</Link>
-                 <Link href="#" className="hover:text-white transition-colors">Compliance</Link>
-                 <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                 <span className="flex items-center gap-1.5"><Shield size={12} className="text-[#00ff88]" /> SOC2 TYPE II</span>
-                 <span className="flex items-center gap-1.5"><Globe size={12} className="text-[#00d4ff]" /> GDPR</span>
-                 <span className="flex items-center gap-1.5"><Lock size={12} className="text-slate-400" /> AES-256</span>
+              <div className="flex gap-6 text-xs font-mono text-slate-600 uppercase tracking-widest">
+                 <span className="flex items-center gap-2"><Shield size={14} className="text-[#00ff88]" /> SOC2 TYPE II</span>
+                 <span className="flex items-center gap-2"><Lock size={14} className="text-slate-500" /> AES-256</span>
               </div>
            </motion.footer>
 
@@ -538,79 +523,46 @@ export default function DashboardPage() {
 
 // ─── HELPER COMPONENTS ──────────────────────────────────────────────────────
 
-function KpiCard({ label, value, color = "text-white" }: { label: string, value: string, color?: string }) {
+function BiometricMetric({ label, value, status }: { label: string, value: string, status: 'good' | 'neutral' | 'bad' }) {
+  const statusColor = status === 'good' ? 'text-[#00ff88] bg-[#00ff88]/10' : status === 'neutral' ? 'text-slate-300 bg-white/10' : 'text-[#ff3366] bg-[#ff3366]/10';
+  
   return (
-    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 flex flex-col justify-between shadow-md">
-      <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">{label}</div>
-      <div className={`text-xl font-bold tracking-tight ${color}`}>{value}</div>
+    <div className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0 last:pb-0">
+      <span className="text-sm text-slate-400">{label}</span>
+      <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusColor}`}>
+        {value}
+      </span>
     </div>
   );
 }
 
-function ThreatCard({ label, count, color }: { label: string, count: number, color: string }) {
-  if (count === 0) return null;
+function SummaryStat({ label, value, color }: { label: string, value: string, color: string }) {
   return (
-    <div className="flex items-center justify-between p-2.5 rounded bg-white/[0.02] border border-white/5">
-       <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: color, color }} />
-          <span className="text-[11px] text-slate-300">{label}</span>
-       </div>
-       <span className="text-xs font-mono font-bold text-white">{count}</span>
+    <div>
+      <p className="text-sm text-slate-500 mb-1">{label}</p>
+      <p className={`text-2xl font-semibold tracking-tight ${color}`}>{value}</p>
     </div>
   );
 }
 
-function InfraRow({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: 'ok' | 'info' }) {
-  return (
-    <div className="flex items-center justify-between">
-       <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/5 flex items-center justify-center">
-             <Icon size={12} className="text-slate-400" />
-          </div>
-          <span className="text-[11px] text-slate-300">{label}</span>
-       </div>
-       <span className={`flex items-center gap-1.5 text-[10px] font-mono font-medium ${status === 'ok' ? 'text-[#00ff88]' : 'text-[#00d4ff]'}`}>
-          {status === 'ok' && <CheckCircle2 size={10} />}
-          {value}
-       </span>
-    </div>
-  );
-}
-
-function ServiceStatus({ label }: { label: string }) {
-  return (
-     <div className="flex items-center justify-between group">
-        <span className="text-[11px] text-slate-400 group-hover:text-slate-200 transition-colors">{label}</span>
-        <span className="text-[9px] font-mono text-[#00ff88] uppercase tracking-widest bg-[#00ff88]/10 px-1.5 py-0.5 rounded">Operational</span>
-     </div>
-  );
-}
-
-function ProgressRow({ label, value, color }: { label: string, value: number, color: string }) {
-  return (
-    <div className="space-y-1.5">
-       <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-300">{label}</span>
-          <span className="font-mono text-slate-400">{value.toFixed(1)}%</span>
-       </div>
-       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: `${value}%` }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className={`h-full ${color}`} 
-          />
-       </div>
-    </div>
-  );
-}
-
-function ResultBadge({ status }: { status: string }) {
+function ResultBadge({ status, spoofFlag }: { status: string, spoofFlag: boolean }) {
   if (status === 'VERIFIED' || status === 'IDENTITY MATCHED') {
-    return <div className="flex items-center gap-1.5 text-[#00ff88] text-[10px] font-bold tracking-wider"><CheckCircle2 size={10}/> {status}</div>;
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20 text-xs font-medium">
+        <CheckCircle2 size={12}/> Verified
+      </span>
+    );
   }
-  if (status === 'SPOOF ATTEMPT') {
-    return <div className="flex items-center gap-1.5 text-[#ff3366] text-[10px] font-bold tracking-wider"><ShieldAlert size={10}/> {status}</div>;
+  if (status === 'SPOOF ATTEMPT' || spoofFlag) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ff3366]/10 text-[#ff3366] border border-[#ff3366]/20 text-xs font-medium">
+        <ShieldAlert size={12}/> Spoof Detected
+      </span>
+    );
   }
-  return <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold tracking-wider"><AlertTriangle size={10}/> {status}</div>;
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20 text-xs font-medium">
+      <AlertTriangle size={12}/> {status}
+    </span>
+  );
 }

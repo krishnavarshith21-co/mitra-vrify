@@ -87,7 +87,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* ─── EXACT SCREENSHOT BACKGROUND ELEMENTS ────────────────────────── */}
-      <div className="fixed inset-0 pointer-events-none z-0">
+      <div className="fixed inset-0 pointer-events-none z-0 hidden sm:block">
          {/* Subtle radial glow behind the globe */}
          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle_at_center,rgba(0,229,255,0.04)_0%,transparent_60%)] rounded-full mix-blend-screen" />
          
@@ -105,8 +105,8 @@ export default function HomePage() {
          <div className="absolute top-[10%] right-[19%] w-32 h-px border-t border-dashed border-[#00E5FF]/20" />
       </div>
 
-      <main className="relative z-10 flex items-center min-h-screen pt-10 pb-20">
-         <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
+      <main className="relative z-10 flex items-center min-h-screen pt-20 md:pt-10 pb-10 md:pb-20">
+         <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 md:px-12 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 relative">
             
             {/* ─── LEFT SIDE CONTENT ─────────────────────────────────────── */}
             <motion.div 
@@ -128,19 +128,19 @@ export default function HomePage() {
                </div>
                
                {/* Headline */}
-               <h1 className="text-5xl md:text-6xl lg:text-[72px] font-bold text-white tracking-tight mb-8 leading-[1.05]">
+               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-[72px] font-bold text-white tracking-tight mb-6 md:mb-8 leading-[1.08]">
                  Enterprise<br/>
                  <span className="text-[#00E5FF] drop-shadow-[0_0_35px_rgba(0,229,255,0.8)]">Face Liveness</span><br/>
                  & Identity APIs
                </h1>
                
                {/* Subheadline */}
-               <p className="text-[17px] text-slate-300 font-normal mb-10 max-w-[500px] leading-[1.6]">
+               <p className="text-[15px] md:text-[17px] text-slate-300 font-normal mb-8 md:mb-10 max-w-[500px] leading-[1.6]">
                  Production-ready biometric verification platform. Face liveness detection, anti-spoof, and continuous identity authentication — all open source.
                </p>
 
                {/* Buttons */}
-               <div className="flex flex-col sm:flex-row items-center gap-4 mb-16">
+               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-10 md:mb-16 w-full sm:w-auto">
                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
                    <Link 
                      href="/signup"
@@ -161,7 +161,7 @@ export default function HomePage() {
                </div>
 
                {/* Metrics */}
-               <div className="flex items-start gap-12 text-left">
+               <div className="grid grid-cols-2 sm:flex items-start gap-4 sm:gap-6 md:gap-8 lg:gap-12 text-left">
                   <Metric value="99%" label="Max Accuracy" />
                   <Metric value="< 1s" label="Fast Mode" />
                   <Metric value="3 APIs" label="Products" />
@@ -170,7 +170,7 @@ export default function HomePage() {
             </motion.div>
 
             {/* ─── RIGHT SIDE VISUAL ─────────────────────────────────────── */}
-            <div className="relative h-[600px] lg:h-auto w-full flex items-center justify-center z-10 mt-12 lg:mt-24">
+            <div className="relative h-[350px] sm:h-[450px] lg:h-auto w-full flex items-center justify-center z-10 mt-4 sm:mt-8 lg:mt-24">
                
                {/* Wireframe Globe Background */}
                <div className="absolute inset-[-20%] pointer-events-none">
@@ -178,7 +178,7 @@ export default function HomePage() {
                </div>
 
                {/* Floating Biometric Scan Panel */}
-               <div className="absolute right-[0%] lg:right-[-10%] bottom-[0%] lg:bottom-[-10%] w-[280px] bg-[#01081A]/80 backdrop-blur-md border border-[#00E5FF]/20 rounded-xl p-4 shadow-[0_0_50px_rgba(0,229,255,0.05)] pointer-events-auto">
+               <div className="absolute right-0 sm:right-[0%] lg:right-[-10%] bottom-0 sm:bottom-[0%] lg:bottom-[-10%] w-[220px] sm:w-[260px] md:w-[280px] bg-[#01081A]/80 backdrop-blur-md border border-[#00E5FF]/20 rounded-xl p-3 sm:p-4 shadow-[0_0_50px_rgba(0,229,255,0.05)] pointer-events-auto">
                   
                   {/* Header */}
                   <div className="flex justify-between items-center mb-4">
@@ -222,8 +222,8 @@ export default function HomePage() {
 function Metric({ value, label }: { value: string, label: string }) {
    return (
       <div className="flex flex-col gap-1">
-         <span className="text-2xl font-bold text-white tracking-tight">{value}</span>
-         <span className="text-xs text-slate-500">{label}</span>
+         <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{value}</span>
+         <span className="text-[11px] sm:text-xs text-slate-500">{label}</span>
       </div>
    );
 }

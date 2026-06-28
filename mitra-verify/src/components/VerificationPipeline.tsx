@@ -13,10 +13,10 @@ export default function VerificationPipeline() {
   ];
 
   return (
-    <section className="relative z-10 py-32 bg-[#01081A]">
-      <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12">
+    <section className="relative z-10 py-16 md:py-24 lg:py-32 bg-[#01081A]">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 md:px-12">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Deterministic Verification Pipeline</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight">Deterministic Verification Pipeline</h2>
           <p className="text-slate-400 text-[16px] max-w-[600px] mx-auto">
             Our proprietary pipeline ensures sub-second processing from initial capture to final cryptographic decision.
           </p>
@@ -32,7 +32,7 @@ export default function VerificationPipeline() {
              />
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-6 relative z-10">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 md:gap-6 relative z-10">
             {steps.map((step, idx) => (
               <div key={idx} className="flex flex-col items-center text-center group">
                 <div className="w-16 h-16 rounded-2xl bg-[#020A1F] border border-white/[0.08] flex items-center justify-center text-[#00E5FF] shadow-[0_0_20px_rgba(0,229,255,0.05)] mb-6 group-hover:scale-110 group-hover:border-[#00E5FF]/50 group-hover:shadow-[0_0_30px_rgba(0,229,255,0.2)] transition-all duration-300 relative bg-clip-padding backdrop-filter backdrop-blur-xl">

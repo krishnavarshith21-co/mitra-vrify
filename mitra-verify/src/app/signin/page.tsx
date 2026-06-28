@@ -102,7 +102,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
+        padding: 16,
+        paddingTop: 80,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -235,7 +236,7 @@ export default function LoginPage() {
           </form>
 
           {/* Bottom links */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 28, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <Link href="/contact" style={{ fontSize: 12, color: '#475569', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
               onMouseEnter={e => e.currentTarget.style.color = '#94a3b8'}
               onMouseLeave={e => e.currentTarget.style.color = '#475569'}>

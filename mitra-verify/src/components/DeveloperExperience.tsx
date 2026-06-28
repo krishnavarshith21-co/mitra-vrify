@@ -21,9 +21,9 @@ if (result.status === 'VERIFIED') {
 }`;
 
   return (
-    <section className="relative z-10 py-32 bg-[#01081A] border-t border-white/[0.05]">
-      <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12">
-        <div className="flex flex-col lg:flex-row gap-16 items-center">
+    <section className="relative z-10 py-16 md:py-24 lg:py-32 bg-[#01081A] border-t border-white/[0.05]">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 md:px-12">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-center">
           
           <div className="lg:w-1/2 order-2 lg:order-1 w-full">
             <div className="rounded-2xl border border-white/[0.1] bg-[#020A1F] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
@@ -48,8 +48,8 @@ if (result.status === 'VERIFIED') {
               <TerminalSquare size={14} className="text-[#00E5FF]" />
               <span className="text-slate-300 text-[11px] font-medium tracking-wide uppercase">Developer First</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Integrate in Minutes</h2>
-            <p className="text-slate-400 text-[16px] leading-relaxed mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight">Integrate in Minutes</h2>
+            <p className="text-slate-400 text-[14px] md:text-[16px] leading-relaxed mb-6 md:mb-8">
               Our SDKs and APIs are designed for modern engineering teams. Typed interfaces, comprehensive error handling, and drop-in UI components for React, iOS, and Android.
             </p>
             

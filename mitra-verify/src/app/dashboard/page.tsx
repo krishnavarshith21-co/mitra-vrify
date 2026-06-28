@@ -170,7 +170,7 @@ export default function DashboardPage() {
           variants={containerVariants} 
           initial="hidden" 
           animate="show" 
-          className="pt-24 px-6 md:px-10 max-w-[1600px] mx-auto space-y-6"
+          className="pt-20 md:pt-24 px-4 md:px-6 lg:px-10 max-w-[1600px] mx-auto space-y-4 md:space-y-6"
         >
            
            {/* ========================================================= */}
@@ -178,10 +178,10 @@ export default function DashboardPage() {
            {/* ========================================================= */}
            <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                 <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight flex items-center gap-2">
+                 <h1 className="text-[22px] md:text-[28px] font-bold text-white tracking-tight leading-tight flex items-center gap-2">
                    Welcome back, System Administrator 👋
                  </h1>
-                 <p className="text-slate-400 text-[14px] mt-1">Here's what's happening with your verification platform today.</p>
+                 <p className="text-slate-400 text-[13px] md:text-[14px] mt-1">Here's what's happening with your verification platform today.</p>
               </div>
               <div className="flex items-center gap-2 bg-[#10B981]/10 border border-[#10B981]/20 px-4 py-2 rounded-full">
                  <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
@@ -192,7 +192,7 @@ export default function DashboardPage() {
            {/* ========================================================= */}
            {/* TOP KPI CARDS */}
            {/* ========================================================= */}
-           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-5">
+           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-5">
              <KpiCard title="Total Requests" value={executive_overview.total_verifications.toLocaleString()} trend="▲ 8.2%" trendUp icon={Activity} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="count" color={COLORS.accent} />
              <KpiCard title="Passed" value={executive_overview.successful_verifications.toLocaleString()} trend="▲ 12.4%" trendUp icon={CheckCircle2} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="pass" color={COLORS.success} />
              <KpiCard title="Failed" value={(trueFailed > 0 ? trueFailed : 0).toLocaleString()} trend="▼ 2.1%" trendUp={false} icon={ShieldAlert} lastUpdate={lastUpdate} sparklineData={sparklineData} dataKey="failed" color={COLORS.failed} />
@@ -204,15 +204,15 @@ export default function DashboardPage() {
            {/* ========================================================= */}
            {/* MAIN ANALYTICS */}
            {/* ========================================================= */}
-           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 md:gap-5">
              
              {/* Left (70%): Verification Requests */}
-             <motion.div variants={itemVariants} className="xl:col-span-2 bg-[#0F172A] border border-white/5 rounded-[18px] p-6 shadow-sm flex flex-col">
+             <motion.div variants={itemVariants} className="xl:col-span-2 bg-[#0F172A] border border-white/5 rounded-[18px] p-4 md:p-6 shadow-sm flex flex-col">
                <div className="flex items-center justify-between mb-4">
                  <h3 className="text-[15px] font-semibold text-white flex items-center gap-2">
                    <Activity size={16} className="text-[#00D4FF]" /> Verification Requests
                  </h3>
-                 <div className="flex items-center gap-1 bg-[#070B17] p-1 rounded-[8px] border border-white/5">
+                 <div className="flex items-center gap-1 bg-[#070B17] p-1 rounded-[8px] border border-white/5 overflow-x-auto">
                     {['24h', '7d', '30d', '90d'].map(t => (
                       <button 
                         key={t}
@@ -224,7 +224,7 @@ export default function DashboardPage() {
                     ))}
                  </div>
                </div>
-               <div className="h-[280px] w-full mt-2">
+               <div className="h-[220px] sm:h-[250px] md:h-[280px] w-full mt-2">
                  <ResponsiveContainer width="100%" height="100%">
                    <AreaChart data={analytics_chart}>
                      <defs>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
              </motion.div>
 
              {/* Right (30%): Verification Summary */}
-             <motion.div variants={itemVariants} className="bg-[#0F172A] border border-white/5 rounded-[18px] p-6 shadow-sm flex flex-col justify-center">
+             <motion.div variants={itemVariants} className="bg-[#0F172A] border border-white/5 rounded-[18px] p-4 md:p-6 shadow-sm flex flex-col justify-center">
                <h3 className="text-[15px] font-semibold text-white mb-6">Verification Summary</h3>
                
                <div className="space-y-6">
@@ -310,7 +310,7 @@ export default function DashboardPage() {
            {/* ========================================================= */}
            {/* API PERFORMANCE */}
            {/* ========================================================= */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-5">
               {['Basic', 'Advanced', 'Enterprise'].map((key, idx) => {
                  const perf = api_performance[key] || { requests: 0, pass: 0, fail: 0, spoof: 0, faceLost: 0, errors: 0, totalLatency: 0, lastRequest: null };
                  const label = key === 'Basic' ? 'API 1 — Fast' : key === 'Advanced' ? 'API 2 — Secure' : 'API 3 — Enterprise';
@@ -342,19 +342,19 @@ export default function DashboardPage() {
                           </span>
                        </div>
                        
-                       <div className="flex items-end justify-between">
-                          <div className="flex gap-8">
-                             <div className="flex flex-col gap-1">
-                                <span className="text-[11px] text-slate-400 font-medium">Requests</span>
-                                <span className="text-[18px] text-white font-mono font-medium">{perf.requests.toLocaleString()}</span>
+                       <div className="flex items-end justify-between gap-2">
+                          <div className="flex flex-col gap-3">
+                             <div className="flex items-center gap-3">
+                                <span className="text-[11px] text-slate-400 font-medium w-16">Requests</span>
+                                <span className="text-[14px] text-white font-mono font-medium">{perf.requests.toLocaleString()}</span>
                              </div>
-                             <div className="flex flex-col gap-1">
-                                <span className="text-[11px] text-slate-400 font-medium">Success Rate</span>
-                                <span className="text-[18px] text-white font-mono font-medium">{sr}%</span>
+                             <div className="flex items-center gap-3">
+                                <span className="text-[11px] text-slate-400 font-medium w-16">Success</span>
+                                <span className="text-[14px] text-white font-mono font-medium">{sr}%</span>
                              </div>
-                             <div className="flex flex-col gap-1">
-                                <span className="text-[11px] text-slate-400 font-medium">Avg Time</span>
-                                <span className="text-[18px] text-white font-mono font-medium">{avgTime}ms</span>
+                             <div className="flex items-center gap-3">
+                                <span className="text-[11px] text-slate-400 font-medium w-16">Latency</span>
+                                <span className="text-[14px] text-white font-mono font-medium">{avgTime}ms</span>
                              </div>
                           </div>
                           
@@ -374,27 +374,27 @@ export default function DashboardPage() {
            {/* ========================================================= */}
            {/* RECENT VERIFICATIONS & SYSTEM STATUS */}
            {/* ========================================================= */}
-           <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">
+           <div className="grid grid-cols-1 xl:grid-cols-4 gap-3 md:gap-5">
              
              {/* Table (75%) */}
              <motion.div variants={itemVariants} className="xl:col-span-3 bg-[#0F172A] border border-white/5 rounded-[18px] flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-white/5 flex items-center justify-between flex-wrap gap-4">
                    <h3 className="text-[15px] font-semibold text-white">Recent Verifications</h3>
-                   <div className="flex items-center gap-3">
-                      <div className="relative">
+                   <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:flex-initial">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                         <input 
                           type="text" 
                           placeholder="Search ID or User..." 
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="bg-[#070B17] border border-white/5 rounded-[8px] pl-8 pr-3 py-1.5 text-[12px] text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 w-[200px] transition-colors"
+                          className="bg-[#070B17] border border-white/5 rounded-[8px] pl-8 pr-3 py-1.5 text-[12px] text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 w-full sm:w-[200px] transition-colors"
                         />
                       </div>
                       <button className="flex items-center gap-1.5 bg-[#070B17] border border-white/5 px-3 py-1.5 rounded-[8px] text-[12px] text-slate-300 hover:text-white transition-colors">
                         <Filter size={14}/> Filters
                       </button>
-                      <button className="flex items-center gap-1.5 bg-[#070B17] border border-white/5 px-3 py-1.5 rounded-[8px] text-[12px] text-slate-300 hover:text-white transition-colors">
+                      <button className="hidden sm:flex items-center gap-1.5 bg-[#070B17] border border-white/5 px-3 py-1.5 rounded-[8px] text-[12px] text-slate-300 hover:text-white transition-colors">
                         <Download size={14}/> Export CSV
                       </button>
                    </div>
@@ -510,7 +510,7 @@ function KpiCard({ title, value, trend, trendUp, icon: Icon, lastUpdate, sparkli
       initial="rest"
       animate="rest"
       whileHover="hover"
-      className="bg-[#0F172A] border border-white/5 rounded-[18px] p-5 shadow-sm flex flex-col justify-between h-[150px] relative overflow-hidden"
+      className="bg-[#0F172A] border border-white/5 rounded-[18px] p-4 md:p-5 shadow-sm flex flex-col justify-between h-auto min-h-[130px] md:min-h-[150px] relative overflow-hidden"
     >
        <div className="flex items-center gap-2 mb-2 relative z-10">
           <motion.div
@@ -527,7 +527,7 @@ function KpiCard({ title, value, trend, trendUp, icon: Icon, lastUpdate, sparkli
        </div>
        
        <div className="flex flex-col relative z-10 mt-auto">
-          <span className="text-[28px] font-bold text-white tracking-tight leading-none mb-2 font-mono">{value}</span>
+          <span className="text-[22px] md:text-[28px] font-bold text-white tracking-tight leading-none mb-2 font-mono">{value}</span>
           <div className="flex items-center justify-between">
             <span className={`text-[12px] font-medium flex items-center gap-1 ${trendUp ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                {trend}

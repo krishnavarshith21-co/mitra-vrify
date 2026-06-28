@@ -74,17 +74,17 @@ export default function ApiProducts() {
   };
 
   return (
-    <section className="relative z-10 py-32 bg-[#01081A] border-t border-white/[0.05]">
-      <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12">
+    <section className="relative z-10 py-16 md:py-24 lg:py-32 bg-[#01081A] border-t border-white/[0.05]">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 md:px-12">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">API Products</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight">API Products</h2>
           <p className="text-slate-400 text-[16px] max-w-[600px] mx-auto">
             Flexible, scalable APIs designed to meet the exact security requirements of your infrastructure.
           </p>
         </div>
         
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"
           variants={containerVariants}
           initial="hidden"
           whileInView="show"
@@ -114,7 +114,7 @@ export default function ApiProducts() {
                 style={{ backgroundColor: p.colorTheme }} 
               />
               
-              <div className="p-8 flex-1 flex flex-col relative z-10">
+              <div className="p-5 sm:p-6 md:p-8 flex-1 flex flex-col relative z-10">
                 {/* Header */}
                 <div className="flex items-start gap-4 mb-6">
                   <motion.div 

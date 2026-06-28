@@ -23,16 +23,16 @@ export default function SecurityArchitecture() {
   };
 
   return (
-    <section className="relative z-10 py-32 bg-[#01081A] border-t border-white/[0.05]">
-      <div className="max-w-[1400px] w-full mx-auto px-6 md:px-12">
+    <section className="relative z-10 py-16 md:py-24 lg:py-32 bg-[#01081A] border-t border-white/[0.05]">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 md:px-12">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 tracking-tight">Zero-Knowledge Architecture</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight">Zero-Knowledge Architecture</h2>
           <p className="text-slate-400 text-[16px] max-w-[600px] mx-auto">
             Our infrastructure guarantees privacy. Biometric templates are irreversibly hashed and never stored in raw format.
           </p>
         </div>
         
-        <div className="relative max-w-[900px] mx-auto bg-[#020A1F] rounded-3xl border border-white/[0.05] p-8 md:p-16 overflow-hidden">
+        <div className="relative max-w-[900px] mx-auto bg-[#020A1F] rounded-2xl md:rounded-3xl border border-white/[0.05] p-5 sm:p-8 md:p-16 overflow-hidden">
           {/* Background grid */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
           

@@ -95,7 +95,8 @@ export default function SignupPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
+        padding: 16,
+        paddingTop: 80,
         position: 'relative',
         overflow: 'hidden',
       }}

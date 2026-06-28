@@ -42,7 +42,7 @@ export default function ComparePage() {
         </div>
 
         {/* Product Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16">
           {/* Fast Liveness (Basic) */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
@@ -192,9 +192,9 @@ export default function ComparePage() {
         </div>
 
         {/* Radar Chart */}
-        <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-16">
+        <div className="glass p-4 sm:p-6 md:p-10 rounded-2xl md:rounded-3xl mb-12 md:mb-16">
           <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>Capabilities Comparison</h3>
-          <div style={{ height: 'min(500px, 60vh)', width: '100%' }}>
+          <div style={{ height: 'min(400px, 55vh)', width: '100%' }} className="sm:h-auto" >
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                 <PolarGrid stroke="rgba(255,255,255,0.1)" />
@@ -210,7 +210,7 @@ export default function ComparePage() {
         </div>
  
         {/* Feature Matrix */}
-        <div className="glass p-4 sm:p-6 md:p-10 rounded-3xl mb-8">
+        <div className="glass p-4 sm:p-6 md:p-10 rounded-2xl md:rounded-3xl mb-8">
           <h3 className="heading-section" style={{ fontSize: 24, marginBottom: 'var(--space-3)' }}>Feature Matrix</h3>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="table-zebra" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

@@ -208,9 +208,6 @@ function VerificationFlow() {
             {/* API 3 */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} whileHover={{ y: -4 }} className="group relative rounded-2xl bg-[#0a101d] border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all overflow-hidden flex flex-col">
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent opacity-100" />
-              <div className="absolute top-0 right-8 px-3 py-1 bg-emerald-500 text-[#060B14] text-[10px] font-bold tracking-widest uppercase rounded-b-lg shadow-lg">
-                Recommended
-              </div>
               <div className="p-8 flex-1 relative z-10">
                 <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40 mb-6">
                   <Fingerprint className="w-5 h-5 text-emerald-400" />
@@ -350,15 +347,15 @@ function VerificationFlow() {
              <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Detailed Breakdown</h2>
              <div className="grid lg:grid-cols-3 gap-6">
                 {[
-                  { name: "Fast Liveness", subtitle: "Passive Detection", color: "cyan", colorCode: "#22d3ee", feats: "Passive Detection", time: "< 1.2s", acc: "92.0%", use: "Basic Auth", ind: "Social, Forums", tier: "Basic" },
-                  { name: "Adv. Anti-Spoof", subtitle: "Active Challenge, Replay Det.", color: "violet", colorCode: "#a78bfa", feats: "Active Challenge, Replay Det.", time: "2.5s", acc: "98.5%", use: "Financial KYC", ind: "FinTech, Crypto", tier: "Premium" },
-                  { name: "Enterprise", subtitle: "Identity Match, Gaze Track", color: "emerald", colorCode: "#34d399", feats: "Identity Match, Gaze Track", time: "3.8s", acc: "99.9%", use: "High-Risk Auth", ind: "Gov, Healthcare", tier: "Enterprise" }
+                  { name: "Fast Liveness", subtitle: "Passive Detection", textClass: "text-cyan-400", borderClass: "border-cyan-500/30", hoverClass: "hover:bg-cyan-500/10", feats: "Passive Detection", time: "< 1.2s", acc: "92.0%", use: "Basic Auth", ind: "Social, Forums", tier: "Basic" },
+                  { name: "Adv. Anti-Spoof", subtitle: "Active Challenge, Replay Det.", textClass: "text-violet-400", borderClass: "border-violet-500/30", hoverClass: "hover:bg-violet-500/10", feats: "Active Challenge, Replay Det.", time: "2.5s", acc: "98.5%", use: "Financial KYC", ind: "FinTech, Crypto", tier: "Premium" },
+                  { name: "Enterprise", subtitle: "Identity Match, Gaze Track", textClass: "text-emerald-400", borderClass: "border-emerald-500/30", hoverClass: "hover:bg-emerald-500/10", feats: "Identity Match, Gaze Track", time: "3.8s", acc: "99.9%", use: "High-Risk Auth", ind: "Gov, Healthcare", tier: "Enterprise" }
                 ].map((api, i) => (
                   <div key={i} className="bg-[#0a101d] rounded-2xl border border-white/5 p-6 flex flex-col">
                     <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
                       <div>
                         <div className="text-sm text-slate-400">{api.name}</div>
-                        <div className={`text-lg font-bold text-${api.color}-400`}>{api.subtitle}</div>
+                        <div className={`text-lg font-bold ${api.textClass}`}>{api.subtitle}</div>
                       </div>
                       <div className="text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-slate-300">{api.tier}</div>
                     </div>
@@ -371,7 +368,7 @@ function VerificationFlow() {
                       <div><span className="text-slate-500 block text-xs mb-1">Use Cases</span><span className="text-slate-200">{api.use}</span></div>
                       <div><span className="text-slate-500 block text-xs mb-1">Industries</span><span className="text-slate-200">{api.ind}</span></div>
                     </div>
-                    <button className={`mt-6 w-full py-2.5 rounded-lg border border-${api.color}-500/30 text-${api.color}-400 hover:bg-${api.color}-500/10 text-sm font-medium transition-colors`}>
+                    <button className={`mt-6 w-full py-2.5 rounded-lg border ${api.borderClass} ${api.textClass} ${api.hoverClass} text-sm font-medium transition-colors`}>
                       Select {api.name}
                     </button>
                   </div>

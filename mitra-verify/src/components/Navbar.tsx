@@ -8,18 +8,23 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 function NavItem({ href, children, items }: { href?: string, children: React.ReactNode, items?: {label: string, href: string}[] }) {
+  const pathname = usePathname();
+  const isActive = href && pathname === href;
+  const isParentActive = items && items.some(item => pathname === item.href);
+  const active = isActive || isParentActive;
+
   const content = (
     <>
       <span className="flex items-center gap-1">
         {children}
         {items && <ChevronDown size={14} className="opacity-70 group-hover:opacity-100 transition-transform duration-300 group-hover:rotate-180" />}
       </span>
-      {/* Glowing bottom line on hover */}
-      <div className="absolute -bottom-[1px] left-1/2 -translate-x-1/2 w-2/3 h-[2px] bg-gradient-to-r from-transparent via-[#00E5FF] to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-[0_0_12px_rgba(0,229,255,0.8)]" />
+      {/* Glowing bottom line on hover or active */}
+      <div className={`absolute -bottom-[1px] left-1/2 -translate-x-1/2 w-2/3 h-[2px] bg-gradient-to-r from-transparent via-[#00E5FF] to-transparent transition-all duration-300 shadow-[0_0_12px_rgba(0,229,255,0.8)] ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
     </>
   );
 
-  const className = "px-4 py-2 text-[13px] font-medium text-slate-300 transition-all duration-300 rounded-lg border border-transparent group-hover:bg-white/[0.02] group-hover:border-white/[0.05] group-hover:text-[#00E5FF] flex items-center relative";
+  const className = `px-4 py-2 text-[13px] font-medium transition-all duration-300 rounded-lg border border-transparent group-hover:bg-white/[0.02] group-hover:border-white/[0.05] group-hover:text-[#00E5FF] flex items-center relative ${active ? 'text-[#00E5FF] bg-white/[0.02]' : 'text-slate-300'}`;
 
   return (
     <div className="relative group">
@@ -35,17 +40,20 @@ function NavItem({ href, children, items }: { href?: string, children: React.Rea
             {/* Inner subtle glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00E5FF]/50 to-transparent" />
             
-            {items.map((item, idx) => (
-              <Link 
-                key={idx} 
-                href={item.href} 
-                prefetch={false}
-                className="group/item px-3 py-2.5 text-[13px] text-slate-300 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
-                {item.label}
-              </Link>
-            ))}
+            {items.map((item, idx) => {
+              const isSubActive = pathname === item.href;
+              return (
+                <Link 
+                  key={idx} 
+                  href={item.href} 
+                  prefetch={false}
+                  className={`group/item px-3 py-2.5 text-[13px] hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3 ${isSubActive ? 'text-[#00E5FF] bg-[#00E5FF]/10' : 'text-slate-300'}`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full transition-all ${isSubActive ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 'bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF]'}`} />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
@@ -221,10 +229,10 @@ export default function Navbar() {
             {/* Nav Links */}
             <div className="flex-1 overflow-y-auto px-4 py-6">
               <div className="flex flex-col gap-1">
-                <Link href="/compare" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
+                <Link href="/compare" prefetch={false} onClick={() => setMobileOpen(false)} className={`mobile-nav-link ${pathname === '/compare' ? 'text-[#00E5FF] bg-white/[0.02]' : ''}`}>
                   Compare APIs
                 </Link>
-                <Link href="/docs" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
+                <Link href="/docs" prefetch={false} onClick={() => setMobileOpen(false)} className={`mobile-nav-link ${pathname === '/docs' ? 'text-[#00E5FF] bg-white/[0.02]' : ''}`}>
                   Documentation
                 </Link>
                 
@@ -246,24 +254,27 @@ export default function Navbar() {
                       className="overflow-hidden"
                     >
                       <div className="pl-8 flex flex-col gap-1 pb-2">
-                        {demoItems.map((item, idx) => (
-                          <Link 
-                            key={idx}
-                            href={item.href} 
-                            prefetch={false}
-                            onClick={() => setMobileOpen(false)}
-                            className="py-2.5 px-4 text-[15px] text-slate-400 hover:text-[#00E5FF] rounded-lg transition-colors flex items-center gap-3"
-                          >
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                            {item.label}
-                          </Link>
-                        ))}
+                        {demoItems.map((item, idx) => {
+                          const isSubActive = pathname === item.href;
+                          return (
+                            <Link 
+                              key={idx}
+                              href={item.href} 
+                              prefetch={false}
+                              onClick={() => setMobileOpen(false)}
+                              className={`py-2.5 px-4 text-[15px] hover:text-[#00E5FF] rounded-lg transition-colors flex items-center gap-3 ${isSubActive ? 'text-[#00E5FF]' : 'text-slate-400'}`}
+                            >
+                              <div className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-[#00E5FF] shadow-[0_0_8px_#00E5FF]' : 'bg-slate-600'}`} />
+                              {item.label}
+                            </Link>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <Link href="/about" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
+                <Link href="/about" prefetch={false} onClick={() => setMobileOpen(false)} className={`mobile-nav-link ${pathname === '/about' ? 'text-[#00E5FF] bg-white/[0.02]' : ''}`}>
                   About
                 </Link>
 

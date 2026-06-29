@@ -6,8 +6,7 @@ import {
   Zap, Shield, Fingerprint, CheckCircle, X, 
   Camera, Eye, Lock, Activity, Scan, 
   Users, Globe, Server, FileText, ArrowRight,
-  Network, ShieldAlert,
-  Twitter, Github, Linkedin
+  Network, ShieldAlert
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import PageTransition from '@/components/cyber/PageTransition';
@@ -581,10 +580,10 @@ export default function ComparePage() {
               <Link href="/legal" className="hover:text-white transition-colors">Legal</Link>
             </div>
 
-            <div className="flex gap-4 text-slate-600">
-              <Twitter className="w-5 h-5 hover:text-white cursor-pointer transition-colors" />
-              <Github className="w-5 h-5 hover:text-white cursor-pointer transition-colors" />
-              <Linkedin className="w-5 h-5 hover:text-white cursor-pointer transition-colors" />
+            <div className="flex gap-4 text-sm font-medium text-slate-500">
+              <Link href="#" className="hover:text-white transition-colors">X</Link>
+              <Link href="#" className="hover:text-white transition-colors">GitHub</Link>
+              <Link href="#" className="hover:text-white transition-colors">LinkedIn</Link>
             </div>
           </div>
         </footer>

@@ -27,7 +27,7 @@ const ProgressBar = ({ value, colorClass }: { value: number, colorClass: string 
 
 // Performance Chart Row
 const PerfChartRow = ({ label, basic, advanced, enterprise }: any) => (
-  <div className="grid grid-cols-12 gap-4 py-4 border-b border-white/5 items-center hover:bg-white/[0.02] transition-colors">
+  <motion.div variants={fadeInUp} className="grid grid-cols-12 gap-4 py-4 border-b border-white/5 items-center hover:bg-white/[0.02] transition-colors">
     <div className="col-span-3 text-sm text-slate-300 font-medium pl-4">{label}</div>
     <div className="col-span-3 px-4">
       <div className="flex justify-between text-xs mb-1">
@@ -47,10 +47,30 @@ const PerfChartRow = ({ label, basic, advanced, enterprise }: any) => (
       </div>
       <ProgressBar value={enterprise.pct} colorClass="bg-emerald-400" />
     </div>
-  </div>
+  </motion.div>
 );
 
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
+};
+
+const scaleUp = {
+  hidden: { opacity: 0, scale: 0.95 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
+};
+
 export default function ComparePage() {
+
   const [activeTab, setActiveTab] = useState('Node');
   const [copied, setCopied] = useState(false);
 
@@ -121,15 +141,15 @@ function VerificationFlow() {
         <main className="pt-28 pb-24 max-w-[1400px] mx-auto px-6">
           
           {/* COMPACT HEADER */}
-          <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 mb-16 border-b border-white/10 pb-8">
-            <div className="max-w-2xl">
+          <motion.header variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 mb-16 border-b border-white/10 pb-8">
+            <motion.div variants={fadeInUp} className="max-w-2xl">
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">Compare Verification APIs</h1>
               <p className="text-slate-400 text-sm md:text-base leading-relaxed">
                 Choose the right verification pipeline for your application's security, speed and identity requirements.
               </p>
-            </div>
+            </motion.div>
             
-            <div className="flex flex-wrap gap-3 lg:justify-end">
+            <motion.div variants={fadeInUp} className="flex flex-wrap gap-3 lg:justify-end">
               <motion.div animate={{ y: [0, -2, 0] }} transition={{ duration: 4, repeat: Infinity }} className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs font-mono text-slate-300 flex items-center gap-2">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" /> Enterprise Ready
               </motion.div>
@@ -142,13 +162,13 @@ function VerificationFlow() {
               <motion.div animate={{ y: [0, -2, 0] }} transition={{ duration: 4, repeat: Infinity, delay: 1.5 }} className="px-3 py-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-xs font-mono text-cyan-400 flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5" /> &lt;300ms Avg Response
               </motion.div>
-            </div>
-          </header>
+            </motion.div>
+          </motion.header>
 
           {/* API CARDS (Premium grid) */}
-          <section className="grid lg:grid-cols-3 gap-6 mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="grid lg:grid-cols-3 gap-6 mb-24">
             {/* API 1 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} whileHover={{ y: -4 }} className="group relative rounded-2xl bg-[#0a101d] border border-white/5 hover:border-cyan-500/30 transition-all overflow-hidden flex flex-col">
+            <motion.div variants={fadeInUp} whileHover={{ y: -4 }} className="group relative rounded-2xl bg-[#0a101d] border border-white/5 hover:border-cyan-500/30 transition-all overflow-hidden flex flex-col">
               <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="p-8 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 mb-6">
@@ -177,7 +197,7 @@ function VerificationFlow() {
             </motion.div>
 
             {/* API 2 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }} whileHover={{ y: -4 }} className="group relative rounded-2xl bg-[#0a101d] border border-white/5 hover:border-violet-500/30 transition-all overflow-hidden flex flex-col">
+            <motion.div variants={fadeInUp} whileHover={{ y: -4 }} className="group relative rounded-2xl bg-[#0a101d] border border-white/5 hover:border-violet-500/30 transition-all overflow-hidden flex flex-col">
               <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="p-8 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center border border-violet-500/20 mb-6">
@@ -206,7 +226,7 @@ function VerificationFlow() {
             </motion.div>
 
             {/* API 3 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} whileHover={{ y: -4, scale: 1.02 }} className="group relative rounded-2xl bg-[#0a101d] border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all overflow-hidden flex flex-col hover:border-emerald-500">
+            <motion.div variants={fadeInUp} whileHover={{ y: -4, scale: 1.02 }} className="group relative rounded-2xl bg-[#0a101d] border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.1)] transition-all overflow-hidden flex flex-col hover:border-emerald-500">
               <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent opacity-100 pointer-events-none" />
               <div className="p-8 flex-1 relative z-10">
                 <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40 mb-6">
@@ -233,10 +253,10 @@ function VerificationFlow() {
                 <Link href="/docs" className="flex-1 py-2 px-4 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium text-sm text-center border border-white/10 transition-colors">API Docs</Link>
               </div>
             </motion.div>
-          </section>
+          </motion.section>
 
           {/* QUICK COMPARISON */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
             <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Quick Comparison</h2>
             <div className="bg-[#0a101d] rounded-2xl border border-white/5 p-2">
               <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-white/5 text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -258,7 +278,7 @@ function VerificationFlow() {
           </motion.section>
 
           {/* FEATURE MATRIX */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
             <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Feature Matrix</h2>
             <div className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0a101d]">
               <table className="w-full text-left border-collapse min-w-[800px]">
@@ -302,7 +322,7 @@ function VerificationFlow() {
           </motion.section>
 
           {/* VERIFICATION PIPELINE */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
             <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Verification Pipeline</h2>
             <div className="relative bg-[#0a101d] rounded-2xl border border-white/5 p-12 overflow-x-auto hide-scrollbar">
               <div className="min-w-[900px] flex justify-between items-center relative">
@@ -326,6 +346,7 @@ function VerificationFlow() {
                 ].map((step, i) => (
                   <motion.div 
                     key={i}
+                    variants={fadeInUp}
                     whileHover={{ scale: 1.1, y: -5 }}
                     className="relative z-10 group cursor-pointer flex flex-col items-center bg-[#0a101d] px-2"
                   >
@@ -343,7 +364,7 @@ function VerificationFlow() {
           </motion.section>
 
           {/* API COMPARISON CARDS */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
              <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Detailed Breakdown</h2>
              <div className="grid lg:grid-cols-3 gap-6">
                 {[
@@ -351,7 +372,7 @@ function VerificationFlow() {
                   { name: "Adv. Anti-Spoof", subtitle: "Active Challenge, Replay Det.", textClass: "text-violet-400", borderClass: "border-violet-500/30", hoverClass: "hover:bg-violet-500/10", feats: "Active Challenge, Replay Det.", time: "2.5s", acc: "98.5%", use: "Financial KYC", ind: "FinTech, Crypto", tier: "Premium" },
                   { name: "Enterprise", subtitle: "Identity Match, Gaze Track", textClass: "text-emerald-400", borderClass: "border-emerald-500/30", hoverClass: "hover:bg-emerald-500/10", feats: "Identity Match, Gaze Track", time: "3.8s", acc: "99.9%", use: "High-Risk Auth", ind: "Gov, Healthcare", tier: "Enterprise" }
                 ].map((api, i) => (
-                  <motion.div key={i} whileHover={{ y: -4 }} className="bg-[#0a101d] rounded-2xl border border-white/5 hover:border-white/20 transition-all p-6 flex flex-col">
+                  <motion.div variants={fadeInUp} key={i} whileHover={{ y: -4 }} className="bg-[#0a101d] rounded-2xl border border-white/5 hover:border-white/20 transition-all p-6 flex flex-col">
                     <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
                       <div>
                         <div className="text-sm text-slate-400">{api.name}</div>
@@ -377,7 +398,7 @@ function VerificationFlow() {
           </motion.section>
 
           {/* BEST FOR */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
              <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Recommendations</h2>
              <div className="grid md:grid-cols-3 gap-6">
                 {[
@@ -385,7 +406,7 @@ function VerificationFlow() {
                   { title: "Fraud Prevention", desc: "Best for banking", icon: ShieldAlert },
                   { title: "Identity Verification", desc: "Best for KYC and government", icon: Building2 },
                 ].map((item, i) => (
-                  <div key={i} className="bg-[#0a101d] rounded-2xl border border-white/5 p-6 flex items-start gap-4">
+                  <motion.div variants={fadeInUp} key={i} className="bg-[#0a101d] rounded-2xl border border-white/5 p-6 flex items-start gap-4">
                     <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
                       <item.icon className="w-5 h-5 text-slate-300" />
                     </div>
@@ -393,13 +414,13 @@ function VerificationFlow() {
                       <div className="text-slate-200 font-medium mb-1">{item.title}</div>
                       <div className="text-slate-500 text-sm">{item.desc}</div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
              </div>
           </motion.section>
 
           {/* CODE INTEGRATION */}
-          <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-24">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-24">
             <h2 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-4">Code Integration</h2>
             <div className="rounded-2xl border border-white/5 bg-[#0a101d] overflow-hidden">
               <div className="flex border-b border-white/5 bg-[#0d1424]">
@@ -428,7 +449,7 @@ function VerificationFlow() {
           </motion.section>
 
           {/* CTA CARD */}
-          <motion.section initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-16">
+          <motion.section variants={staggerContainer} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }} className="mb-16">
             <div className="bg-gradient-to-r from-[#0a101d] to-[#0d1424] rounded-2xl border border-white/10 p-10 md:p-14 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[80px] rounded-full pointer-events-none" />
               <div>

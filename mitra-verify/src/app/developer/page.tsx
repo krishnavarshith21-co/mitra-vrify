@@ -31,20 +31,20 @@ const API_TYPE_META: Record<string, { color: string; icon: React.ComponentType<{
 };
 
 const SDK_EXAMPLES = {
-  curl: (key: string, type: string) => `curl -X POST http://localhost:8005/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'} \\
+  curl: (key: string, type: string) => `curl -X POST https://api.mitraverify.com/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'} \\
   -H "X-API-Key: ${key}" \\
   -H "Content-Type: application/json" \\
   -d '{"image": "<base64_image_data>"}'`,
   python: (key: string, type: string) => `import requests
  
 response = requests.post(
-    "http://localhost:8005/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'}",
+    "https://api.mitraverify.com/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'}",
     headers={"X-API-Key": "${key}"},
     json={"image": "<base64_image>"}
 )
 print(response.json())`,
   javascript: (key: string, type: string) => `const response = await fetch(
-  "http://localhost:8005/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'}",
+  "https://api.mitraverify.com/api/v1/${type === 'basic' ? 'liveness/basic' : type === 'advanced' ? 'liveness/advanced' : 'identity/verify'}",
   {
     method: "POST",
     headers: {

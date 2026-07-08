@@ -151,7 +151,7 @@ export async function GET(req: Request) {
   const successRate = total > 0 ? (successful / total) * 100 : 0;
   const avgProcessingTime = total > 0 ? Math.round(totalProcessingTime / total) : 0;
   
-  let temporalData = Object.values(temporalDataMap).sort((a, b) => a.time.localeCompare(b.time)).slice(-50).map(t => ({
+  const temporalData = Object.values(temporalDataMap).sort((a, b) => a.time.localeCompare(b.time)).slice(-50).map(t => ({
     time: t.time,
     pass: t.verified,
     failed: t.failed,

@@ -220,7 +220,7 @@ export default function DocsPage() {
                     <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 12 }}>
                       All API requests should be sent to the local development gateway or our production cloud endpoint:
                     </p>
-                    <CodeBlock id="base-url" language="text" code="http://localhost:8005/api/v1" />
+                    <CodeBlock id="base-url" language="text" code="https://api.mitraverify.com/api/v1" />
 
                     <h2 style={{ fontSize: 20, fontWeight: 600, marginTop: 40, marginBottom: 16, color: '#f8fafc' }}>Quick Start Steps</h2>
                     <ol style={{ paddingLeft: 20, color: 'var(--text-secondary)', lineHeight: 1.8, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -249,7 +249,7 @@ export default function DocsPage() {
                     </div>
 
                     <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: '#f8fafc' }}>Example Request</h2>
-                    <CodeBlock id="auth-example" language="curl" code={`curl -X POST http://localhost:8005/api/v1/liveness/basic \\
+                    <CodeBlock id="auth-example" language="curl" code={`curl -X POST https://api.mitraverify.com/api/v1/liveness/basic \\
   -H "X-API-Key: mv_basic_4d13e9a7e6c0c80b561" \\
   -H "Content-Type: application/json" \\
   -d '{"image": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."}'`} />
@@ -304,7 +304,7 @@ export default function DocsPage() {
 payload = {"image": "data:image/jpeg;base64,/9j/4AAQ..."}
 headers = {"X-API-Key": "mv_basic_your_key"}
 
-response = requests.post("http://localhost:8005/api/v1/liveness/basic", json=payload, headers=headers)
+response = requests.post("https://api.mitraverify.com/api/v1/liveness/basic", json=payload, headers=headers)
 print(response.json())`} />
                       </div>
 
@@ -314,7 +314,7 @@ print(response.json())`} />
 
 async function checkLiveness(base64Image) {
   const response = await axios.post(
-    'http://localhost:8005/api/v1/liveness/basic',
+    'https://api.mitraverify.com/api/v1/liveness/basic',
     { image: base64Image },
     { headers: { 'X-API-Key': 'mv_basic_your_key' } }
   );
@@ -331,7 +331,7 @@ export function LivenessChecker() {
 
   const verify = async (imgB64) => {
     setStatus('processing');
-    const res = await fetch('http://localhost:8005/api/v1/liveness/basic', {
+    const res = await fetch('https://api.mitraverify.com/api/v1/liveness/basic', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -403,7 +403,7 @@ for step in challenges:
     
     # 2. POST to Advanced endpoint
     res = requests.post(
-        "http://localhost:8005/api/v1/liveness/advanced",
+        "https://api.mitraverify.com/api/v1/liveness/advanced",
         json={"image": frame_b64, "challenge_type": step, "session_id": session_id},
         headers={"X-API-Key": "mv_adv_secret_key"}
     )
@@ -500,7 +500,7 @@ for step in challenges:
 // Initialize the verified client session
 const client = new MitraVerifyClient({
   apiKey: 'mv_ent_your_live_key',
-  gatewayUrl: 'http://localhost:8005'
+  gatewayUrl: 'https://api.mitraverify.com'
 });
 
 // Enroll a face embedding vector

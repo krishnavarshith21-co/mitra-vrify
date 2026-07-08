@@ -2,7 +2,10 @@ import axios from 'axios';
 import { supabase } from './supabase';
 
 // Read API URL from environment variable
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+let API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+if (API_BASE && !API_BASE.endsWith('/api/v1')) {
+  API_BASE = API_BASE.replace(/\/+$/, '') + '/api/v1';
+}
 
 console.log(`[MITRA VERIFY] API Base URL: ${API_BASE || 'MISSING — set NEXT_PUBLIC_API_URL'}`);
 

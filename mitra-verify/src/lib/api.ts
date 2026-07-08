@@ -32,7 +32,7 @@ api.interceptors.request.use(
           userId = session.user?.id;
           if (session.access_token) {
             hasToken = true;
-            config.headers.Authorization = `Bearer ${session.access_token}`;
+            config.headers.set('Authorization', `Bearer ${session.access_token}`);
           }
         }
       } catch (err) {

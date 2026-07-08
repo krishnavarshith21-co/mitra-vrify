@@ -20,11 +20,33 @@ router = APIRouter(prefix="/liveness", tags=["Liveness Detection"])
 async def basic_liveness(
     data: BasicLivenessRequest,
     request: Request,
-    api_key: ApiKey = Depends(get_api_key_from_header),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     cv_result = run_basic_liveness(data.image)
     
+    # Get a dummy API key for logging purposes
+    stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
+    res = await db.execute(stmt)
+    api_key = res.scalars().first()
+    if not api_key:
+        api_key = ApiKey(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            name="Default Key",
+            key_prefix="mv_",
+            key_hash=str(uuid.uuid4()),
+            api_type="basic",
+            is_active=True
+        )
+        db.add(api_key)
+        try:
+            await db.commit()
+            await db.refresh(api_key)
+        except Exception:
+            await db.rollback()
+            raise
+
     # Log verification
     log = VerificationLog(
         id=str(uuid.uuid4()),
@@ -57,10 +79,31 @@ async def basic_liveness(
 async def advanced_liveness(
     data: AdvancedLivenessRequest,
     request: Request,
-    api_key: ApiKey = Depends(get_api_key_from_header),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     cv_result = run_advanced_liveness(data.image, data.challenge_type)
+
+    stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
+    res = await db.execute(stmt)
+    api_key = res.scalars().first()
+    if not api_key:
+        api_key = ApiKey(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            name="Default Key",
+            key_prefix="mv_",
+            key_hash=str(uuid.uuid4()),
+            api_type="advanced",
+            is_active=True
+        )
+        db.add(api_key)
+        try:
+            await db.commit()
+            await db.refresh(api_key)
+        except Exception:
+            await db.rollback()
+            raise
 
     log = VerificationLog(
         id=str(uuid.uuid4()),
@@ -94,11 +137,32 @@ async def advanced_liveness(
 async def enterprise_liveness(
     data: AdvancedLivenessRequest,
     request: Request,
-    api_key: ApiKey = Depends(get_api_key_from_header),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     # Reuse advanced CV engine; future implementation may add continuous heartbeat verification
     cv_result = run_advanced_liveness(data.image, data.challenge_type)
+
+    stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
+    res = await db.execute(stmt)
+    api_key = res.scalars().first()
+    if not api_key:
+        api_key = ApiKey(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            name="Default Key",
+            key_prefix="mv_",
+            key_hash=str(uuid.uuid4()),
+            api_type="enterprise",
+            is_active=True
+        )
+        db.add(api_key)
+        try:
+            await db.commit()
+            await db.refresh(api_key)
+        except Exception:
+            await db.rollback()
+            raise
 
     # Log verification, marking api_type as "enterprise"
     log = VerificationLog(

@@ -21,11 +21,11 @@ router = APIRouter(prefix="/identity", tags=["Identity Verification"])
 async def identity_verify(
     data: IdentityVerifyRequest,
     request: Request,
-    api_key: ApiKey = Depends(get_api_key_from_header),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     # Retrieve the enrolled face embedding for this subject from the database
-    subject_id = data.subject_id or api_key.user_id
+    subject_id = data.subject_id or current_user.id
     stmt = select(FaceProfile).where(FaceProfile.user_id == subject_id)
     res = await db.execute(stmt)
     enrolled = res.scalar_one_or_none()
@@ -33,6 +33,27 @@ async def identity_verify(
     enrolled_vector = enrolled.embedding_vector if enrolled else None
     
     cv_result = run_identity_verify(data.image, subject_id, enrolled_vector)
+
+    stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
+    res = await db.execute(stmt)
+    api_key = res.scalars().first()
+    if not api_key:
+        api_key = ApiKey(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            name="Default Key",
+            key_prefix="mv_",
+            key_hash=str(uuid.uuid4()),
+            api_type="enterprise",
+            is_active=True
+        )
+        db.add(api_key)
+        try:
+            await db.commit()
+            await db.refresh(api_key)
+        except Exception:
+            await db.rollback()
+            raise
 
     log = VerificationLog(
         id=str(uuid.uuid4()),

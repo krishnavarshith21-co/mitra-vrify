@@ -19,18 +19,37 @@ const api = axios.create({
 // ── Request interceptor: inject auth token ────────────────────────────────────
 api.interceptors.request.use(
   async config => {
+    const url = `${config.baseURL || ''}${config.url || ''}`;
+    let hasSession = false;
+    let hasToken = false;
+    let userId = null;
+
     if (typeof window !== 'undefined') {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          config.headers.Authorization = `Bearer ${session.access_token}`;
+        if (session) {
+          hasSession = true;
+          userId = session.user?.id;
+          if (session.access_token) {
+            hasToken = true;
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+          }
         }
       } catch (err) {
         console.error('[API] Failed to get Supabase session', err);
       }
     }
-    const url = `${config.baseURL || ''}${config.url || ''}`;
-    console.log(`[API] ${config.method?.toUpperCase()} ${url}`);
+
+    const isProtected = url.includes('/liveness/') || url.includes('/identity/') || url.includes('/keys') || url.includes('/demo/');
+    if (isProtected && !hasSession) {
+      console.warn(`[API] Blocked request to ${url}: No active session.`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
+      return Promise.reject(new Error('Authentication required. Please sign in again.'));
+    }
+
+    console.log(`[API] ${config.method?.toUpperCase()} ${url} | Session: ${hasSession} | Token: ${hasToken} | User: ${userId}`);
     return config;
   },
   error => Promise.reject(error)
@@ -99,15 +118,12 @@ export const keysAPI = {
 
 // ── Liveness ──────────────────────────────────────────────────────────────────
 export const livenessAPI = {
-  basic: (apiKey: string, image: string, sessionId?: string) =>
-    api.post(`/liveness/basic`, { image, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
-  advanced: (apiKey: string, image: string, challengeType?: string, sessionId?: string) =>
-    api.post(`/liveness/advanced`, { image, challenge_type: challengeType, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
-  identity: (apiKey: string, image: string, subjectId?: string, sessionId?: string) =>
-    api.post(`/identity/verify`, { image, subject_id: subjectId, session_id: sessionId },
-      { headers: { 'X-API-Key': apiKey } }),
+  basic: (image: string, sessionId?: string) =>
+    api.post(`/liveness/basic`, { image, session_id: sessionId }),
+  advanced: (image: string, challengeType?: string, sessionId?: string) =>
+    api.post(`/liveness/advanced`, { image, challenge_type: challengeType, session_id: sessionId }),
+  identity: (image: string, subjectId?: string, sessionId?: string) =>
+    api.post(`/identity/verify`, { image, subject_id: subjectId, session_id: sessionId }),
   startSession: (apiType: string) => api.post('/liveness/session/start', { api_type: apiType }),
   processDemoFrame: (image: string, sessionId?: string, challengeType?: string, enrolledEmbedding?: number[], apiType?: string) =>
     api.post('/liveness/demo/process', { image, session_id: sessionId, challenge_type: challengeType, enrolled_embedding: enrolledEmbedding, api_type: apiType }),

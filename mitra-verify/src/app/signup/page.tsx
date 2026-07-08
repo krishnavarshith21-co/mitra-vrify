@@ -403,7 +403,7 @@ export default function SignupPage() {
                 ))}
               </div>
 
-              <div className="text-center">
+              <div className="mt-8 text-center">
                 <p className="text-[14.5px] text-[#94A3B8] font-medium">
                   Already have an account?{' '}
                   <Link href={`/signin${typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('redirect') ? `?redirect=${encodeURIComponent(new URLSearchParams(window.location.search).get('redirect')!)}` : ''}`} className="text-[#F8FAFC] font-semibold hover:text-[#60A5FA] transition-colors underline decoration-white/20 underline-offset-4">

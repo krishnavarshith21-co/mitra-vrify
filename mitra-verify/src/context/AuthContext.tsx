@@ -45,11 +45,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const provider = sbUser.app_metadata?.provider || 'supabase';
         const avatar = sbUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`;
         
+        let role = 'user';
+        let hasEnrolledFace = false;
+        try {
+          const meResponse = await authAPI.me();
+          if (meResponse.data) {
+            role = meResponse.data.role;
+            hasEnrolledFace = meResponse.data.has_enrolled_face;
+          }
+        } catch (meErr) {
+          console.warn('[Auth] Failed to fetch backend profile info', meErr);
+        }
+
         setUser({
           name,
           email: sbUser.email || '',
           avatar,
-          provider
+          provider,
+          role,
+          hasEnrolledFace
         });
       } else {
         setUser(null);
@@ -85,19 +99,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout('/signin?error=session_expired');
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const sbUser = session.user;
         const name = sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'User';
         const provider = sbUser.app_metadata?.provider || 'supabase';
         const avatar = sbUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`;
         
+        let role = 'user';
+        let hasEnrolledFace = false;
+        try {
+          // Wait for token to propagate to interceptors, then fetch role
+          const meResponse = await authAPI.me();
+          if (meResponse.data) {
+            role = meResponse.data.role;
+            hasEnrolledFace = meResponse.data.has_enrolled_face;
+          }
+        } catch (meErr) {
+          console.warn('[Auth] Failed to fetch backend profile info during auth change', meErr);
+        }
+
         setUser({
           name,
           email: sbUser.email || '',
           avatar,
-          provider
+          provider,
+          role,
+          hasEnrolledFace
         });
       } else {
         setUser(null);

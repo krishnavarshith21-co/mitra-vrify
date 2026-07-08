@@ -29,14 +29,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
                 result = await db.execute(select(User).where(User.id == user_id))
                 user = result.scalar_one_or_none()
                 if not user:
-                    # Create the user on the fly
+                    # Create the user on the fly and auto-promote to admin for this demo
                     email = supabase_payload.get("email", "unknown@supabase.com")
                     user = User(
                         id=user_id,
                         email=email,
                         password_hash="supabase_managed",
                         full_name=supabase_payload.get("user_metadata", {}).get("full_name"),
-                        role="user",
+                        role="admin", # AUTO-PROMOTED TO ADMIN
                         email_verified=supabase_payload.get("email_verified", False),
                         is_active=True,
                         created_at=datetime.utcnow()
@@ -45,6 +45,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
                     await db.commit()
                     await db.refresh(user)
                     return user
+                elif user.role != "admin":
+                    # Upgrade existing demo users to admin automatically
+                    user.role = "admin"
+                    await db.commit()
+                    await db.refresh(user)
+                    return user
+                return user
     
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")

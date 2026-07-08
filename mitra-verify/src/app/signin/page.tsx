@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Mail, Lock, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck, Activity, Zap, Server, Shield, Eye, EyeOff } from 'lucide-react';
 import { authAPI } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
@@ -145,6 +146,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [windowSize, setWindowSize] = useState({ w: 1000, h: 1000 });
@@ -213,6 +215,33 @@ export default function LoginPage() {
       const apiErr = err as { response?: { data?: { detail?: string } } };
       setError(apiErr?.response?.data?.detail || 'Login failed. Check your credentials.');
       setLoading(false);
+    }
+  }
+
+  async function handleOAuthLogin(provider: 'google' | 'github' | 'azure') {
+    if (oauthLoading) return;
+    setOauthLoading(provider);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+      if (error) {
+        if (error.message.toLowerCase().includes('not configured')) {
+          setError(`${provider === 'azure' ? 'Microsoft' : provider.charAt(0).toUpperCase() + provider.slice(1)} authentication is not configured in Supabase.`);
+        } else if (error.message.toLowerCase().includes('popup')) {
+          setError('Sign-in popup was blocked by your browser. Please allow popups for this site.');
+        } else {
+          setError(`Authentication failed: ${error.message}`);
+        }
+        setOauthLoading(null);
+      }
+    } catch (err: any) {
+      setError(`Network error: ${err.message}`);
+      setOauthLoading(null);
     }
   }
 
@@ -386,14 +415,41 @@ export default function LoginPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-8 relative z-10">
-              <button type="button" className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group">
-                <GoogleIcon />
+              <button 
+                type="button" 
+                disabled={oauthLoading !== null}
+                onClick={() => handleOAuthLogin('google')}
+                className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {oauthLoading === 'google' ? (
+                  <div className="flex items-center gap-1.5"><RefreshCw className="w-[14px] h-[14px] animate-spin text-[#94A3B8]" /><span className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wider">Connecting...</span></div>
+                ) : (
+                  <GoogleIcon />
+                )}
               </button>
-              <button type="button" className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group">
-                <MicrosoftIcon />
+              <button 
+                type="button" 
+                disabled={oauthLoading !== null}
+                onClick={() => handleOAuthLogin('azure')}
+                className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {oauthLoading === 'azure' ? (
+                  <div className="flex items-center gap-1.5"><RefreshCw className="w-[14px] h-[14px] animate-spin text-[#94A3B8]" /><span className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wider">Connecting...</span></div>
+                ) : (
+                  <MicrosoftIcon />
+                )}
               </button>
-              <button type="button" className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group">
-                <GithubIcon />
+              <button 
+                type="button" 
+                disabled={oauthLoading !== null}
+                onClick={() => handleOAuthLogin('github')}
+                className="h-[48px] rounded-[14px] bg-transparent border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-white/20 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {oauthLoading === 'github' ? (
+                  <div className="flex items-center gap-1.5"><RefreshCw className="w-[14px] h-[14px] animate-spin text-[#94A3B8]" /><span className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wider">Connecting...</span></div>
+                ) : (
+                  <GithubIcon />
+                )}
               </button>
             </div>
 

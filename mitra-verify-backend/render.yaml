@@ -10,5 +10,5 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: CORS_ORIGINS
-        value: https://krishnavarshith21-co-mitra-vrify.vercel.app,https://krishnavarshith21-co-mitra-vrfiy.vercel.app
+        value: https://mitraverify.vercel.app,https://krishnavarshith21-co-mitra-vrify.vercel.app,https://krishnavarshith21-co-mitra-vrfiy.vercel.app
     healthCheckPath: /health

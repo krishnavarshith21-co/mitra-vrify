@@ -1728,7 +1728,7 @@ def process_demo_frame(
         ys = [pt[1] for pt in nose_pts]
         if np.std(xs) < 1e-6 and np.std(ys) < 1e-6:
             return {
-                "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
+                "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
                 "bbox": bbox, "status": "CAMERA_FEED_FROZEN", "challenge_passed": False, "enrolled_matched": False
             }
 
@@ -1932,8 +1932,8 @@ def process_demo_frame(
             # Only trigger UNAUTHORIZED_PERSON if we have at least 5 frames and the smoothed similarity is below threshold
             if history and len(history.get("similarity_scores", [])) >= 5:
                 return {
-                    "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(similarity_score), "landmark_count": int(landmark_count), # type: ignore
-                    "bbox": bbox, "status": "TERMINATED", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
+                    "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count), # type: ignore
+                    "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
                 }
     else:
         status = "no_enrolled_identity"

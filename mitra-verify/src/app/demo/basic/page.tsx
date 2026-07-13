@@ -11,6 +11,10 @@ import TiltCard from '@/components/cyber/TiltCard';
 import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
+import { useDiagnosticLogger } from '@/components/developer/useDiagnosticLogger';
+import { AdvancedDebugPanel } from '@/components/developer/AdvancedDebugPanel';
+import { CameraCanvasOverlay } from '@/components/developer/CameraCanvasOverlay';
+import { TestModeMatrix } from '@/components/developer/TestModeMatrix';
 
 
 
@@ -59,6 +63,11 @@ export default function BasicDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  
+  // Developer Ecosystem Hooks
+  const { logs, logEvent, downloadLogs, interpretSpoof } = useDiagnosticLogger();
+  const [fraudDetection, setFraudDetection] = useState<any>(null);
+  const [rawLandmarks, setRawLandmarks] = useState<any[]>([]);
   
   // Real-time API metrics
   const [confidence, setConfidence] = useState(0);
@@ -291,41 +300,30 @@ export default function BasicDemoPage() {
       const elapsedInStep = activeStepTimeElapsedRef.current / 1000;
       
       if (currentStep === 0) {
-        if (elapsedInStep > 3.0) {
-          console.warn("FACE_CENTERED_FAILED: Face centering took too long (>3s). Reason: Face position outside guides or confidence too low. Automatically advancing.");
-          console.log("CHALLENGE_1_COMPLETE");
-          setIsFacePrepared(true);
-          setCurrentStep(1);
-          activeStepTimeElapsedRef.current = 0;
+        if (elapsedInStep > 10.0) {
+          console.warn("FACE_CENTERED_FAILED: Face centering took too long (>10s).");
+          setResult('fail');
         }
       } else {
-        if (elapsedInStep > 5.0) {
-          console.warn(`CHALLENGE_TIMEOUT: Stuck on Challenge ${currentStep + 1} for more than 5 seconds of active face presence. Automatically advancing.`);
-          if (currentStep === 1) {
-            console.log("BLINK_DETECTED");
-            console.log("CHALLENGE_2_COMPLETE");
-            setHasBlinked(true);
-            setCurrentStep(2);
-          } else if (currentStep === 2) {
-            console.log("MOUTH_OPEN_DETECTED");
-            console.log("CHALLENGE_3_COMPLETE");
-            setHasMovedMouth(true);
-            setCurrentStep(3);
-          } else if (currentStep === 3) {
-            console.log("HEAD_ROTATION_DETECTED");
-            console.log("CHALLENGE_4_COMPLETE");
-            setHasRotatedHead(true);
-            setCurrentStep(4);
-            setEnrollmentSuccess(true);
-            console.log("LIVENESS_COMPLETE");
-          }
-          activeStepTimeElapsedRef.current = 0;
+        if (elapsedInStep > 10.0) {
+          console.warn(`CHALLENGE_TIMEOUT: Stuck on Challenge ${currentStep + 1} for more than 10 seconds of active face presence.`);
+          setResult('fail');
         }
       }
     }, 100);
     
     return () => clearInterval(interval);
   }, [streaming, currentStep, result]);
+
+  // Immediate Spoof Guard
+  useEffect(() => {
+    if (spoofScore > 0.5) {
+      setResult('fail');
+      setStreaming(false);
+      setCameraStatus('Inactive');
+      console.warn("SPOOF_DETECTED_IMMEDIATELY");
+    }
+  }, [spoofScore]);
 
   // E2E frame capturer and processor
   const sendFrameToBackend = useCallback(async () => {
@@ -375,6 +373,13 @@ export default function BasicDemoPage() {
       setApiResponse(data);
 
       if (!data) return;
+      
+      // Trust backend final decision if it is terminal
+      if (data.result === 'pass') {
+        setResult('pass');
+      } else if (data.result === 'fail') {
+        setResult('fail');
+      }
 
       // Check backend face-loss timeout failure
       if (data.status === "failed" && data.reason === "no_face_detected") {
@@ -472,6 +477,13 @@ export default function BasicDemoPage() {
         setJawRatio(data.jaw_ratio !== undefined ? data.jaw_ratio : 0.0);
         setBbox(data.bbox);
         
+        setFraudDetection(data.fraud_detection);
+        setRawLandmarks(data.landmarks || []);
+        
+        if (data.detected_faces > 1 && detectedFaces <= 1) {
+          logEvent('MULTIPLE_FACES_DETECTED', { faces: data.detected_faces }, 'WARNING');
+        }
+        
         // Track blink transition & increment count
         if (data.blink_detected && !wasBlinkingRef.current) {
           setBlinkCount(c => c + 1);
@@ -517,7 +529,7 @@ export default function BasicDemoPage() {
             } else {
               const centeredDur = (Date.now() - centerTimerStartTimeRef.current) / 1000;
               setFaceVisibleDuration(centeredDur);
-              if (centeredDur >= 0.5) {
+              if (centeredDur >= 2.0) {
                 console.log("CENTER_TIMER_COMPLETE");
                 console.log("FACE_CENTERED");
                 console.log("CHALLENGE_1_COMPLETE");
@@ -659,18 +671,15 @@ export default function BasicDemoPage() {
   }, [streaming, animationLoop]);
 
 
-  // Overall pass/fail verification criteria logic
+  // Overall fail verification criteria logic (multiple faces)
   useEffect(() => {
     if (!streaming) return;
     
-    if (currentStep === 4 && enrollmentSuccess) {
-      const t = setTimeout(() => setResult('pass'), 0);
-      return () => clearTimeout(t);
-    } else if (detectedFaces > 1) {
+    if (detectedFaces > 1) {
       const t = setTimeout(() => setResult('fail'), 0);
       return () => clearTimeout(t);
     }
-  }, [currentStep, enrollmentSuccess, detectedFaces, streaming]);
+  }, [detectedFaces, streaming]);
 
   // Single Source of Truth Analytics Logging
   useEffect(() => {
@@ -743,8 +752,10 @@ export default function BasicDemoPage() {
       const sessionRes = await livenessAPI.startSession('basic');
       setSessionId(sessionRes.data.session_id);
     } catch (e) {
-      console.warn("Failed to start session on backend, falling back to client-generated sessionId", e);
-      setSessionId(Math.random().toString(36).substring(7));
+      console.error("Failed to start session on backend", e);
+      setError('Failed to initialize verification session. Please try again.');
+      stopCamera();
+      return;
     }
 
     try {
@@ -870,69 +881,34 @@ export default function BasicDemoPage() {
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-              {/* Premium Debug Overlay HUD */}
-              {streaming && (
-                <div style={{
-                  position: 'absolute', top: 16, left: 16,
-                  padding: '12px 16px', borderRadius: 12,
-                  background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#fff', fontSize: 11, fontFamily: 'monospace',
-                  zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)', pointerEvents: 'none',
-                  textAlign: 'left'
-                }}>
-                  <div style={{ fontWeight: 'bold', color: 'var(--brand-cyan)', marginBottom: 2, letterSpacing: '0.05em' }}>BIOMETRIC PIPELINE HUD</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Face Detected:</span>
-                    <span style={{ color: detectedFaces > 0 ? 'var(--brand-green)' : 'var(--brand-red)', fontWeight: 'bold' }}>
-                      {detectedFaces > 0 ? 'YES' : 'NO'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Landmarks Count:</span>
-                    <span style={{ color: '#f8fafc' }}>{landmarkCount}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Confidence:</span>
-                    <span style={{ color: confidence >= 0.90 ? 'var(--brand-green)' : 'var(--brand-amber)' }}>
-                      {(confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Camera Status:</span>
-                    <span style={{ color: cameraStatus === 'Active' ? 'var(--brand-green)' : 'var(--brand-red)' }}>
-                      {cameraStatus}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Model Status:</span>
-                    <span style={{ color: modelStatus === 'Loaded' ? 'var(--brand-green)' : modelStatus === 'Failed' ? 'var(--brand-red)' : 'var(--brand-amber)' }}>
-                      {modelStatus}
-                    </span>
-                  </div>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Face X / Y:</span>
-                    <span style={{ color: '#00d4ff' }}>{bbox ? bbox.x.toFixed(2) : '0.00'} / {bbox ? bbox.y.toFixed(2) : '0.00'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Center Offset:</span>
-                    <span style={{ color: '#00d4ff' }}>{((bbox ? Math.sqrt(Math.pow((bbox.x + bbox.w / 2) - 0.5, 2) + Math.pow((bbox.y + bbox.h / 2) - 0.5, 2)) : 0.0) * 100).toFixed(1)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Blink Ratio:</span>
-                    <span style={{ color: '#00ff88' }}>{ear.toFixed(4)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Mouth Ratio:</span>
-                    <span style={{ color: '#00ff88' }}>{mar.toFixed(4)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Yaw / Pitch / Roll:</span>
-                    <span style={{ color: '#ffb800' }}>{yaw.toFixed(1)}° / {pitch.toFixed(1)}° / {roll.toFixed(1)}°</span>
-                  </div>
-                </div>
+              {/* Developer Ecosystem Components */}
+              {streaming && showDebug && (
+                <>
+                  <CameraCanvasOverlay
+                    landmarks={rawLandmarks}
+                    bbox={bbox}
+                    yaw={yaw}
+                    pitch={pitch}
+                    roll={roll}
+                    trackingState={trackingState}
+                    videoWidth={videoRef.current?.videoWidth || 640}
+                    videoHeight={videoRef.current?.videoHeight || 480}
+                  />
+                  <AdvancedDebugPanel
+                    telemetry={{
+                      cameraStatus, detectedFaces, trackingState, landmarkCount,
+                      ear, blinkDetected: wasBlinkingRef.current, mar, mouthOpen: mar > 0.3,
+                      yaw, pitch, roll, confidence, identityScore: 0, cosineSimilarity: 0,
+                      livenessScore, spoofScore, deepfakeRisk: fraudDetection?.deepfake?.confidence || 0,
+                      currentChallenge: currentStep === 0 ? 'Face Centered' : currentStep === 1 ? 'Blink' : currentStep === 2 ? 'Mouth' : currentStep === 3 ? 'Head' : 'Complete',
+                      challengeProgress: 0, challengeTimeout: faceMissingCountdown,
+                      processingTime, apiVersion: 'API 1 (Basic)', verificationState: result || 'processing',
+                      fraudDetection, bbox
+                    }}
+                    onDownloadReport={() => downloadLogs({ result })}
+                  />
+                  <TestModeMatrix telemetry={{ detectedFaces, bbox, fraudDetection, confidence }} />
+                </>
               )}
 
               {/* Streaming Error Overlay */}

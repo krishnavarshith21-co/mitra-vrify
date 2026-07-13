@@ -10,7 +10,10 @@ import PageTransition from '@/components/cyber/PageTransition';
 import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
-
+import { useDiagnosticLogger } from '@/components/developer/useDiagnosticLogger';
+import { AdvancedDebugPanel } from '@/components/developer/AdvancedDebugPanel';
+import { CameraCanvasOverlay } from '@/components/developer/CameraCanvasOverlay';
+import { TestModeMatrix } from '@/components/developer/TestModeMatrix';
 const CHALLENGE_POOL = [
   { id: 'face_centered', label: 'Face Centered', instruction: 'Center your face inside the guides', icon: '👤' },
   { id: 'blink_once', label: 'Blink Once', instruction: 'Blink your eyes once slowly', icon: '👁️' },
@@ -35,6 +38,12 @@ export default function AdvancedDemoPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   
+  // Developer Ecosystem Hooks
+  const { logs, logEvent, downloadLogs, interpretSpoof } = useDiagnosticLogger();
+  const [fraudDetection, setFraudDetection] = useState<any>(null);
+  const [rawLandmarks, setRawLandmarks] = useState<any[]>([]);
+  const [processingTime, setProcessingTime] = useState(0);
+
   // Real-time API metrics
   const [challenges, setChallenges] = useState<typeof CHALLENGE_POOL>([]);
   const [currentChallenge, setCurrentChallenge] = useState(0); // 0: Face Centered, 1: Blink, 2: Mouth, 3: Head, 4: Complete
@@ -209,50 +218,14 @@ export default function AdvancedDemoPage() {
       const elapsedInStep = (now - stepStartTimeRef.current) / 1000;
       
       if (currentChallenge === 0) {
-        if (elapsedInStep > 3.0) {
-          console.warn("FACE_CENTERED_FAILED: Face centering took too long (>3s). Reason: Face position outside guides or confidence too low. Automatically advancing.");
-          console.log("CHALLENGE_1_COMPLETE");
-          setIsFacePrepared(true);
-          setChallengePassed(prev => {
-            const next = [...prev];
-            next[0] = true;
-            return next;
-          });
-          setCurrentChallenge(1);
-          stepStartTimeRef.current = Date.now();
+        if (elapsedInStep > 10.0) {
+          console.warn("FACE_CENTERED_FAILED: Face centering took too long (>10s).");
+          setOverallResult('fail');
         }
       } else {
-        if (elapsedInStep > 5.0) {
-          console.warn(`CHALLENGE_TIMEOUT: Stuck on Challenge ${currentChallenge + 1} for more than 5 seconds. Explanation: Action not registered or face lost. Automatically advancing.`);
-          const activeChallenge = challenges[currentChallenge];
-          if (activeChallenge) {
-            console.log(`${activeChallenge.id.toUpperCase()}_DETECTED`);
-            console.log(`CHALLENGE_${currentChallenge + 1}_COMPLETE`);
-            
-            if (activeChallenge.id === 'blink_twice') setHasBlinked(true);
-            if (activeChallenge.id === 'open_mouth') setHasMovedMouth(true);
-            if (activeChallenge.id === 'turn_left' || activeChallenge.id === 'turn_right') setHasRotatedHead(true);
-            if (activeChallenge.id === 'raise_eyebrows') setHasRaisedEyebrows(true);
-            
-            setChallengePassed(prev => {
-              const next = [...prev];
-              next[currentChallenge] = true;
-              return next;
-            });
-            
-            const nextStep = currentChallenge + 1;
-            setCurrentChallenge(nextStep);
-            if (nextStep >= challenges.length) {
-              if (spoofScore > 0.45) {
-                setOverallResult('spoof');
-                console.log("SPOOF_DETECTED");
-              } else {
-                setOverallResult('pass');
-                console.log("LIVENESS_COMPLETE");
-              }
-            }
-          }
-          stepStartTimeRef.current = Date.now();
+        if (elapsedInStep > 10.0) {
+          console.warn(`CHALLENGE_TIMEOUT: Stuck on Challenge ${currentChallenge + 1} for more than 10 seconds. Explanation: Action not registered or face lost.`);
+          setOverallResult('fail');
         }
       }
     }, 100);
@@ -303,6 +276,12 @@ export default function AdvancedDemoPage() {
       const data = res?.data;
 
       if (!data) return;
+      
+      if (data.result === 'pass') {
+        setOverallResult('pass');
+      } else if (data.result === 'fail') {
+        setOverallResult('fail');
+      }
 
       // Check backend face-loss timeout failure
       if (data.status === "failed" && data.reason === "no_face_detected") {
@@ -387,6 +366,13 @@ export default function AdvancedDemoPage() {
         setJawRatio(data.jaw_ratio !== undefined ? data.jaw_ratio : 0.0);
         setBbox(data.bbox);
         
+        setFraudDetection(data.fraud_detection);
+        setRawLandmarks(data.landmarks || []);
+        
+        if (data.detected_faces > 1 && detectedFaces <= 1) {
+          logEvent('MULTIPLE_FACES_DETECTED', { faces: data.detected_faces }, 'WARNING');
+        }
+        
         // Track blink transition & increment count
         if (data.blink_detected && !wasBlinkingRef.current) {
           setBlinkCount(c => c + 1);
@@ -454,13 +440,7 @@ export default function AdvancedDemoPage() {
               stepStartTimeRef.current = Date.now();
               
               if (nextStep >= challenges.length) {
-                if (data.spoof_score > 0.45) {
-                  setOverallResult('spoof');
-                  console.log("SPOOF_DETECTED");
-                } else {
-                  setOverallResult('pass');
-                  console.log("LIVENESS_COMPLETE");
-                }
+                console.log("Awaiting final validation from backend...");
               }
             }
           }
@@ -534,6 +514,16 @@ export default function AdvancedDemoPage() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Spoof checking override
+  useEffect(() => {
+    if (!streaming || overallResult) return;
+    if (spoofScore > 0.5) {
+      const t = setTimeout(() => setOverallResult('spoof'), 0);
+      return () => clearTimeout(t);
+    }
+  }, [streaming, overallResult, spoofScore]);
+
 
   // Single Source of Truth Analytics Logging
   useEffect(() => {
@@ -714,69 +704,34 @@ export default function AdvancedDemoPage() {
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-              {/* Premium Debug Overlay HUD */}
+              {/* Developer Ecosystem Components */}
               {streaming && (
-                <div style={{
-                  position: 'absolute', top: 16, left: 16,
-                  padding: '12px 16px', borderRadius: 12,
-                  background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#fff', fontSize: 11, fontFamily: 'monospace',
-                  zIndex: 20, display: 'flex', flexDirection: 'column', gap: 6,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)', pointerEvents: 'none',
-                  textAlign: 'left'
-                }}>
-                  <div style={{ fontWeight: 'bold', color: 'var(--brand-violet)', marginBottom: 2, letterSpacing: '0.05em' }}>BIOMETRIC PIPELINE HUD</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Face Detected:</span>
-                    <span style={{ color: detectedFaces > 0 ? 'var(--brand-green)' : 'var(--brand-red)', fontWeight: 'bold' }}>
-                      {detectedFaces > 0 ? 'YES' : 'NO'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Landmarks Count:</span>
-                    <span style={{ color: '#f8fafc' }}>{landmarkCount}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Confidence:</span>
-                    <span style={{ color: confidence >= 0.90 ? 'var(--brand-green)' : 'var(--brand-amber)' }}>
-                      {(confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Camera Status:</span>
-                    <span style={{ color: cameraStatus === 'Active' ? 'var(--brand-green)' : 'var(--brand-red)' }}>
-                      {cameraStatus}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Model Status:</span>
-                    <span style={{ color: modelStatus === 'Loaded' ? 'var(--brand-green)' : modelStatus === 'Failed' ? 'var(--brand-red)' : 'var(--brand-amber)' }}>
-                      {modelStatus}
-                    </span>
-                  </div>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Face X / Y:</span>
-                    <span style={{ color: '#00d4ff' }}>{bbox ? bbox.x.toFixed(2) : '0.00'} / {bbox ? bbox.y.toFixed(2) : '0.00'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Center Offset:</span>
-                    <span style={{ color: '#00d4ff' }}>{((bbox ? Math.sqrt(Math.pow((bbox.x + bbox.w / 2) - 0.5, 2) + Math.pow((bbox.y + bbox.h / 2) - 0.5, 2)) : 0.0) * 100).toFixed(1)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Blink Ratio:</span>
-                    <span style={{ color: '#00ff88' }}>{ear.toFixed(4)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Mouth Ratio:</span>
-                    <span style={{ color: '#00ff88' }}>{mar.toFixed(4)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
-                    <span style={{ color: '#94a3b8' }}>Yaw / Pitch / Roll:</span>
-                    <span style={{ color: '#ffb800' }}>{yaw.toFixed(1)}° / {pitch.toFixed(1)}° / {roll.toFixed(1)}°</span>
-                  </div>
-                </div>
+                <>
+                  <CameraCanvasOverlay
+                    landmarks={rawLandmarks}
+                    bbox={bbox}
+                    yaw={yaw}
+                    pitch={pitch}
+                    roll={roll}
+                    trackingState={'TRACKING'}
+                    videoWidth={videoRef.current?.videoWidth || 640}
+                    videoHeight={videoRef.current?.videoHeight || 480}
+                  />
+                  <AdvancedDebugPanel
+                    telemetry={{
+                      cameraStatus: cameraStatus || 'Active', detectedFaces, trackingState: 'TRACKING', landmarkCount,
+                      ear, blinkDetected: wasBlinkingRef.current, mar, mouthOpen: mar > 0.3,
+                      yaw, pitch, roll, confidence, identityScore: 0, cosineSimilarity: 0,
+                      livenessScore: 1 - spoofScore, spoofScore, deepfakeRisk: fraudDetection?.deepfake?.confidence || 0,
+                      currentChallenge: challenges[currentChallenge]?.label || 'Complete',
+                      challengeProgress, challengeTimeout: faceMissingCountdown,
+                      processingTime, apiVersion: 'API 2 (Advanced)', verificationState: overallResult || 'processing',
+                      fraudDetection, bbox
+                    }}
+                    onDownloadReport={() => downloadLogs({ overallResult })}
+                  />
+                  <TestModeMatrix telemetry={{ detectedFaces, bbox, fraudDetection, confidence }} />
+                </>
               )}
 
               {/* Streaming Error Overlay */}

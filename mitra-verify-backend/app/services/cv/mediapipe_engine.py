@@ -178,17 +178,33 @@ def run_basic_liveness(image_b64: str) -> dict:
     head_rotated     = abs(yaw) > 8 or abs(pitch) > 5
     smile_detected   = smile > 0.35
 
-    # Liveness score: weighted combination
-    score = (
-        0.35 * (1.0 if blink_detected else max(0, 1 - avg_ear * 3)) +
-        0.20 * (1.0 if mouth_open else 0.3) +
-        0.20 * (1.0 if head_rotated else 0.3) +
-        0.15 * smile +
-        0.10 * 1.0  # face_present
-    )
-    liveness_score = min(1.0, score + 0.15)  # base bonus for real face presence
-    confidence = liveness_score
-    result = "pass" if liveness_score >= 0.55 else "fail"
+    confidence = _calculate_face_confidence(lm, w, h)
+    
+    # Liveness score: Calculate using texture and replay scores directly
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    face_region = gray[int(h*0.1):int(h*0.9), int(w*0.1):int(w*0.9)]
+    if face_region.size > 0:
+        local_std = float(np.std(face_region))
+        texture_score = min(1.0, local_std / 30.0)
+        try:
+            f = np.fft.fft2(face_region.astype(float))
+            fshift = np.fft.fftshift(f)
+            magnitude = 20 * np.log(np.abs(fshift) + 1)
+            center = magnitude[magnitude.shape[0]//2-5:magnitude.shape[0]//2+5,
+                               magnitude.shape[1]//2-5:magnitude.shape[1]//2+5]
+            edge   = np.mean(magnitude) 
+            freq_ratio = float(np.mean(center)) / (float(edge) + 1.0)
+            replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))
+        except Exception:
+            texture_score = 0.0
+            replay_score = 1.0
+    else:
+        texture_score = 0.0
+        replay_score = 1.0
+
+    spoof_score = _calculate_spoof_risk(frame, lm, None, texture_score, replay_score)
+    liveness_score = max(0.0, 1.0 - spoof_score)
+    result = "pass" if confidence >= 0.65 and spoof_score < 0.45 else "fail"
 
     elapsed = (time.time() - start) * 1000
     return {
@@ -283,10 +299,11 @@ def run_advanced_liveness(image_b64: str, challenge_type: Optional[str] = None) 
     spoof_score = _calculate_spoof_risk(frame, lm, None, texture_score, replay_score, challenge_type, challenge_passed)
     deepfake_risk = max(0.0, 0.3 - texture_score * 0.25)
 
-    confidence = max(0.0, 1.0 - spoof_score * 0.7)
+    confidence = _calculate_face_confidence(lm, w, h)
     if challenge_result and not challenge_result.get("passed"):
-        confidence *= 0.5
-    result = "pass" if confidence >= 0.65 and spoof_score < 0.6 else ("spoof" if spoof_score > 0.7 else "fail")
+        result = "fail"
+    else:
+        result = "pass" if confidence >= 0.65 and spoof_score < 0.45 else ("spoof" if spoof_score > 0.7 else "fail")
 
     elapsed = (time.time() - start) * 1000
     return {
@@ -419,18 +436,14 @@ def _compute_face_signature(landmarks) -> np.ndarray:
 
 def _match_identity(face_sig: np.ndarray, subject_id: Optional[str]) -> dict:
     """Match face signature against stored embeddings (stub — returns realistic structure)."""
-    # In a real deployment, compare against stored embeddings in DB
-    # Here we compute a deterministic similarity based on the signature
     norm = np.linalg.norm(face_sig)
     if norm > 0:
-        normalized = face_sig / norm
-        # Self-similarity: always high for real faces
-        similarity = float(np.clip(0.72 + np.mean(np.abs(normalized)) * 0.18, 0.0, 1.0))
+        similarity = 0.0 # Without actual comparison, we cannot return a match
     else:
         similarity = 0.0
 
     return {
-        "matched": similarity > 0.7,
+        "matched": False,
         "subject_id": subject_id or "unknown",
         "similarity_score": round(similarity, 4),
         "embedding_distance": round(1.0 - similarity, 4)
@@ -638,13 +651,7 @@ def _calculate_face_confidence(landmarks, w, h) -> float:
     # Combined raw confidence score
     raw_score = 0.4 * size_score + 0.4 * symmetry + 0.2 * clipping_score
     
-    # Scale raw_score to realistic face confidence metric (0.90 to 0.98) for valid faces
-    if raw_score > 0.4:
-        confidence = 0.90 + (raw_score - 0.4) * 0.15
-    else:
-        confidence = raw_score * 2.25
-        
-    return float(np.clip(confidence, 0.0, 0.98))
+    return float(np.clip(raw_score, 0.0, 1.0))
 
 
 def _gaze_estimation(landmarks, w, h):
@@ -705,14 +712,14 @@ def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score
         
         # Completely static face (printed photo)
         if std_val < 0.0002:
-            risk += 0.40
+            risk += 0.80
         # Jump cut / inconsistent displacement (swapping photos)
         elif len(history["landmarks"]) >= 2:
             last_p = history["landmarks"][-1][NOSE_TIP]
             prev_p = history["landmarks"][-2][NOSE_TIP]
             dist = math.dist(last_p[:2], prev_p[:2])
             if dist > 0.12: # huge jump
-                risk += 0.35
+                risk += 0.80
                 
         # Blink behavior check: if no blinks detected in the last 15 frames
         if len(history["ear"]) >= 15:
@@ -726,7 +733,7 @@ def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score
     if challenge_passed:
         risk -= 0.10 # discount for active challenge completion
         
-    return float(np.clip(risk, 0.02, 0.98))
+    return float(np.clip(risk, 0.02, 1.0))
 
 
 def _calculate_face_embedding(landmarks) -> list[float]:
@@ -791,21 +798,7 @@ def _compute_cosine_similarity(emb_a: list[float], emb_b: list[float]) -> float:
         return 0.0
     cosine = dot / (norm_a * norm_b)
     
-    # Map raw cosine similarity of relative coordinates to calibrated similarity scale:
-    # >= 0.96 maps to 95% - 100% (Strong Match)
-    # 0.88 to 0.96 maps to 85% - 94% (Possible Match)
-    # < 0.88 maps to < 85% (No Match)
-    if cosine >= 0.96:
-        val = 0.95 + (cosine - 0.96) * (0.05 / 0.04)
-    elif cosine >= 0.88:
-        val = 0.85 + (cosine - 0.88) * (0.10 / 0.08)
-    else:
-        if cosine >= 0.70:
-            val = 0.50 + (cosine - 0.70) * (0.35 / 0.18)
-        else:
-            val = max(0.0, cosine * 0.71)
-            
-    return float(np.clip(val, 0.0, 1.0))
+    return float(np.clip(cosine, 0.0, 1.0))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1771,13 +1764,13 @@ def process_demo_frame(
             freq_ratio = float(np.mean(center)) / (edge + 1)
             replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))  # type: ignore
         except Exception:
-            texture_score = 0.5
-            replay_score = 0.3
+            texture_score = 0.0
+            replay_score = 1.0
     else:
-        texture_score = 0.5
-        replay_score = 0.3
+        texture_score = 0.0
+        replay_score = 1.0
         
-    deepfake_risk = max(0.0, 0.45 - texture_score * 0.4)  # type: ignore
+    deepfake_risk = 0.0 # Will be populated by advanced fraud detection if enabled
     
     if api_type == "enterprise" and deepfake_risk > 0.5:
         return {
@@ -2026,6 +2019,7 @@ def process_demo_frame(
         "right_ear": float(right_ear),  # type: ignore
         "spoof_score": float(spoof_score),  # type: ignore
         "deepfake_risk": float(deepfake_risk),  # type: ignore
+        "fraud_detection": fraud_result,
         "challenge_type": challenge_type,
         "challenge_passed": bool(challenge_passed),  # type: ignore
         "similarity_score": float(similarity_score),  # type: ignore
@@ -2038,7 +2032,6 @@ def process_demo_frame(
         ret["enterprise_report"] = enterprise_report
         ret["landmark_geometry"] = landmark_geometry
         ret["passive_liveness"] = passive_liveness
-        ret["fraud_detection"] = fraud_result
         ret["pose_validation"] = pose_validation
         ret["face_quality"] = round(face_quality_score, 4)
         ret["pose_quality"] = round(pose_quality, 4)

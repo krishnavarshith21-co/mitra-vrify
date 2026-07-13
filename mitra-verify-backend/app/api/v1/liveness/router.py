@@ -197,7 +197,7 @@ async def enterprise_liveness(
 
 
 from pydantic import BaseModel
-import random
+import secrets
 import time
 
 CHALLENGES_METADATA = {
@@ -237,11 +237,11 @@ async def start_session(data: SessionStartRequest):
     enterprise_pool = ['blink_once', 'blink_twice', 'open_mouth', 'smile', 'turn_left', 'turn_right', 'look_up', 'look_down', 'raise_eyebrows', 'nod_head', 'shake_head', 'look_left', 'look_right', 'hold_still']
     
     if data.api_type == "enterprise":
-        num_challenges = random.randint(7, 8)
-        selected = random.sample(enterprise_pool, num_challenges)
+        num_challenges = secrets.choice([7, 8])
+        selected = secrets.SystemRandom().sample(enterprise_pool, num_challenges)
     elif data.api_type == "advanced":
-        num_challenges = random.randint(5, 6)
-        selected = random.sample(advanced_pool, num_challenges)
+        num_challenges = secrets.choice([5, 6])
+        selected = secrets.SystemRandom().sample(advanced_pool, num_challenges)
     else:
         # basic
         selected = ['blink_once', 'open_mouth', 'turn_left']
@@ -336,7 +336,22 @@ async def demo_process(
             if challenges and data.challenge_type == challenges[-1]["id"] and cv_result.get("challenge_passed"):
                 is_terminal = True
                 if status not in terminal_statuses:
-                    cv_result["result"] = "pass"
+                    spoof_val = cv_result.get("spoof_score", 0.0)
+                    is_spoof = spoof_val > 0.45
+                    
+                    # For enterprise, check if identity matched (if there is an enrolled identity)
+                    is_unauthorized = False
+                    if data.api_type == "enterprise" and not cv_result.get("enrolled_matched", True):
+                        is_unauthorized = True
+                        
+                    if is_spoof:
+                        cv_result["result"] = "fail"
+                        cv_result["status"] = "SPOOF_DETECTED"
+                    elif is_unauthorized:
+                        cv_result["result"] = "fail"
+                        cv_result["status"] = "UNAUTHORIZED_PERSON"
+                    else:
+                        cv_result["result"] = "pass"
                 
             if is_terminal:
                 result_status = map_verification_result(cv_result, data.api_type or "basic")

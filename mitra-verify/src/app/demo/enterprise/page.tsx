@@ -12,6 +12,10 @@ import dynamic from 'next/dynamic';
 import PageTransition from '@/components/cyber/PageTransition';
 import BiometricScannerOverlay from '@/components/cyber/BiometricScannerOverlay';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useDiagnosticLogger } from '@/components/developer/useDiagnosticLogger';
+import { AdvancedDebugPanel } from '@/components/developer/AdvancedDebugPanel';
+import { CameraCanvasOverlay } from '@/components/developer/CameraCanvasOverlay';
+import { TestModeMatrix } from '@/components/developer/TestModeMatrix';
 
 const Biometric3DOverlay = dynamic(() => import('@/components/Biometric3DOverlay'), { ssr: false });
 const HeadPose3DWidget = dynamic(() => import('@/components/HeadPose3DWidget'), { ssr: false });
@@ -350,6 +354,11 @@ export default function EnterpriseDemoPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
 
+  // Developer Ecosystem Hooks
+  const { logs, logEvent, downloadLogs, interpretSpoof } = useDiagnosticLogger();
+  const [rawLandmarks, setRawLandmarks] = useState<any[]>([]);
+  const [processingTime, setProcessingTime] = useState(0);
+
   // Debug HUD overlay additions
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<{ url: string; status: number | string; body: string; reason?: string } | null>(null);
@@ -529,24 +538,14 @@ export default function EnterpriseDemoPage() {
       const now = Date.now();
       const elapsedInStep = (now - stepStartTimeRef.current) / 1000;
       if (currentChallenge === 0) {
-        if (elapsedInStep > 3.0) {
-          setIsFacePrepared(true);
-          setChallengePassed(prev => { const next = [...prev]; next[0] = true; return next; });
-          currentChallengeRef.current = 1;
-          setCurrentChallenge(1);
-          stepStartTimeRef.current = Date.now();
+        if (elapsedInStep > 10.0) {
+          console.warn("FACE_CENTERED_FAILED: Face centering took too long (>10s).");
+          triggerSessionTermination("FACE_CENTERED_TIMEOUT");
         }
       } else {
-        if (elapsedInStep > 5.0) {
-          const activeChallenge = challenges[currentChallenge];
-          if (activeChallenge) {
-            setChallengePassed(prev => { const next = [...prev]; next[currentChallenge] = true; return next; });
-            const nextStep = currentChallenge + 1;
-            currentChallengeRef.current = nextStep;
-            setCurrentChallenge(nextStep);
-            if (nextStep >= challenges.length) console.log("LIVENESS_COMPLETE");
-          }
-          stepStartTimeRef.current = Date.now();
+        if (elapsedInStep > 10.0) {
+          console.warn(`CHALLENGE_TIMEOUT: Stuck on Challenge ${currentChallenge + 1} for more than 10 seconds.`);
+          triggerSessionTermination("CHALLENGE_TIMEOUT");
         }
       }
     }, 100);
@@ -683,6 +682,13 @@ export default function EnterpriseDemoPage() {
         if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
       }
 
+      if (data.result === 'pass') {
+        setOverallResult('pass');
+      } else if (data.result === 'fail') {
+        triggerSessionTermination('VERIFICATION FAILED', false);
+        return;
+      }
+
       // Enterprise terminal alerts
       const terminalStatuses: Record<string, string> = {
         "MULTIPLE_FACES_DETECTED": "MULTIPLE FACES DETECTED",
@@ -698,7 +704,7 @@ export default function EnterpriseDemoPage() {
         return;
       }
 
-      if (streaming && hasFaceEnrolled && !overallResult) {
+      if (streaming && !overallResult) {
         if (data.detected_faces > 1) { triggerSessionTermination('Multiple Faces Detected', false); return; }
         if (data.spoof_score > 0.45 && data.face_present) { triggerSessionTermination('Spoof Detected', false); return; }
       }
@@ -759,6 +765,13 @@ export default function EnterpriseDemoPage() {
         setPitch(data.pitch); setRoll(data.roll);
         setSpoofScore(data.spoof_score); setDeepfakeRisk(data.deepfake_risk);
         setGazeDirection(data.gaze_direction); setGazeAvailable(data.gaze_available); setFaceInsideGuide(true);
+        
+        setFraudDetection(data.fraud_detection);
+        setRawLandmarks(data.landmarks || []);
+        
+        if (data.detected_faces > 1 && detectedFaces <= 1) {
+          logEvent('MULTIPLE_FACES_DETECTED', { faces: data.detected_faces }, 'WARNING');
+        }
 
         if (data.landmarks && data.landmarks[1]) {
           const nose = data.landmarks[1];
@@ -1001,14 +1014,7 @@ export default function EnterpriseDemoPage() {
     return 'CHALLENGES_COMPLETED';
   }, [streaming, sessionTerminated, confidence, detectedFaces, faceInsideGuide, hasFaceEnrolled, similarity, challengePassed, spoofScore, deepfakeRisk]);
 
-  const isVerified = enterpriseState === 'AUTHENTICATED';
-
-  // Auto-set overall result when verified
-  useEffect(() => {
-    if (isVerified && !overallResult) {
-      setOverallResult('pass');
-    }
-  }, [isVerified, overallResult]);
+  const isVerified = overallResult === 'pass';
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -1118,42 +1124,34 @@ export default function EnterpriseDemoPage() {
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-              {/* HUD overlay */}
+              {/* Developer Ecosystem Components */}
               {streaming && (
-                <div style={{ position: 'absolute', top: 12, left: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 10, fontFamily: 'monospace', zIndex: 20, display: 'flex', flexDirection: 'column', gap: 4, pointerEvents: 'none' }}>
-                  <div style={{ fontWeight: 'bold', color: '#00ff88', marginBottom: 2, letterSpacing: '0.05em', fontSize: 9 }}>ENTERPRISE BIOMETRIC HUD</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>Face:</span>
-                    <span style={{ color: detectedFaces > 0 ? '#00ff88' : '#ff3366', fontWeight: 'bold' }}>{detectedFaces > 0 ? 'DETECTED' : 'SEARCHING'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>Landmarks:</span>
-                    <span style={{ color: '#f8fafc' }}>{landmarkCount}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>Confidence:</span>
-                    <span style={{ color: confidence > 0.50 ? '#00ff88' : '#ffb800' }}>{(confidence * 100).toFixed(0)}%</span>
-                  </div>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '2px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>Yaw:</span>
-                    <span style={{ color: '#ffb800' }}>{yaw.toFixed(1)}° {yawDirection}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>Pitch/Roll:</span>
-                    <span style={{ color: '#ffb800' }}>{pitch.toFixed(1)}° / {roll.toFixed(1)}°</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <span style={{ color: '#94a3b8' }}>EAR/MAR:</span>
-                    <span style={{ color: '#00d4ff' }}>{ear.toFixed(3)} / {mar.toFixed(3)}</span>
-                  </div>
-                  {hasFaceEnrolled && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                      <span style={{ color: '#94a3b8' }}>Identity:</span>
-                      <span style={{ color: similarity >= 0.75 ? '#00ff88' : '#ff3366' }}>{(similarity * 100).toFixed(0)}%</span>
-                    </div>
-                  )}
-                </div>
+                <>
+                  <CameraCanvasOverlay
+                    landmarks={rawLandmarks}
+                    bbox={bbox}
+                    yaw={yaw}
+                    pitch={pitch}
+                    roll={roll}
+                    trackingState={faceTrackingState}
+                    videoWidth={videoRef.current?.videoWidth || 640}
+                    videoHeight={videoRef.current?.videoHeight || 480}
+                  />
+                  <AdvancedDebugPanel
+                    telemetry={{
+                      cameraStatus: cameraStatus || 'Active', detectedFaces, trackingState: faceTrackingState, landmarkCount,
+                      ear, blinkDetected: wasBlinkingRef.current, mar, mouthOpen: mar > 0.3,
+                      yaw, pitch, roll, confidence, identityScore: similarity, cosineSimilarity: similarity,
+                      livenessScore: 1 - spoofScore, spoofScore, deepfakeRisk: fraudDetection?.deepfake?.confidence || 0,
+                      currentChallenge: challenges[currentChallenge]?.label || 'Complete',
+                      challengeProgress: 0, challengeTimeout: challengeTimer,
+                      processingTime, apiVersion: 'API 3 (Enterprise)', verificationState: overallResult || 'processing',
+                      fraudDetection, bbox
+                    }}
+                    onDownloadReport={() => downloadLogs({ overallResult })}
+                  />
+                  <TestModeMatrix telemetry={{ detectedFaces, bbox, fraudDetection, confidence, identityScore: similarity }} />
+                </>
               )}
 
               {/* Error overlay */}

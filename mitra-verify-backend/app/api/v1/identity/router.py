@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from typing import Optional
 from app.core.database import get_db
@@ -25,7 +25,7 @@ async def identity_verify(
     db: AsyncSession = Depends(get_db)
 ):
     # Retrieve the enrolled face embedding for this subject from the database
-    subject_id = data.subject_id or current_user.id
+    subject_id = str(data.subject_id or current_user.id)
     stmt = select(FaceProfile).where(FaceProfile.user_id == subject_id)
     res = await db.execute(stmt)
     enrolled = res.scalar_one_or_none()
@@ -55,32 +55,34 @@ async def identity_verify(
             await db.rollback()
             raise
 
+    mapped_result = map_verification_result(cv_result, "enterprise")
+
     log = VerificationLog(
         id=str(uuid.uuid4()),
         api_key_id=api_key.id,
         session_id=cv_result.get("session_id"),
         api_type="enterprise",
-        result=map_verification_result(cv_result, "enterprise"),
+        result=mapped_result,
         confidence=cv_result.get("confidence", 0.0),
         processing_time=cv_result.get("processing_time", 0.0),
         checks_performed=cv_result.get("checks", {}),
         spoof_score=cv_result.get("spoof_score", 0.0),
         deepfake_risk=cv_result.get("deepfake_risk", 0.0),
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(log)
     await db.commit()
 
     return IdentityVerifyResponse(
         session_id=cv_result.get("session_id", str(uuid.uuid4())),
-        result=cv_result.get("result", "error"),
+        result=mapped_result,
         confidence=cv_result.get("confidence", 0.0),
         processing_time=cv_result.get("processing_time", 0.0),
         identity=cv_result.get("identity", {}),
         checks=cv_result.get("checks", {}),
         continuous_session=cv_result.get("continuous_session"),
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
 @router.post("/enroll", response_model=IdentityEnrollResponse)
@@ -106,6 +108,9 @@ async def identity_enroll(
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
     from app.services.cv.mediapipe_engine import mp_face_mesh
+    if mp_face_mesh is None:
+        raise HTTPException(status_code=500, detail="MediaPipe FaceMesh not available")
+
     with mp_face_mesh.FaceMesh(
         static_image_mode=True,
         max_num_faces=1,
@@ -114,13 +119,14 @@ async def identity_enroll(
     ) as face_mesh:
         results = face_mesh.process(rgb)
         
-    if not results.multi_face_landmarks:
+    multi_face_landmarks = getattr(results, "multi_face_landmarks", None)
+    if not multi_face_landmarks:
         raise HTTPException(status_code=400, detail="No face detected in enrollment frame")
         
-    landmarks = results.multi_face_landmarks[0].landmark
+    landmarks = multi_face_landmarks[0].landmark  # type: ignore
     embedding_vector = _calculate_face_embedding(landmarks)
     
-    user_id = data.subject_id or current_user.id
+    user_id = str(data.subject_id or current_user.id)
     
     # Delete any existing face embedding for this user
     await db.execute(delete(FaceProfile).where(FaceProfile.user_id == user_id))
@@ -129,8 +135,8 @@ async def identity_enroll(
         id=str(uuid.uuid4()),
         user_id=user_id,
         embedding_vector=embedding_vector,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     db.add(new_embedding)
     await db.commit()
@@ -143,7 +149,7 @@ async def identity_enroll(
         message="Face embedding enrolled successfully",
         user_id=user_id,
         embedding_vector=embedding_list,
-        created_at=new_embedding.created_at
+        created_at=datetime.now(timezone.utc)
     )
 
 @router.get("/enrolled")

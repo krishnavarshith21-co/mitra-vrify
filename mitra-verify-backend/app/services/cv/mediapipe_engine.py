@@ -8,7 +8,7 @@ import uuid
 import math
 import numpy as np  # pyrefly: ignore [missing-import]
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 from PIL import Image  # pyrefly: ignore [missing-import]
 
@@ -135,6 +135,7 @@ def run_basic_liveness(image_b64: str) -> dict:
     h, w = frame.shape[:2]
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+    assert mp_face_mesh is not None
     with mp_face_mesh.FaceMesh(
         static_image_mode=True,
         max_num_faces=1,
@@ -143,7 +144,8 @@ def run_basic_liveness(image_b64: str) -> dict:
     ) as face_mesh:
         results = face_mesh.process(rgb)
 
-    if not results.multi_face_landmarks:
+    multi_face_landmarks = getattr(results, "multi_face_landmarks", None)
+    if not multi_face_landmarks:
         elapsed = (time.time() - start) * 1000
         return {
             "session_id": session_id,
@@ -163,7 +165,7 @@ def run_basic_liveness(image_b64: str) -> dict:
 
     print("FACE_DETECTED")
     print("LANDMARKS_FOUND")
-    lm = results.multi_face_landmarks[0].landmark
+    lm = multi_face_landmarks[0].landmark  # type: ignore
     left_ear  = _ear(lm, LEFT_EYE_INDICES, w, h)
     right_ear = _ear(lm, RIGHT_EYE_INDICES, w, h)
     avg_ear   = (left_ear + right_ear) / 2
@@ -223,6 +225,7 @@ def run_advanced_liveness(image_b64: str, challenge_type: Optional[str] = None) 
     h, w = frame.shape[:2]
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+    assert mp_face_mesh is not None
     with mp_face_mesh.FaceMesh(
         static_image_mode=True,
         max_num_faces=1,
@@ -231,7 +234,8 @@ def run_advanced_liveness(image_b64: str, challenge_type: Optional[str] = None) 
     ) as face_mesh:
         results = face_mesh.process(rgb)
 
-    if not results.multi_face_landmarks:
+    multi_face_landmarks = getattr(results, "multi_face_landmarks", None)
+    if not multi_face_landmarks:
         elapsed = (time.time() - start) * 1000
         return {"session_id": session_id, "result": "fail", "confidence": 0.0,
                 "processing_time": round(elapsed, 2), "spoof_score": 1.0,
@@ -240,7 +244,7 @@ def run_advanced_liveness(image_b64: str, challenge_type: Optional[str] = None) 
 
     print("FACE_DETECTED")
     print("LANDMARKS_FOUND")
-    lm = results.multi_face_landmarks[0].landmark
+    lm = multi_face_landmarks[0].landmark  # type: ignore
     left_ear  = _ear(lm, LEFT_EYE_INDICES, w, h)
     right_ear = _ear(lm, RIGHT_EYE_INDICES, w, h)
     avg_ear   = (left_ear + right_ear) / 2
@@ -264,9 +268,9 @@ def run_advanced_liveness(image_b64: str, challenge_type: Optional[str] = None) 
         center = magnitude[magnitude.shape[0]//2-5:magnitude.shape[0]//2+5,
                            magnitude.shape[1]//2-5:magnitude.shape[1]//2+5]
         edge   = np.mean(magnitude) 
-        freq_ratio = float(np.mean(center)) / (edge + 1)
+        freq_ratio = float(np.mean(center)) / (float(edge) + 1.0)
         # High freq_ratio can indicate a screen
-        replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))
+        replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))  # type: ignore
     else:
         replay_score = 0.3
 
@@ -500,9 +504,9 @@ def _head_pose_3d(landmarks, w, h):
         pitch = 0.0
         
     # Clamp results to safe bounds to reject impossible values
-    yaw = max(-45.0, min(45.0, yaw))
-    pitch = max(-35.0, min(35.0, pitch))
-    roll = max(-35.0, min(35.0, roll))
+    yaw = max(-45.0, min(45.0, yaw))  # type: ignore
+    pitch = max(-35.0, min(35.0, pitch))  # type: ignore
+    roll = max(-35.0, min(35.0, roll))  # type: ignore
     
     return yaw, pitch, roll
 
@@ -821,14 +825,18 @@ def map_verification_result(cv_result: dict, api_type: str) -> str:
         return "SPOOF_DETECTED"
     if status == "CAMERA_FEED_FROZEN":
         return "CAMERA_LOST"
+    if status == "TERMINATED":
+        return "TERMINATED"
     if status in ("UNAUTHORIZED_PERSON", "IDENTITY_CHANGED"):
-        return "IDENTITY_MISMATCH"
+        return "TERMINATED"
     if status == "failed" and reason == "no_face_detected":
-        return "NO_FACE_DETECTED"
+        return "FACE_LOST"
+    if status == "FACE_LOST":
+        return "FACE_LOST"
     if status == "NO_FACE_DETECTED":
-        return "NO_FACE_DETECTED"
+        return "FACE_LOST"
     if not face_present or reason == "no_face_detected":
-        return "NO_FACE_DETECTED"
+        return "FACE_LOST"
         
     # Standard pass/fail mapping
     if result == "pass":
@@ -926,6 +934,7 @@ def process_demo_frame(
     h, w = frame.shape[:2]
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
+    assert mp_face_mesh is not None
     with mp_face_mesh.FaceMesh(
         static_image_mode=True,
         max_num_faces=4,
@@ -934,14 +943,15 @@ def process_demo_frame(
     ) as face_mesh:
         results = face_mesh.process(rgb)
         
-    if not results.multi_face_landmarks:
+    multi_face_landmarks = getattr(results, "multi_face_landmarks", None)
+    if not multi_face_landmarks:
         if session_id and session_id in SESSION_CACHE and api_type != "enterprise":
             session = SESSION_CACHE[session_id]
             if "last_face_seen" not in session:
                 session["last_face_seen"] = session.get("created_at", time.time())
             if time.time() - session["last_face_seen"] > 5.0:
                 return {
-                    "status": "failed",
+                    "status": "FACE_LOST",
                     "reason": "no_face_detected",
                     "spoof_detected": True
                 }
@@ -974,14 +984,15 @@ def process_demo_frame(
             "enrolled_matched": False,
             "enrollment_signature": None,
             "bbox": None,
-            "status": "NO_FACE_DETECTED" if api_type == "enterprise" else "searching_for_face"
+            "status": "FACE_LOST" if api_type == "enterprise" else "searching_for_face",
+            "reason": "no_face_detected"
         }
         
     print("FACE_DETECTED")
     print("LANDMARKS_FOUND")
     if session_id and session_id in SESSION_CACHE:
         SESSION_CACHE[session_id]["last_face_seen"] = time.time()
-    detected_faces = len(results.multi_face_landmarks)
+    detected_faces = len(multi_face_landmarks) if multi_face_landmarks else 0
     
     if api_type == "enterprise" and detected_faces > 1:
         return {
@@ -1016,7 +1027,7 @@ def process_demo_frame(
             "status": "MULTIPLE_FACES_DETECTED"
         }
 
-    landmarks = results.multi_face_landmarks[0].landmark
+    landmarks = multi_face_landmarks[0].landmark  # type: ignore
     landmark_count = len(landmarks)
     
     # 1. Bounding box & guidance checks
@@ -1086,7 +1097,7 @@ def process_demo_frame(
     head_rotation = abs(yaw) > 12.0 or abs(pitch) > 8.0
     
     # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
-    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)
+    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)  # type: ignore
     
     # Apply rolling average to MAR over 5 frames
     if history and len(history["mar"]) > 0:
@@ -1142,7 +1153,7 @@ def process_demo_frame(
                                max(0, center_w-5):min(magnitude.shape[1], center_w+5)]
             edge = np.mean(magnitude)
             freq_ratio = float(np.mean(center)) / (edge + 1)
-            replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))
+            replay_score = min(1.0, max(0.0, (freq_ratio - 1.5) / 3.0))  # type: ignore
         except Exception:
             texture_score = 0.5
             replay_score = 0.3
@@ -1150,7 +1161,7 @@ def process_demo_frame(
         texture_score = 0.5
         replay_score = 0.3
         
-    deepfake_risk = max(0.0, 0.45 - texture_score * 0.4)
+    deepfake_risk = max(0.0, 0.45 - texture_score * 0.4)  # type: ignore
     
     if api_type == "enterprise" and deepfake_risk > 0.5:
         return {
@@ -1273,7 +1284,7 @@ def process_demo_frame(
                 if history["identity_changed_count"] >= 10:
                     return {
                         "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
-                        "bbox": bbox, "status": "IDENTITY_CHANGED", "challenge_passed": False, "enrolled_matched": False
+                        "bbox": bbox, "status": "TERMINATED", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "spoof_score": 1.0
                     }
             else:
                 history["identity_changed_count"] = 0
@@ -1305,8 +1316,8 @@ def process_demo_frame(
             # Only trigger UNAUTHORIZED_PERSON if we have at least 5 frames and the smoothed similarity is below threshold
             if history and len(history.get("similarity_scores", [])) >= 5:
                 return {
-                    "face_present": True, "detected_faces": detected_faces, "face_confidence": float(similarity_score), "landmark_count": landmark_count,
-                    "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score)
+                    "face_present": True, "detected_faces": detected_faces, "face_confidence": similarity_score, "landmark_count": landmark_count,
+                    "bbox": bbox, "status": "TERMINATED", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": similarity_score, "spoof_score": 1.0
                 }
     else:
         status = "no_enrolled_identity"
@@ -1315,37 +1326,37 @@ def process_demo_frame(
     
     ret = {
         "face_present": True,
-        "detected_faces": int(detected_faces),
-        "face_confidence": float(face_confidence),
-        "landmark_count": int(landmark_count),
-        "landmarks": [[float(lm.x), float(lm.y), float(lm.z)] for lm in landmarks] if detected_faces > 0 else [],
+        "detected_faces": detected_faces,
+        "face_confidence": face_confidence,
+        "landmark_count": landmark_count,
+        "landmarks": [[lm.x, lm.y, lm.z] for lm in landmarks] if detected_faces > 0 else [],
         "bbox": bbox,
-        "blink_detected": bool(blink_detected),
-        "mouth_movement": bool(mouth_movement),
-        "head_rotation": bool(head_rotation),
-        "yaw": float(yaw),
-        "raw_yaw": float(-yaw),
-        "pitch": float(pitch),
-        "roll": float(roll),
+        "blink_detected": blink_detected,
+        "mouth_movement": mouth_movement,
+        "head_rotation": head_rotation,
+        "yaw": yaw,
+        "raw_yaw": -yaw,
+        "pitch": pitch,
+        "roll": roll,
         "gaze_direction": gaze_direction,
-        "gaze_available": bool(gaze_available),
-        "smile_score": float(smile_score),
-        "eyebrow_ratio": float(eyebrow_ratio),
-        "eyebrow_raised": bool(eyebrow_raised),
-        "jaw_ratio": float(jaw_ratio),
-        "jaw_left": bool(jaw_left),
-        "jaw_right": bool(jaw_right),
-        "jaw_open": bool(jaw_open),
-        "ear": float(avg_ear),
-        "mar": float(smoothed_mar),
-        "left_ear": float(left_ear),
-        "right_ear": float(right_ear),
-        "spoof_score": float(spoof_score),
-        "deepfake_risk": float(deepfake_risk),
+        "gaze_available": gaze_available,
+        "smile_score": smile_score,
+        "eyebrow_ratio": eyebrow_ratio,
+        "eyebrow_raised": eyebrow_raised,
+        "jaw_ratio": jaw_ratio,
+        "jaw_left": jaw_left,
+        "jaw_right": jaw_right,
+        "jaw_open": jaw_open,
+        "ear": avg_ear,
+        "mar": smoothed_mar,
+        "left_ear": left_ear,
+        "right_ear": right_ear,
+        "spoof_score": spoof_score,
+        "deepfake_risk": deepfake_risk,
         "challenge_type": challenge_type,
-        "challenge_passed": bool(challenge_passed),
-        "similarity_score": float(similarity_score),
-        "enrolled_matched": bool(enrolled_matched),
+        "challenge_passed": challenge_passed,
+        "similarity_score": similarity_score,
+        "enrolled_matched": enrolled_matched,
         "status": status
     }
     return ret
@@ -1357,7 +1368,8 @@ def run_identity_verify(image_b64: str, subject_id: Optional[str] = None, enroll
     result = process_demo_frame(
         image_b64=image_b64,
         session_id=session_id,
-        enrolled_embedding=enrolled_vector
+        enrolled_embedding=enrolled_vector,
+        api_type="enterprise"
     )
     identity = {
         "matched": result.get("enrolled_matched", False),
@@ -1380,5 +1392,9 @@ def run_identity_verify(image_b64: str, subject_id: Optional[str] = None, enroll
             "eyebrow_raised": result.get("eyebrow_raised", False)
         },
         "continuous_session": result.get("session_id"),
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc),
+        "status": result.get("status"),
+        "reason": result.get("reason"),
+        "spoof_score": result.get("spoof_score", 0.0),
+        "deepfake_risk": result.get("deepfake_risk", 0.0),
     }

@@ -1316,8 +1316,8 @@ def process_demo_frame(
             # Only trigger UNAUTHORIZED_PERSON if we have at least 5 frames and the smoothed similarity is below threshold
             if history and len(history.get("similarity_scores", [])) >= 5:
                 return {
-                    "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(similarity_score), "landmark_count": int(landmark_count),
-                    "bbox": bbox, "status": "TERMINATED", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0
+                    "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(similarity_score), "landmark_count": int(landmark_count), # type: ignore
+                    "bbox": bbox, "status": "TERMINATED", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
                 }
     else:
         status = "no_enrolled_identity"
@@ -1326,37 +1326,37 @@ def process_demo_frame(
     
     ret = {
         "face_present": True,
-        "detected_faces": int(detected_faces),
-        "face_confidence": float(face_confidence),
-        "landmark_count": int(landmark_count),
-        "landmarks": [[float(lm.x), float(lm.y), float(lm.z)] for lm in landmarks] if detected_faces > 0 else [],
+        "detected_faces": int(detected_faces),  # type: ignore
+        "face_confidence": float(face_confidence),  # type: ignore
+        "landmark_count": int(landmark_count),  # type: ignore
+        "landmarks": [[float(lm.x), float(lm.y), float(lm.z)] for lm in landmarks] if detected_faces > 0 else [],  # type: ignore
         "bbox": bbox,
-        "blink_detected": bool(blink_detected),
-        "mouth_movement": bool(mouth_movement),
-        "head_rotation": bool(head_rotation),
-        "yaw": float(yaw),
-        "raw_yaw": float(-yaw),
-        "pitch": float(pitch),
-        "roll": float(roll),
+        "blink_detected": bool(blink_detected),  # type: ignore
+        "mouth_movement": bool(mouth_movement),  # type: ignore
+        "head_rotation": bool(head_rotation),  # type: ignore
+        "yaw": float(yaw),  # type: ignore
+        "raw_yaw": float(-yaw),  # type: ignore
+        "pitch": float(pitch),  # type: ignore
+        "roll": float(roll),  # type: ignore
         "gaze_direction": gaze_direction,
-        "gaze_available": bool(gaze_available),
-        "smile_score": float(smile_score),
-        "eyebrow_ratio": float(eyebrow_ratio),
-        "eyebrow_raised": bool(eyebrow_raised),
-        "jaw_ratio": float(jaw_ratio),
-        "jaw_left": bool(jaw_left),
-        "jaw_right": bool(jaw_right),
-        "jaw_open": bool(jaw_open),
-        "ear": float(avg_ear),
-        "mar": float(smoothed_mar),
-        "left_ear": float(left_ear),
-        "right_ear": float(right_ear),
-        "spoof_score": float(spoof_score),
-        "deepfake_risk": float(deepfake_risk),
+        "gaze_available": bool(gaze_available),  # type: ignore
+        "smile_score": float(smile_score),  # type: ignore
+        "eyebrow_ratio": float(eyebrow_ratio),  # type: ignore
+        "eyebrow_raised": bool(eyebrow_raised),  # type: ignore
+        "jaw_ratio": float(jaw_ratio),  # type: ignore
+        "jaw_left": bool(jaw_left),  # type: ignore
+        "jaw_right": bool(jaw_right),  # type: ignore
+        "jaw_open": bool(jaw_open),  # type: ignore
+        "ear": float(avg_ear),  # type: ignore
+        "mar": float(smoothed_mar),  # type: ignore
+        "left_ear": float(left_ear),  # type: ignore
+        "right_ear": float(right_ear),  # type: ignore
+        "spoof_score": float(spoof_score),  # type: ignore
+        "deepfake_risk": float(deepfake_risk),  # type: ignore
         "challenge_type": challenge_type,
-        "challenge_passed": bool(challenge_passed),
-        "similarity_score": float(similarity_score),
-        "enrolled_matched": bool(enrolled_matched),
+        "challenge_passed": bool(challenge_passed),  # type: ignore
+        "similarity_score": float(similarity_score),  # type: ignore
+        "enrolled_matched": bool(enrolled_matched),  # type: ignore
         "status": status
     }
     return ret

@@ -192,7 +192,7 @@ async def identity_enroll(
     # --- Stage 8: Embedding generation ---
     print("[Enrollment] Stage 8: Embedding generation")
     try:
-        embedding_vector = _calculate_face_embedding(landmarks)
+        embedding_vector = _calculate_face_embedding(frame, landmarks)
         if embedding_vector is None or len(embedding_vector) == 0:
             raise ValueError("Empty embedding returned")
     except Exception as e:

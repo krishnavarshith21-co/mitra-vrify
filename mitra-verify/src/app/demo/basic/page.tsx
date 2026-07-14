@@ -1275,7 +1275,7 @@ Result: ${data.result || 'pending'}
                       color: result === 'pass' ? '#00ff88' : '#ff3366',
                       fontSize: 13, fontWeight: 700, letterSpacing: '0.05em',
                     }}>
-                    {result === 'pass' ? '✓ PASS' : '✗ FAIL'}
+                    {result === 'pass' ? '✓ PASS' : `✗ ${apiResponse?.status?.replace(/_/g, ' ') || 'FAIL'}`}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1362,32 +1362,71 @@ Result: ${data.result || 'pending'}
               currentStep < 4 ? (
                 <motion.div
                   key={currentStep}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ padding: 20, borderRadius: 12, background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)', textAlign: 'center' }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  style={{ 
+                    padding: '24px 20px', 
+                    borderRadius: 16, 
+                    background: 'linear-gradient(145deg, rgba(0,212,255,0.1) 0%, rgba(0,255,136,0.05) 100%)', 
+                    border: '1px solid rgba(0,212,255,0.3)', 
+                    boxShadow: '0 8px 32px rgba(0,212,255,0.1)',
+                    textAlign: 'center',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
                 >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>
+                  {/* Subtle animated background pulse */}
+                  <motion.div
+                    animate={{ 
+                      background: ['rgba(0,212,255,0.0)', 'rgba(0,212,255,0.05)', 'rgba(0,212,255,0.0)'] 
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+                  />
+                  
+                  <motion.div 
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', delay: 0.1 }}
+                    style={{ fontSize: 36, marginBottom: 12, textShadow: '0 0 20px rgba(0,212,255,0.5)' }}
+                  >
                     {currentStep === 0 ? '👤' : currentStep === 1 ? '👁️' : currentStep === 2 ? '👄' : '🔄'}
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#f8fafc', marginBottom: 4 }}>
+                  </motion.div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6, letterSpacing: '0.02em' }}>
                     {currentStep === 0 ? 'Face Centered' : currentStep === 1 ? 'Blink Once' : currentStep === 2 ? 'Open Mouth' : 'Head Rotation'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                  <div style={{ fontSize: 13, color: '#94a3b8', maxWidth: '80%', margin: '0 auto' }}>
                     {currentStep === 0 ? 'Center your face inside the guides' : currentStep === 1 ? 'Blink your eyes once slowly' : currentStep === 2 ? 'Open your mouth wide' : 'Slowly turn your head to the left'}
                   </div>
-                  {confidence < 0.90 || !faceInsideGuide ? (
-                    <div style={{ fontSize: 12, color: 'var(--brand-amber)', marginTop: 8 }}>
-                      Position face inside guides to start challenge
-                    </div>
-                  ) : faceVisibleDuration < 2.0 && currentStep === 0 ? (
-                    <div style={{ fontSize: 12, color: 'var(--brand-cyan)', marginTop: 8 }}>
-                      Stabilizing face... ({Math.min(100, Math.round(faceVisibleDuration * 50))}%)
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: 'var(--brand-cyan)', marginTop: 8, fontFamily: 'monospace' }}>
-                      Perform action now
-                    </div>
-                  )}
+                  
+                  {/* Status Indicator */}
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    {confidence < 0.90 || !faceInsideGuide ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--brand-amber)', background: 'rgba(255,184,0,0.1)', padding: '4px 12px', borderRadius: 20 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-amber)' }} />
+                        Position face inside guides to start
+                      </div>
+                    ) : faceVisibleDuration < 2.0 && currentStep === 0 ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--brand-cyan)', background: 'rgba(0,212,255,0.1)', padding: '4px 12px', borderRadius: 20 }}>
+                        <motion.div 
+                          animate={{ opacity: [0.5, 1, 0.5] }} 
+                          transition={{ repeat: Infinity, duration: 1 }}
+                          style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-cyan)' }} 
+                        />
+                        Stabilizing... {Math.min(100, Math.round(faceVisibleDuration * 50))}%
+                      </div>
+                    ) : (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '6px 16px', borderRadius: 20, boxShadow: '0 0 10px rgba(0,255,136,0.2)' }}>
+                        <motion.div 
+                          animate={{ scale: [1, 1.2, 1] }} 
+                          transition={{ repeat: Infinity, duration: 0.8 }}
+                          style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ff88' }} 
+                        />
+                        Action Required Now
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               ) : null
             )}

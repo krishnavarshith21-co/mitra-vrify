@@ -44,9 +44,22 @@ try:
         MP_AVAILABLE = False
         global_face_mesh = None
 except ImportError:
+    mp_face_mesh = None
+    mp_face_detection = None
     MP_AVAILABLE = False
     global_face_mesh = None
 
+# Try importing InsightFace for production embeddings
+try:
+    import insightface  # pyrefly: ignore [missing-import]
+    global_face_analyzer = insightface.app.FaceAnalysis(name='buffalo_l', providers=['CPUExecutionProvider'])
+    global_face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
+    INSIGHTFACE_AVAILABLE = True
+    print("InsightFace loaded successfully.")
+except Exception as e:
+    print(f"Failed to load InsightFace: {e}")
+    global_face_analyzer = None
+    INSIGHTFACE_AVAILABLE = False
 
 # ─────────────────────────────────────────────────────────────
 # Landmark indices (MediaPipe 478-point face mesh)
@@ -593,7 +606,12 @@ def update_session_history(session_id: Optional[str], landmarks: list, ear: floa
             "pitch_history": [],
             "roll_history": [],
             "blink_history": [],
-            "mouth_history": []
+            "mouth_history": [],
+            "multiple_faces_frames": 0,
+            "face_lost_frames": 0,
+            "spoof_frames": 0,
+            "wrong_person_frames": 0,
+            "challenge_start_time": time.time()
         }
     
     cache = SESSION_CACHE[session_id]
@@ -611,6 +629,7 @@ def update_session_history(session_id: Optional[str], landmarks: list, ear: floa
         cache["smile_ratios"] = []
         cache["blink_state"] = "WAITING"
         cache["blink_drop_frames"] = 0
+        cache["challenge_start_time"] = time.time()
         
     if "smile_ratios" not in cache:
         cache["smile_ratios"] = []
@@ -629,6 +648,17 @@ def update_session_history(session_id: Optional[str], landmarks: list, ear: floa
     if "mouth_history" not in cache:
         cache["mouth_history"] = []
     
+    if "multiple_faces_frames" not in cache:
+        cache["multiple_faces_frames"] = 0
+    if "face_lost_frames" not in cache:
+        cache["face_lost_frames"] = 0
+    if "spoof_frames" not in cache:
+        cache["spoof_frames"] = 0
+    if "wrong_person_frames" not in cache:
+        cache["wrong_person_frames"] = 0
+    if "challenge_start_time" not in cache:
+        cache["challenge_start_time"] = time.time()
+        
     # Store history for last 30 frames (approx 1 second at 30 FPS)
     cache.setdefault("landmarks", []).append([(lm.x, lm.y, lm.z) for lm in landmarks])
     cache.setdefault("ear", []).append(ear)
@@ -812,7 +842,17 @@ def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score
     return float(np.clip(risk, 0.02, 1.0))
 
 
-def _calculate_face_embedding(landmarks) -> list[float]:
+def _calculate_face_embedding(frame: np.ndarray, landmarks) -> list[float]:
+    if INSIGHTFACE_AVAILABLE and global_face_analyzer is not None:
+        try:
+            faces = global_face_analyzer.get(frame)
+            if faces:
+                largest_face = max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
+                return largest_face.embedding.tolist()
+        except Exception as e:
+            print(f"InsightFace embedding failed: {e}")
+            pass
+            
     # Select key landmarks that capture face structure, eyes, eyebrows, nose, mouth shape, and jawline
     feature_nodes = [
         # Nose
@@ -1423,6 +1463,8 @@ def map_verification_result(cv_result: dict, api_type: str) -> str:
         return "FACE_LOST"
     if status == "NO_FACE_DETECTED":
         return "FACE_LOST"
+    if status == "searching_for_face":
+        return "SEARCHING_FOR_FACE"
     if not face_present or reason == "no_face_detected":
         return "FACE_LOST"
         
@@ -1525,16 +1567,21 @@ def _process_demo_frame_inner(
         
     multi_face_landmarks = getattr(results, "multi_face_landmarks", None)
     if not multi_face_landmarks:
+        status_code = "searching_for_face"
+        reason_code = "no_face_detected"
+        
         if session_id and session_id in SESSION_CACHE:
             session = SESSION_CACHE[session_id]
             if "last_face_seen" not in session:
                 session["last_face_seen"] = session.get("created_at", time.time())
+            
             if time.time() - session["last_face_seen"] > 5.0:
-                return {
-                    "status": "FACE_LOST",
-                    "reason": "no_face_detected",
-                    "spoof_detected": True
-                }
+                status_code = "FACE_LOST"
+                reason_code = "no_face_detected"
+            elif time.time() - session.get("challenge_start_time", time.time()) > 30.0:
+                status_code = "SPOOF_DETECTED"
+                reason_code = "CHALLENGE_TIMEOUT"
+                
         return {
             "face_present": False,
             "detected_faces": 0,
@@ -1560,21 +1607,27 @@ def _process_demo_frame_inner(
             "enrolled_matched": False,
             "enrollment_signature": None,
             "bbox": None,
-            "status": "FACE_LOST" if api_type == "enterprise" else "searching_for_face",
-            "reason": "no_face_detected"
+            "status": status_code,
+            "reason": reason_code
         }
         
     print("FACE_DETECTED")
     print("LANDMARKS_FOUND")
     if session_id and session_id in SESSION_CACHE:
         SESSION_CACHE[session_id]["last_face_seen"] = time.time()
-    detected_faces = len(multi_face_landmarks) if multi_face_landmarks else 0
-    
-    if api_type == "enterprise" and detected_faces > 1:
+        
+    valid_faces = []
+    if multi_face_landmarks:
+        for face_landmarks in multi_face_landmarks:
+            conf = _calculate_face_confidence(face_landmarks.landmark, w, h)
+            if conf >= 0.4:
+                valid_faces.append(face_landmarks)
+                
+    if not valid_faces:
         return {
-            "face_present": True,
-            "detected_faces": detected_faces,
-            "face_confidence": 1.0,
+            "face_present": False,
+            "detected_faces": 0,
+            "face_confidence": 0.0,
             "landmark_count": 0,
             "blink_detected": False,
             "mouth_movement": False,
@@ -1596,8 +1649,48 @@ def _process_demo_frame_inner(
             "enrolled_matched": False,
             "enrollment_signature": None,
             "bbox": None,
-            "status": "MULTIPLE_FACES_DETECTED"
+            "status": "searching_for_face",
+            "reason": "low_confidence_face"
         }
+        
+    multi_face_landmarks = valid_faces
+    detected_faces = len(multi_face_landmarks)
+    
+    if api_type in ["advanced", "enterprise"]:
+        if session_id and session_id in SESSION_CACHE:
+            if detected_faces > 1:
+                SESSION_CACHE[session_id]["multiple_faces_frames"] += 1
+            else:
+                SESSION_CACHE[session_id]["multiple_faces_frames"] = 0
+                
+            if SESSION_CACHE[session_id]["multiple_faces_frames"] >= 5:
+                return {
+                    "face_present": True,
+                    "detected_faces": detected_faces,
+                    "face_confidence": 1.0,
+                    "landmark_count": 0,
+                    "blink_detected": False,
+                    "mouth_movement": False,
+                    "head_rotation": False,
+                    "yaw": 0.0,
+                    "pitch": 0.0,
+                    "roll": 0.0,
+                    "gaze_direction": None,
+                    "gaze_available": False,
+                    "smile_score": 0.0,
+                    "eyebrow_raised": False,
+                    "jaw_left": False,
+                    "jaw_right": False,
+                    "jaw_open": False,
+                    "spoof_score": 0.0,
+                    "deepfake_risk": 0.0,
+                    "challenge_passed": False,
+                    "similarity_score": 0.0,
+                    "enrolled_matched": False,
+                    "enrollment_signature": None,
+                    "bbox": None,
+                    "status": "MULTIPLE_FACES_DETECTED"
+                }
 
     landmarks = multi_face_landmarks[0].landmark  # type: ignore
     landmark_count = len(landmarks)
@@ -1827,7 +1920,7 @@ def _process_demo_frame_inner(
 
     # 12. Face signature & matching
     t_identity_start = time.perf_counter()
-    current_signature = _calculate_face_embedding(landmarks)
+    current_signature = _calculate_face_embedding(frame, landmarks)
     print("EMBEDDING_GENERATED")
     
     # Identity consistency validation during session
@@ -1870,16 +1963,22 @@ def _process_demo_frame_inner(
         enrolled_matched = similarity_score >= required_threshold
         if enrolled_matched:
             print("MATCH_SUCCESS")
+            if history:
+                history["wrong_person_frames"] = 0
         elif api_type == "enterprise":
-            # Only trigger UNAUTHORIZED_PERSON if we have at least 5 frames and the smoothed similarity is below threshold
-            if history and len(history.get("similarity_scores", [])) >= 5:
-                return {
-                    "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count), # type: ignore
-                    "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
-                }
-    else:
-        status = "no_enrolled_identity"
+            if history:
+                history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
+                if history["wrong_person_frames"] >= 5:
+                    return {
+                        "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count), # type: ignore
+                        "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
+                    }
 
+    # Default status logic
+    if status == "ready" and session_id and session_id in SESSION_CACHE:
+        if time.time() - SESSION_CACHE[session_id].get("challenge_start_time", time.time()) > 30.0:
+            status = "SPOOF_DETECTED"
+            
     # ── Enterprise Advanced Analytics ──────────────────────────────
     enterprise_report = None
     landmark_geometry = {}
@@ -1974,6 +2073,7 @@ def _process_demo_frame_inner(
         "challenge_passed": bool(challenge_passed),  # type: ignore
         "similarity_score": float(similarity_score),  # type: ignore
         "enrolled_matched": bool(enrolled_matched),  # type: ignore
+        "enrollment_signature": current_signature,
         "status": status,
         "timings": timings
     }

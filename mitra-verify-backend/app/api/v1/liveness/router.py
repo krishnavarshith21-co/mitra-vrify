@@ -288,7 +288,12 @@ async def start_session(data: SessionStartRequest):
         "pitch_history": [],
         "roll_history": [],
         "blink_history": [],
-        "mouth_history": []
+        "mouth_history": [],
+        "multiple_faces_frames": 0,
+        "face_lost_frames": 0,
+        "spoof_frames": 0,
+        "wrong_person_frames": 0,
+        "challenge_start_time": time.time()
     }
     
     return {

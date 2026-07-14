@@ -638,7 +638,7 @@ export default function EnterpriseDemoPage() {
       lostFramesRef.current += 1; setLostFrames(lostFramesRef.current);
       setFaceConfidenceMetric(0); setTrackingConfidence(0.0); setTimeSinceFaceSeen(faceLostDuration);
 
-      let state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = faceLostDuration < 2.0 ? 'FACE_WARNING' : faceLostDuration < 5.0 ? 'FACE_RECOVERY' : 'FACE_LOST';
+      const state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = faceLostDuration < 2.0 ? 'FACE_WARNING' : faceLostDuration < 5.0 ? 'FACE_RECOVERY' : 'FACE_LOST';
       setFaceTrackingState(state); prevTrackingStateRef.current = state;
     };
 
@@ -1076,7 +1076,7 @@ export default function EnterpriseDemoPage() {
               <canvas ref={canvasRef} style={{ display: 'none' }} />
 
               {/* Developer Ecosystem Components */}
-              {streaming && isDeveloperMode && (
+              {streaming &&  (
                 <>
                   <CameraCanvasOverlay
                     landmarks={rawLandmarks}
@@ -1212,7 +1212,7 @@ export default function EnterpriseDemoPage() {
           </div>
 
           {/* LEFT SIDEBAR — Security Metrics */}
-          <div className="lg:col-span-6 flex flex-col gap-4">
+          <div className="lg:col-span-4 flex flex-col gap-4">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               {/* Identity Score */}
               <div className="glass" style={{ padding: 16, borderRadius: 14, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -1221,7 +1221,7 @@ export default function EnterpriseDemoPage() {
               </div>
 
               {/* Threat Radar */}
-              {isDeveloperMode && (
+              { (
                 <div className="glass" style={{ padding: 14, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ThreatRadarWidget spoofScore={spoofScore} color={spoofScore > 0.3 ? '#ff3366' : '#00ff88'} />
                 </div>
@@ -1229,7 +1229,7 @@ export default function EnterpriseDemoPage() {
             </div>
 
             {/* Security Metrics */}
-            {isDeveloperMode && (
+            { (
               <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
                 <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>ENTERPRISE SECURITY</div>
               <MetricBar label="Confidence" value={confidence * 100} />
@@ -1247,7 +1247,7 @@ export default function EnterpriseDemoPage() {
             )}
 
             {/* Session Shield */}
-            {isDeveloperMode && (
+            { (
               <div className="glass" style={{ padding: 14, borderRadius: 14, textAlign: 'center' }}>
                 <SessionShield authenticated={isVerified} invalidated={sessionTerminated} color={accentColor} />
                 <div style={{ fontSize: 10, color: accentColor, fontWeight: 600, marginTop: 4 }}>
@@ -1258,10 +1258,7 @@ export default function EnterpriseDemoPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* RIGHT SIDEBAR — Challenges, Fraud, Timeline */}
-          <div className="lg:col-span-6 flex flex-col gap-4">
+          
             
             {/* Challenge Progress */}
             <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
@@ -1281,7 +1278,7 @@ export default function EnterpriseDemoPage() {
             </div>
 
             {/* Fraud Detection Panel */}
-            {isDeveloperMode && (
+            { (
               <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
                 <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>FRAUD DETECTION</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1306,7 +1303,7 @@ export default function EnterpriseDemoPage() {
             )}
 
             {/* Verification Timeline */}
-            {isDeveloperMode && (
+            { (
               <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
               <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>VERIFICATION TIMELINE</div>
               <VerificationTimeline stages={[
@@ -1320,7 +1317,7 @@ export default function EnterpriseDemoPage() {
             )}
 
             {/* Landmark Geometry */}
-            {isDeveloperMode && landmarkGeometry && landmarkGeometry.regions && (
+            { landmarkGeometry && landmarkGeometry.regions && (
               <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
                 <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>LANDMARK GEOMETRY</div>
                 <MetricBar label="Eye Geometry" value={landmarkGeometry.regions.eye_geometry * 100} />

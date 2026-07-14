@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const device = data.device || 'Desktop';
     
     let failureReason = data.failureReason || undefined;
-    let multipleFaces = !!data.multipleFaces;
+    const multipleFaces = !!data.multipleFaces;
     
     const incomingStatus = data.status || 'FAILED';
     const isSpoof = !!data.spoofFlag || incomingStatus === 'SPOOF ATTEMPT';

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Camera, Shield, RotateCcw, Terminal, Users, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Camera, Shield, RotateCcw, Terminal, Users, AlertCircle, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
 import { processHeadPose } from '@/lib/headPose';
@@ -31,7 +31,7 @@ const SpoofGauge = ({ value, label, color }: { value: number; label: string; col
 );
 
 export default function AdvancedDemoPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [streaming, setStreaming] = useState(false);
@@ -146,6 +146,16 @@ export default function AdvancedDemoPage() {
   const generateRandomChallenges = () => {
     return [];
   };
+
+  // Immediate Spoof Guard
+  useEffect(() => {
+    if (spoofScore > 0.5) {
+      setOverallResult('spoof');
+      setStreaming(false);
+      
+      setTimeout(() => logout('/signin?error=security_breach'), 3000);
+    }
+  }, [spoofScore, logout]);
 
   // Reset/Initialize timers when step changes
   useEffect(() => {
@@ -264,8 +274,15 @@ export default function AdvancedDemoPage() {
       
       if (data.result === 'pass') {
         setOverallResult('pass');
+        setStreaming(false);
       } else if (data.result === 'fail') {
-        setOverallResult('fail');
+        if (data.status === 'SPOOF_DETECTED') setOverallResult('spoof');
+        else setOverallResult('fail');
+        setStreaming(false);
+        
+        if (data.status === 'SPOOF_DETECTED' || data.status === 'MULTIPLE_FACES_DETECTED') {
+          setTimeout(() => logout('/signin?error=security_breach'), 3000);
+        }
       }
 
       // Check backend face-loss timeout failure
@@ -457,7 +474,7 @@ export default function AdvancedDemoPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [streaming, sessionId, currentChallenge, challenges, isProcessing, overallResult]);
+  }, [streaming, sessionId, currentChallenge, challenges, isProcessing, overallResult, logout]);
 
   // Throttled requestAnimationFrame loop
   const requestRef = useRef<number>(0);
@@ -502,9 +519,6 @@ export default function AdvancedDemoPage() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
-
-  // Spoof checking entirely delegated to the backend stream
-
 
   // Single Source of Truth Analytics Logging
   useEffect(() => {
@@ -679,41 +693,11 @@ export default function AdvancedDemoPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Camera View */}
-          <div className="lg:col-span-12">
+          {/* Camera + Overlay Canvas */}
+          <div className="lg:col-span-8 flex flex-col gap-4">
             <div style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', aspectRatio: '4/3' }}>
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-              {/* Developer Ecosystem Components */}
-              {streaming && (
-                <>
-                  <CameraCanvasOverlay
-                    landmarks={rawLandmarks}
-                    bbox={bbox}
-                    yaw={yaw}
-                    pitch={pitch}
-                    roll={roll}
-                    trackingState={'TRACKING'}
-                    videoWidth={videoRef.current?.videoWidth || 640}
-                    videoHeight={videoRef.current?.videoHeight || 480}
-                  />
-                  <AdvancedDebugPanel
-                    telemetry={{
-                      cameraStatus: cameraStatus || 'Active', detectedFaces, trackingState: 'TRACKING', landmarkCount,
-                      ear, blinkDetected: wasBlinkingRef.current, mar, mouthOpen: mar > 0.3,
-                      yaw, pitch, roll, confidence, identityScore: 0, cosineSimilarity: 0,
-                      livenessScore: 1 - spoofScore, spoofScore, deepfakeRisk: fraudDetection?.deepfake?.confidence || 0,
-                      currentChallenge: challenges[currentChallenge]?.label || 'Complete',
-                      challengeProgress, challengeTimeout: faceMissingCountdown,
-                      processingTime, apiVersion: 'API 2 (Advanced)', verificationState: overallResult || 'processing',
-                      fraudDetection, bbox
-                    }}
-                    onDownloadReport={() => downloadLogs({ overallResult })}
-                  />
-                  <TestModeMatrix telemetry={{ detectedFaces, bbox, fraudDetection, confidence }} />
-                </>
-              )}
 
               {/* Streaming Error Overlay */}
               {streaming && error && (
@@ -837,22 +821,51 @@ export default function AdvancedDemoPage() {
               <AnimatePresence>
                 {overallResult && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{
-                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: overallResult === 'pass' ? 'rgba(0,255,136,0.12)' : 'rgba(255,51,102,0.12)',
-                    backdropFilter: 'blur(8px)', zIndex: 10
+                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: overallResult === 'pass' ? 'rgba(0,255,136,0.95)' : 'rgba(255,51,102,0.95)',
+                    backdropFilter: 'blur(12px)', zIndex: 100
                   }}>
-                    <div style={{ textAlign: 'center' }} className="glass">
-                       <div style={{ fontSize: 48, marginBottom: 8 }}>{overallResult === 'pass' ? '✓' : '✗'}</div>
-                       <h3 style={{ fontSize: 20, fontWeight: 800, color: overallResult === 'pass' ? '#00ff88' : '#ff3366', marginBottom: 12 }}>
-                         {overallResult === 'pass' ? 'PASS' : overallResult === 'spoof' ? 'SPOOF DETECTED' : 'FAIL'}
-                       </h3>
-                       <p style={{ color: '#94a3b8', fontSize: 13, maxWidth: 280, margin: '0 auto 24px', lineHeight: 1.5 }}>
-                         {overallResult === 'pass' ? 'Liveness analysis completed successfully. Verification genuine.' :
-                          overallResult === 'spoof' ? 'Replay attack or static photo spoof detected.' : 'The verification challenge sequence timed out.'}
-                       </p>
-                       <button onClick={reset} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto' }}>
-                         <RotateCcw size={14} /> Retry Verification
-                       </button>
+                    <div style={{ textAlign: 'center', padding: 24 }}>
+                      {overallResult === 'pass' ? (
+                        <>
+                          <CheckCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
+                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS VERIFIED</h2>
+                          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 24 }}>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Confidence</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{(confidence * 100).toFixed(0)}%</div>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Proc. Time</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{processingTime.toFixed(0)}ms</div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
+                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS FAILED</h2>
+                          <div style={{
+                            display: 'inline-block', padding: '6px 16px', borderRadius: 20,
+                            background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)',
+                            color: '#fff', fontSize: 13, fontWeight: 'bold', marginBottom: 24,
+                            letterSpacing: '0.05em', textTransform: 'uppercase'
+                          }}>
+                            {overallResult === 'spoof' ? 'SPOOF DETECTED' : 'CHALLENGE TIMEOUT'}
+                          </div>
+                          {(overallResult === 'spoof' || spoofScore > 0.5) && (
+                            <p style={{ fontSize: 14, color: '#fff', marginBottom: 20, maxWidth: 320, margin: '0 auto 20px' }}>
+                              Security failure detected. Signing you out automatically...
+                            </p>
+                          )}
+                        </>
+                      )}
+                      
+                      {!(overallResult === 'spoof' || spoofScore > 0.5) && (
+                        <button onClick={reset} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto', background: '#fff', color: overallResult === 'pass' ? '#00b35f' : '#ff3366', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                          <RotateCcw size={14} /> Restart Verification
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -904,16 +917,13 @@ export default function AdvancedDemoPage() {
                   <button className="btn-ghost" onClick={reset} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <RotateCcw size={14} /> Reset
                   </button>
-                  <button className="btn-ghost" onClick={() => setShowDebug(!showDebug)} style={{ color: showDebug ? 'var(--brand-cyan)' : 'var(--text-secondary)' }}>
-                    <Terminal size={16} /> Debug Panel
-                  </button>
                 </>
               )}
             </div>
           </div>
 
           {/* Challenge Panel */}
-          <div className="lg:col-span-12 flex flex-col gap-4">
+          <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Liveness Verification Status Card */}
             {streaming && (
               <div className="glass" style={{ padding: 20, borderRadius: 16 }}>

@@ -57,7 +57,7 @@ function CheckBadge({ label, passed, checking }: { label: string; passed: boolea
 }
 
 export default function BasicDemoPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [streaming, setStreaming] = useState(false);
@@ -354,8 +354,9 @@ export default function BasicDemoPage() {
       setStreaming(false);
       setCameraStatus('Inactive');
       console.warn("SPOOF_DETECTED_IMMEDIATELY");
+      setTimeout(() => logout('/signin?error=security_breach'), 3000);
     }
-  }, [spoofScore]);
+  }, [spoofScore, logout]);
 
   // E2E frame capturer and processor
   const sendFrameToBackend = useCallback(async () => {
@@ -475,8 +476,16 @@ Result: ${data.result || 'pending'}
       // Trust backend final decision if it is terminal
       if (data.result === 'pass') {
         setResult('pass');
+        setStreaming(false);
+        setCameraStatus('Inactive');
       } else if (data.result === 'fail') {
         setResult('fail');
+        setStreaming(false);
+        setCameraStatus('Inactive');
+        
+        if (data.status === 'SPOOF_DETECTED' || data.status === 'MULTIPLE_FACES_DETECTED') {
+          setTimeout(() => logout('/signin?error=security_breach'), 3000);
+        }
       }
 
       // Check backend face-loss timeout failure
@@ -1025,7 +1034,7 @@ Result: ${data.result || 'pending'}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Camera + Overlay Canvas */}
-          <div className="lg:col-span-12">
+          <div className="lg:col-span-8 flex flex-col gap-4">
             <div style={{
               position: 'relative', borderRadius: 'var(--radius-xl)', overflow: 'hidden',
               background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)',
@@ -1062,35 +1071,7 @@ Result: ${data.result || 'pending'}
                 </div>
               )}
 
-              {/* Developer Ecosystem Components */}
-              {streaming && showDebug && (
-                <>
-                  <CameraCanvasOverlay
-                    landmarks={rawLandmarks}
-                    bbox={bbox}
-                    yaw={yaw}
-                    pitch={pitch}
-                    roll={roll}
-                    trackingState={trackingState}
-                    videoWidth={videoRef.current?.videoWidth || 640}
-                    videoHeight={videoRef.current?.videoHeight || 480}
-                  />
-                  <AdvancedDebugPanel
-                    telemetry={{
-                      cameraStatus, detectedFaces, trackingState, landmarkCount,
-                      ear, blinkDetected: wasBlinkingRef.current, mar, mouthOpen: mar > 0.3,
-                      yaw, pitch, roll, confidence, identityScore: 0, cosineSimilarity: 0,
-                      livenessScore, spoofScore, deepfakeRisk: fraudDetection?.deepfake?.confidence || 0,
-                      currentChallenge: currentStep === 0 ? 'Face Centered' : currentStep === 1 ? 'Blink' : currentStep === 2 ? 'Mouth' : currentStep === 3 ? 'Head' : 'Complete',
-                      challengeProgress: 0, challengeTimeout: faceMissingCountdown,
-                      processingTime, apiVersion: 'API 1 (Basic)', verificationState: result || 'processing',
-                      fraudDetection, bbox
-                    }}
-                    onDownloadReport={() => downloadLogs({ result })}
-                  />
-                  <TestModeMatrix telemetry={{ detectedFaces, bbox, fraudDetection, confidence }} />
-                </>
-              )}
+
 
               {/* Streaming Error Overlay */}
               {streaming && error && (
@@ -1257,20 +1238,67 @@ Result: ${data.result || 'pending'}
 
               {/* Result state overlay */}
               <AnimatePresence>
-                {result && streaming && detectedFaces <= 1 && (
+                {result && detectedFaces <= 1 && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     style={{
-                      position: 'absolute', top: 16, right: 16,
-                      padding: '8px 16px', borderRadius: 10,
-                      background: result === 'pass' ? 'rgba(0,255,136,0.15)' : 'rgba(255,51,102,0.15)',
-                      border: `1px solid ${result === 'pass' ? 'rgba(0,255,136,0.4)' : 'rgba(255,51,102,0.4)'}`,
-                      color: result === 'pass' ? '#00ff88' : '#ff3366',
-                      fontSize: 13, fontWeight: 700, letterSpacing: '0.05em',
-                    }}>
-                    {result === 'pass' ? '✓ PASS' : `✗ ${apiResponse?.status?.replace(/_/g, ' ') || 'FAIL'}`}
+                      position: 'absolute', inset: 0, 
+                      background: result === 'pass' ? 'rgba(0,255,136,0.95)' : 'rgba(255,51,102,0.95)',
+                      backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', zIndex: 100
+                    }}
+                  >
+                    <div style={{ textAlign: 'center', padding: 24 }}>
+                      {result === 'pass' ? (
+                        <>
+                          <CheckCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
+                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS VERIFIED</h2>
+                          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 24 }}>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Confidence</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{(confidence * 100).toFixed(0)}%</div>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Proc. Time</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{processingTime.toFixed(0)}ms</div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
+                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS FAILED</h2>
+                          <div style={{
+                            display: 'inline-block', padding: '6px 16px', borderRadius: 20,
+                            background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)',
+                            color: '#fff', fontSize: 13, fontWeight: 'bold', marginBottom: 24,
+                            letterSpacing: '0.05em', textTransform: 'uppercase'
+                          }}>
+                            {apiResponse?.reason?.replace(/_/g, ' ') || apiResponse?.status?.replace(/_/g, ' ') || 'SPOOF'}
+                          </div>
+                          {(apiResponse?.status === 'SPOOF_DETECTED' || apiResponse?.status === 'MULTIPLE_FACES_DETECTED' || spoofScore > 0.5) && (
+                            <p style={{ fontSize: 14, color: '#fff', marginBottom: 20, maxWidth: 320, margin: '0 auto 20px' }}>
+                              Security failure detected. Signing you out automatically...
+                            </p>
+                          )}
+                        </>
+                      )}
+                      
+                      {!(apiResponse?.status === 'SPOOF_DETECTED' || apiResponse?.status === 'MULTIPLE_FACES_DETECTED' || spoofScore > 0.5) && (
+                        <div>
+                          <button onClick={() => {
+                            setResult(null);
+                            setCurrentStep(0);
+                            setSpoofScore(0);
+                            startCamera();
+                          }} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto', background: '#fff', color: result === 'pass' ? '#00b35f' : '#ff3366', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                            <Camera size={14} /> Restart Verification
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1341,7 +1369,7 @@ Result: ${data.result || 'pending'}
           </div>
 
           {/* Metrics Panel */}
-          <div className="lg:col-span-12 flex flex-col gap-4">
+          <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Score cards */}
             <div className="grid grid-cols-2 gap-3">
               <MetricCard label="Confidence" value={streaming ? `${(confidence * 100).toFixed(0)}` : '0'} unit="%" color="#00d4ff" icon={Activity} />

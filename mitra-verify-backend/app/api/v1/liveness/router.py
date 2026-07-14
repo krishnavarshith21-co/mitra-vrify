@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from typing import Optional
 from pydantic import BaseModel
@@ -178,7 +178,7 @@ async def enterprise_liveness(
         spoof_score=cv_result.get("spoof_score", 0.0),
         deepfake_risk=cv_result.get("deepfake_risk", 0.0),
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(log)
     await db.commit()
@@ -193,7 +193,7 @@ async def enterprise_liveness(
         deepfake_risk=cv_result.get("deepfake_risk", 0.0),
         challenge_result=cv_result.get("challenge_result"),
         checks=cv_result.get("checks", {}),
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
 
@@ -234,8 +234,8 @@ class DemoProcessRequest(BaseModel):
 async def start_session(data: SessionStartRequest):
     session_id = str(uuid.uuid4())
     
-    advanced_pool = ['blink_once', 'blink_twice', 'open_mouth', 'turn_left', 'turn_right', 'smile', 'look_up', 'look_down']
-    enterprise_pool = ['blink_once', 'blink_twice', 'open_mouth', 'turn_left', 'turn_right', 'smile', 'look_up', 'look_down']
+    advanced_pool = ['blink_once', 'blink_twice', 'open_mouth', 'turn_left', 'turn_right', 'smile', 'look_up', 'look_down', 'look_left', 'look_right']
+    enterprise_pool = ['blink_once', 'blink_twice', 'open_mouth', 'turn_left', 'turn_right', 'smile', 'look_up', 'look_down', 'look_left', 'look_right']
     
     if data.api_type == "enterprise":
         num_challenges = secrets.choice([7, 8])

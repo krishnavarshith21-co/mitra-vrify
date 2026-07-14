@@ -493,6 +493,23 @@ def _evaluate_challenge(challenge_type: str, landmarks, w: int, h: int, history=
         else:
             passed = False
             detected = f"Smile={smile_score:.2f}"
+    elif challenge_type == "look_left":
+        gaze, has_iris = _gaze_estimation(landmarks, w, h)
+        if has_iris:
+            # gaze["x"] ranges from 0.0 (looking far left) to 1.0 (looking far right)
+            passed = gaze["x"] < 0.35
+            detected = f"GazeX={gaze['x']:.2f}"
+        else:
+            passed = False
+            detected = "Iris landmarks not available"
+    elif challenge_type == "look_right":
+        gaze, has_iris = _gaze_estimation(landmarks, w, h)
+        if has_iris:
+            passed = gaze["x"] > 0.65
+            detected = f"GazeX={gaze['x']:.2f}"
+        else:
+            passed = False
+            detected = "Iris landmarks not available"
         
     return {"passed": bool(passed), "detected": detected}
 
@@ -844,50 +861,54 @@ def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score
 
 
 def _calculate_face_embedding(frame: np.ndarray, landmarks) -> list[float]:
-    if INSIGHTFACE_AVAILABLE and global_face_analyzer is not None:
-        try:
-            faces = global_face_analyzer.get(frame)
-            if faces:
-                largest_face = max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
-                return largest_face.embedding.tolist()
-        except Exception as e:
-            print(f"InsightFace embedding failed: {e}")
-            pass
-            
-    # Select key landmarks that capture face structure, eyes, eyebrows, nose, mouth shape, and jawline
-    feature_nodes = [
-        # Nose
-        1, 2, 4, 5, 6, 197, 94,
-        # Left eye & eyebrow
-        33, 133, 159, 145, 46, 53, 70, 107,
-        # Right eye & eyebrow
-        263, 362, 386, 374, 276, 283, 300, 336,
-        # Mouth
-        61, 291, 13, 14, 78, 308, 17, 87, 317,
-        # Jawline / Outline
-        10, 152, 234, 454, 109, 338, 58, 288, 136, 365
+    def get_pt(idx):
+        return np.array([landmarks[idx].x, landmarks[idx].y, landmarks[idx].z])
+        
+    def dist(idx1, idx2):
+        return np.linalg.norm(get_pt(idx1) - get_pt(idx2))
+
+    # Base scale: Face Height (10 to 152) and Face Width (234 to 454)
+    face_height = dist(10, 152)
+    face_width = dist(234, 454)
+    if face_height < 0.001: face_height = 1.0
+    if face_width < 0.001: face_width = 1.0
+    
+    # Anchor pairs spanning specific structural proportions (invariant to head tilt & size)
+    anchor_pairs = [
+        # Eyes & Ocular distance
+        (33, 263), (133, 362), (159, 386), (145, 374), 
+        (33, 133), (263, 362),
+        # Eyebrows
+        (70, 300), (107, 336), (53, 283),
+        # Nose length & width
+        (1, 4), (197, 1), (94, 1), (1, 33), (1, 263),
+        (4, 133), (4, 362),
+        # Mouth structure
+        (61, 291), (13, 14), (78, 308), (17, 87),
+        (61, 1), (291, 1),
+        # Jawline & Boundaries
+        (10, 152), (234, 454), (109, 338), (58, 288), (136, 365),
+        # Inter-feature crossing distances
+        (133, 1), (362, 1), (33, 61), (263, 291),
+        (152, 61), (152, 291), (152, 13), (152, 14),
+        (10, 133), (10, 362), (234, 33), (454, 263),
+        (234, 61), (454, 291), (234, 152), (454, 152),
+        (10, 234), (10, 454), (197, 61), (197, 291),
+        (107, 13), (336, 13), (70, 1), (300, 1),
+        (53, 14), (283, 14)
     ]
     
-    # Center on nose tip (landmark 1)
-    center_x = landmarks[1].x
-    center_y = landmarks[1].y
-    center_z = landmarks[1].z
-    
-    # Scale normalization: distance between left jaw (234) and right jaw (454)
-    p_left = np.array([landmarks[234].x, landmarks[234].y, landmarks[234].z])
-    p_right = np.array([landmarks[454].x, landmarks[454].y, landmarks[454].z])
-    scale = np.linalg.norm(p_right - p_left)
-    if scale < 0.001:
-        scale = 1.0
-        
     embedding = []
-    for idx in feature_nodes:
-        lm = landmarks[idx]
-        rx = (lm.x - center_x) / scale
-        ry = (lm.y - center_y) / scale
-        rz = (lm.z - center_z) / scale
-        embedding.extend([float(rx), float(ry), float(rz)])
+    # Compute normalized ratios against face width
+    for p1, p2 in anchor_pairs:
+        embedding.append(float(dist(p1, p2) / face_width))
+    # Compute normalized ratios against face height
+    for p1, p2 in anchor_pairs:
+        embedding.append(float(dist(p1, p2) / face_height))
         
+    # Inject primary macro-ratios
+    embedding.append(float(face_width / face_height))
+    
     return embedding
 
 
@@ -1970,7 +1991,7 @@ def _process_demo_frame_inner(
         else:
             similarity_score = raw_similarity
             
-        required_threshold = 0.75 if api_type == "enterprise" else 0.85
+        required_threshold = 0.85
         enrolled_matched = similarity_score >= required_threshold
         if enrolled_matched:
             print("MATCH_SUCCESS")

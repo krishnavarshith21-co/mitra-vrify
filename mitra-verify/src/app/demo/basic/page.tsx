@@ -108,7 +108,23 @@ export default function BasicDemoPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [apiResponse, setApiResponse] = useState<any>(null);
   const [noFaceTimeoutError, setNoFaceTimeoutError] = useState<boolean>(false);
+  const [backendStatus, setBackendStatus] = useState<'ONLINE' | 'OFFLINE' | 'ERROR' | 'TIMEOUT' | null>(null);
   const [faceMissingCountdown, setFaceMissingCountdown] = useState<number>(5.0);
+
+  // New Performance & Reliability Refs
+  const frameCountRef = useRef<number>(0);
+  const lastProcessedFrameIdRef = useRef<number>(-1);
+  const isProcessingRef = useRef<boolean>(false);
+  
+  const droppedFramesRef = useRef<number>(0);
+  const timeoutCountRef = useRef<number>(0);
+  
+  const backendFpsCountRef = useRef<number>(0);
+  const [backendFps, setBackendFps] = useState<number>(0);
+  
+  const [latencyInfo, setLatencyInfo] = useState<{ latency: number, inference: number }>({ latency: 0, inference: 0 });
+  const latencySumRef = useRef<number>(0);
+  const latencyCountRef = useRef<number>(0);
 
   const fpsCountRef = useRef(0);
   const lastFpsTime = useRef(0);
@@ -172,7 +188,8 @@ export default function BasicDemoPage() {
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [lastFaceSeenTimestamp, setLastFaceSeenTimestamp] = useState<number | null>(null);
   const [trackingState, setTrackingState] = useState<'TRACKING' | 'LOST' | 'NO_FACE'>('NO_FACE');
-  const lastFaceSeenTimestampRef = useRef<number | null>(null);
+  const lastSuccessfulFrameTimeRef = useRef<number | null>(null);
+  const lastBackendResponseTimeRef = useRef<number | null>(null);
   const faceContinuousDetectionStartRef = useRef<number | null>(null);
   const activeStepTimeElapsedRef = useRef<number>(0);
   const lastFrameTimestampRef = useRef<number>(0);
@@ -210,16 +227,42 @@ export default function BasicDemoPage() {
 
   // Timers: 3-second auto-complete for Face Centered, 5-second max duration for other challenges
   useEffect(() => {
-    if (!streaming || result === 'pass' || result === 'fail' || currentStep >= 4 || noFaceTimeoutError) return;
+    if (!streaming || result === 'pass' || result === 'fail' || currentStep >= 4 || noFaceTimeoutError || backendStatus === 'TIMEOUT') return;
     
     const interval = setInterval(() => {
       const now = Date.now();
+
+      // Backend Connection Freeze Timeout
+      if (lastBackendResponseTimeRef.current !== null) {
+        const backendLag = now - lastBackendResponseTimeRef.current;
+        if (backendLag > 5000) {
+          console.error("[Backend Lag] No response from backend for > 5 seconds. Connection lost.");
+          timeoutCountRef.current += 1;
+          
+          livenessAPI.logEvent(sessionId, 'BACKEND_CONNECTION_LOST', 'basic').catch(console.error);
+
+          if (videoRef.current?.srcObject) {
+            (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+            videoRef.current.srcObject = null;
+          }
+          setStreaming(false);
+          setCameraStatus('Inactive');
+          setResult('fail');
+          setBackendStatus('TIMEOUT');
+          
+          // Clear active challenge processing
+          setCurrentStep(0);
+          setFaceMissingCountdown(0);
+          return;
+        }
+      }
       
-      // Face detection timeout check (5 seconds continuous face loss)
-      if (lastFaceSeenTimestampRef.current !== null) {
-        const missingTime = now - lastFaceSeenTimestampRef.current;
+      // Face detection timeout check (5 seconds continuous face loss) based on authoritative successful frame
+      // We only start missing time if explicitly told face_present=false by backend
+      if (lastSuccessfulFrameTimeRef.current !== null) {
+        const missingTime = now - lastSuccessfulFrameTimeRef.current;
         if (missingTime > 5000) {
-          console.warn("[Face Loss] Face missing for > 5 seconds continuously. Terminating session.");
+          console.warn("[Face Loss] Face missing for > 5 seconds continuously based on backend tracking. Terminating session.");
           
           // Log NO_FACE_DETECTED event to database
           livenessAPI.logEvent(sessionId, 'NO_FACE_DETECTED', 'basic').catch(console.error);
@@ -257,7 +300,7 @@ export default function BasicDemoPage() {
           setFaceVisibleDuration(0);
           
           setFaceDetected(false);
-          lastFaceSeenTimestampRef.current = null;
+          lastSuccessfulFrameTimeRef.current = null;
           setLastFaceSeenTimestamp(null);
           setTrackingState('NO_FACE');
           faceContinuousDetectionStartRef.current = null;
@@ -271,7 +314,7 @@ export default function BasicDemoPage() {
       }
 
       // Rule 6: Reset incomplete challenge if face is lost for more than 2 seconds
-      if (lastFaceSeenTimestampRef.current !== null && now - lastFaceSeenTimestampRef.current > 2000) {
+      if (lastSuccessfulFrameTimeRef.current !== null && now - lastSuccessfulFrameTimeRef.current > 2000) {
         console.warn(`[Biometric Pipeline] Face lost for >2 seconds. Resetting current incomplete challenge ${currentStep + 1}.`);
         
         // Reset only the current incomplete challenge state
@@ -313,7 +356,7 @@ export default function BasicDemoPage() {
     }, 100);
     
     return () => clearInterval(interval);
-  }, [streaming, currentStep, result]);
+  }, [streaming, currentStep, result, trackingState, detectedFaces]);
 
   // Immediate Spoof Guard
   useEffect(() => {
@@ -329,7 +372,13 @@ export default function BasicDemoPage() {
   const sendFrameToBackend = useCallback(async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || !streaming || isProcessing || currentStep >= 4) return;
+    if (!video || !canvas || !streaming || currentStep >= 4) return;
+    
+    if (isProcessingRef.current) {
+      droppedFramesRef.current += 1;
+      console.info("FRAME_SKIPPED_BUSY: Processing lock active. Dropped frame.");
+      return;
+    }
 
     // Verify video frame has dimensions before processing
     if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -340,7 +389,14 @@ export default function BasicDemoPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Acquire lock
+    isProcessingRef.current = true;
     setIsProcessing(true);
+    
+    // Assign Monotonic Frame ID
+    frameCountRef.current += 1;
+    const currentFrameId = frameCountRef.current;
+
     const startTime = performance.now();
 
     // Draw video frame to small canvas for efficient transfer (320x240)
@@ -368,12 +424,55 @@ export default function BasicDemoPage() {
       else if (currentStep === 2) challengeType = "open_mouth";
       else if (currentStep === 3) challengeType = "turn_left";
 
-      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, challengeType, undefined, 'basic');
+      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, challengeType, undefined, 'basic', currentFrameId.toString());
       const data = res?.data;
       setApiResponse(data);
 
       if (!data) return;
       
+      const responseFrameId = data.frame_id ? parseInt(data.frame_id, 10) : currentFrameId;
+      if (responseFrameId <= lastProcessedFrameIdRef.current) {
+        console.info(`DISCARDED_STALE_FRAME: Frame ${responseFrameId} discarded (Current processed: ${lastProcessedFrameIdRef.current})`);
+        return;
+      }
+      
+      lastProcessedFrameIdRef.current = responseFrameId;
+
+      // Backend FPS calculation
+      backendFpsCountRef.current += 1;
+      
+      const frameLatency = performance.now() - startTime;
+      latencySumRef.current += frameLatency;
+      latencyCountRef.current += 1;
+      
+      const inferenceTimeMs = data.processing_time ? data.processing_time * 1000 : 0;
+      setLatencyInfo({ latency: Math.round(frameLatency), inference: Math.round(inferenceTimeMs) });
+
+      // Structured Logging
+      console.info(JSON.stringify({
+        event: 'PROCESSED_FRAME',
+        frame_id: responseFrameId,
+        processing_time_ms: Math.round(inferenceTimeMs),
+        latency_ms: Math.round(frameLatency),
+        face_present: data.face_present || false,
+        detected_faces: data.detected_faces || 0,
+        spoof_score: data.spoof_score || 0,
+        identity_score: data.identity_score || 0,
+        decision: data.result || 'pending'
+      }));
+
+      // Authoritative Backend Tracking
+      lastBackendResponseTimeRef.current = Date.now();
+      if (data.face_present) {
+        lastSuccessfulFrameTimeRef.current = Date.now();
+      }
+      
+      // Clear offline/error states if we successfully communicated
+      if (backendStatus === 'OFFLINE' || backendStatus === 'ERROR') {
+        setBackendStatus(null);
+        setDiagnosticInfo(null);
+      }
+
       // Trust backend final decision if it is terminal
       if (data.result === 'pass') {
         setResult('pass');
@@ -411,7 +510,7 @@ export default function BasicDemoPage() {
         setFaceVisibleDuration(0);
         
         setFaceDetected(false);
-        lastFaceSeenTimestampRef.current = null;
+        lastSuccessfulFrameTimeRef.current = null;
         setLastFaceSeenTimestamp(null);
         setTrackingState('NO_FACE');
         faceContinuousDetectionStartRef.current = null;
@@ -433,7 +532,7 @@ export default function BasicDemoPage() {
         }
       }
 
-      const isValidFace = data && data.face_present && data.landmark_count > 0 && data.face_confidence > 0.5;
+      const isValidFace = data && data.face_present && data.landmark_count > 0;
 
       if (isValidFace) {
         console.log("FACE_DETECTED: YES");
@@ -442,7 +541,7 @@ export default function BasicDemoPage() {
 
         setFaceDetected(true);
         setLastFaceSeenTimestamp(Date.now());
-        lastFaceSeenTimestampRef.current = Date.now();
+        lastSuccessfulFrameTimeRef.current = Date.now();
         setFaceMissingCountdown(5.0);
         setTrackingState('TRACKING');
 
@@ -512,8 +611,7 @@ export default function BasicDemoPage() {
 
         if (
           !currentFaceDetected ||
-          currentLandmarksCount === 0 ||
-          currentFaceConfidence < 0.5
+          currentLandmarksCount === 0
         ) {
           return;
         }
@@ -631,10 +729,37 @@ export default function BasicDemoPage() {
 
     } catch (err: any) {
       console.warn('Frame processing failed', err);
-      setModelStatus("Failed");
-      const errorMsg = err.response ? `Backend returned status ${err.response.status}: ${JSON.stringify(err.response.data)}` : (err.message || 'Unknown network error');
-      setError(`Failed to connect to backend biometric services. Reason: ${errorMsg}`);
+      if (err.response) {
+        setBackendStatus('ERROR');
+        setDiagnosticInfo({
+          url: '/liveness/demo/process',
+          status: err.response.status,
+          body: JSON.stringify(err.response.data),
+          reason: `Backend returned status ${err.response.status}`
+        });
+      } else {
+        setBackendStatus('OFFLINE');
+        setDiagnosticInfo({
+          url: '/liveness/demo/process',
+          status: 'network_error',
+          body: '',
+          reason: err.message || 'Unknown network error'
+        });
+      }
+      
+      // Stop camera temporarily if offline or error to avoid continuous failing requests
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+        videoRef.current.srcObject = null;
+      }
+      setStreaming(false);
+      setCameraStatus('Inactive');
+      setResult('fail');
+      setCurrentStep(0);
+      setFaceMissingCountdown(0);
+      
     } finally {
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
   }, [streaming, sessionId, isProcessing, currentStep, hasBlinked, hasMovedMouth, hasRotatedHead]);
@@ -647,11 +772,12 @@ export default function BasicDemoPage() {
   useEffect(() => {
     streamingRef.current = streaming;
   }, [streaming]);
+  
   const animationLoop = useCallback((_timestamp: number) => {
     if (!streamingRef.current) return;
     const now = Date.now();
-    // Throttle frames to backend to ~10 FPS to prevent server overload
-    if (now - lastFrameTimeRef.current >= 100) {
+    // Throttle frames to backend to ~12 FPS to prevent server overload
+    if (now - lastFrameTimeRef.current >= 83) {
       sendFrameToBackend();
       lastFrameTimeRef.current = now;
     }
@@ -704,7 +830,31 @@ export default function BasicDemoPage() {
       });
     }
   }, [result]);
-
+  // Auto-recovery polling for backend connection
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    if (backendStatus === 'OFFLINE' || backendStatus === 'ERROR') {
+      intervalId = setInterval(async () => {
+        try {
+          console.info("[Backend Recovery] Attempting to reconnect to backend...");
+          const res = await checkHealth();
+          if (res.data && res.data.status === 'ok') {
+            console.info("[Backend Recovery] Connection restored! Resuming verification.");
+            setBackendStatus(null);
+            setDiagnosticInfo(null);
+            startCamera();
+          }
+        } catch (e) {
+          // Keep polling
+        }
+      }, 3000);
+    }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [backendStatus]);
   async function startCamera() {
     setError(null);
     setResult(null);
@@ -730,9 +880,11 @@ export default function BasicDemoPage() {
 
     setFaceDetected(false);
     setLastFaceSeenTimestamp(Date.now());
-    lastFaceSeenTimestampRef.current = Date.now();
+    lastSuccessfulFrameTimeRef.current = Date.now();
+    lastBackendResponseTimeRef.current = Date.now();
     setFaceMissingCountdown(5.0);
     setNoFaceTimeoutError(false);
+    setBackendStatus(null);
     setTrackingState('NO_FACE');
     faceContinuousDetectionStartRef.current = null;
     activeStepTimeElapsedRef.current = 0;
@@ -821,7 +973,8 @@ export default function BasicDemoPage() {
 
     setFaceDetected(false);
     setLastFaceSeenTimestamp(null);
-    lastFaceSeenTimestampRef.current = null;
+    lastSuccessfulFrameTimeRef.current = null;
+    lastBackendResponseTimeRef.current = null;
     setFaceMissingCountdown(5.0);
     setNoFaceTimeoutError(false);
     setTrackingState('NO_FACE');
@@ -875,6 +1028,34 @@ export default function BasicDemoPage() {
             }}>
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
+              
+              {/* Performance Diagnostics HUD */}
+              {streaming && (
+                <div style={{
+                  position: 'absolute', top: 16, left: 16, zIndex: 50,
+                  background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+                  padding: '8px 12px', fontSize: 11, color: '#00d4ff',
+                  fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: 4
+                }}>
+                  <div style={{ fontWeight: 600, color: '#fff', marginBottom: 2 }}>System Diagnostics</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <span>Camera FPS:</span> <span style={{ color: '#fff' }}>{fps}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <span>Backend Status:</span> <span style={{ color: backendStatus ? '#ff3366' : '#10b981' }}>{backendStatus || 'ONLINE'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <span>Lat/Inf (ms):</span> <span style={{ color: '#fff' }}>{latencyInfo.latency} / {latencyInfo.inference}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <span>Dropped Frames:</span> <span style={{ color: droppedFramesRef.current > 0 ? '#ff9900' : '#10b981' }}>{droppedFramesRef.current}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <span>Timeouts:</span> <span style={{ color: timeoutCountRef.current > 0 ? '#ff3366' : '#10b981' }}>{timeoutCountRef.current}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Developer Ecosystem Components */}
               {streaming && showDebug && (
@@ -1003,6 +1184,44 @@ export default function BasicDemoPage() {
                       <div>
                         <button onClick={startCamera} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto', background: '#fff', color: '#ff3366', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
                           <Camera size={14} /> Restart Verification
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {backendStatus !== null && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                      position: 'absolute', inset: 0, background: 'rgba(255,153,0,0.95)',
+                      backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', zIndex: 100
+                    }}
+                  >
+                    <div style={{ textAlign: 'center', padding: 24 }}>
+                      <AlertCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
+                      <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>
+                        {backendStatus === 'OFFLINE' ? 'BACKEND OFFLINE' : backendStatus === 'ERROR' ? 'BACKEND ERROR' : 'BACKEND TIMEOUT'}
+                      </h2>
+                      <p style={{ fontSize: 15, color: '#fff', marginBottom: 20, maxWidth: 320, margin: '0 auto 20px', lineHeight: 1.5 }}>
+                        {backendStatus === 'OFFLINE' ? 'The backend is unreachable or offline.' : 
+                         backendStatus === 'ERROR' ? 'The backend encountered an internal error.' : 
+                         'The backend connection timed out. Verification has been terminated.'}
+                      </p>
+                      <div style={{
+                        display: 'inline-block', padding: '6px 16px', borderRadius: 20,
+                        background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)',
+                        color: '#fff', fontSize: 13, fontWeight: 'bold', marginBottom: 24,
+                        letterSpacing: '0.05em', textTransform: 'uppercase'
+                      }}>
+                        {backendStatus === 'ERROR' ? 'HTTP 500' : 'Connection Error'}
+                      </div>
+                      <div>
+                        <button onClick={startCamera} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto', background: '#fff', color: '#ff9900', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                          <Camera size={14} /> Retry Verification
                         </button>
                       </div>
                     </div>

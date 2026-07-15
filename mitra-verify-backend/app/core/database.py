@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
+from typing import AsyncGenerator, Any
 
 # If using PostgreSQL, configure robust connection pool settings to prevent disconnects
 if "sqlite" in settings.DATABASE_URL:

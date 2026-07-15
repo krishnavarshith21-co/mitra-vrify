@@ -56,6 +56,62 @@ function CheckBadge({ label, passed, checking }: { label: string; passed: boolea
   );
 }
 
+
+function ResultCard({ result, reason, confidence, processingTime, onRestart }: { result: 'pass' | 'fail'; reason?: string; confidence: number; processingTime: number; onRestart: () => void }) {
+  const isPass = result === 'pass';
+  const color = isPass ? '#00ff88' : '#ff3366';
+  
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      background: isPass ? 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,255,136,0.02))' : 'linear-gradient(135deg, rgba(255,51,102,0.1), rgba(255,51,102,0.02))',
+      border: `1px solid ${color}40`,
+      boxShadow: `0 0 40px ${color}15`,
+      borderRadius: 'var(--radius-xl)',
+      padding: '40px 20px',
+      textAlign: 'center'
+    }}>
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+        style={{ width: 80, height: 80, borderRadius: '50%', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: `0 0 30px ${color}40` }}>
+        {isPass ? <CheckCircle size={40} color={color} /> : <AlertCircle size={40} color={color} />}
+      </motion.div>
+      
+      <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 16 }}>
+        {isPass ? 'LIVENESS VERIFIED' : 'VERIFICATION FAILED'}
+      </h2>
+      
+      {!isPass && (
+        <div style={{ display: 'inline-block', padding: '8px 20px', borderRadius: 20, background: 'rgba(0,0,0,0.4)', border: `1px solid ${color}40`, color: '#fff', fontSize: 14, fontWeight: 700, marginBottom: 32, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {reason || 'SPOOF DETECTED'}
+        </div>
+      )}
+
+      {isPass && (
+        <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 32 }}>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px 24px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Confidence</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#fff' }}>{(confidence * 100).toFixed(0)}%</div>
+          </div>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px 24px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Processing Time</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#fff' }}>{processingTime.toFixed(0)}ms</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 32, fontFamily: 'monospace' }}>
+        Status: <span style={{ color, fontWeight: 700 }}>{isPass ? 'PASS' : 'FAIL'}</span>
+      </div>
+
+      <button onClick={onRestart} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', color: '#0f172a', border: 'none', padding: '14px 28px', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 15, transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+        <Camera size={18} /> {isPass ? 'Start New Verification' : 'Try Again'}
+      </button>
+    </div>
+  );
+}
+
+
 export default function BasicDemoPage() {
   const { user, logout } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1044,9 +1100,24 @@ Result: ${data.result || 'pending'}
           <div className="lg:col-span-8 flex flex-col gap-4">
             <div style={{
               position: 'relative', borderRadius: 'var(--radius-xl)', overflow: 'hidden',
-              background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)',
+              background: result ? 'transparent' : '#0a0a0a', border: result ? 'none' : '1px solid rgba(255,255,255,0.06)',
               aspectRatio: '4/3',
             }}>
+              {result ? (
+                <ResultCard
+                  result={result}
+                  reason={apiResponse?.reason?.replace(/_/g, ' ') || apiResponse?.status?.replace(/_/g, ' ') || 'SPOOF DETECTED'}
+                  confidence={confidence}
+                  processingTime={processingTime}
+                  onRestart={() => {
+                    setResult(null);
+                    setCurrentStep(0);
+                    setSpoofScore(0);
+                    startCamera();
+                  }}
+                />
+              ) : (
+                <>
               <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', display: streaming ? 'block' : 'none', transform: 'scaleX(-1)' }} muted playsInline />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
               
@@ -1243,71 +1314,15 @@ Result: ${data.result || 'pending'}
                 )}
               </AnimatePresence>
 
-              {/* Result state overlay */}
-              <AnimatePresence>
-                {result && detectedFaces <= 1 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      position: 'absolute', inset: 0, 
-                      background: result === 'pass' ? 'rgba(0,255,136,0.95)' : 'rgba(255,51,102,0.95)',
-                      backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center', zIndex: 100
-                    }}
-                  >
-                    <div style={{ textAlign: 'center', padding: 24 }}>
-                      {result === 'pass' ? (
-                        <>
-                          <CheckCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
-                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS VERIFIED</h2>
-                          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 24 }}>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Confidence</div>
-                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{(confidence * 100).toFixed(0)}%</div>
-                            </div>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 20px', borderRadius: 12 }}>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4, textTransform: 'uppercase' }}>Proc. Time</div>
-                              <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{processingTime.toFixed(0)}ms</div>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle size={64} color="#fff" style={{ margin: '0 auto 16px', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.4))' }} />
-                          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>LIVENESS FAILED</h2>
-                          <div style={{
-                            display: 'inline-block', padding: '6px 16px', borderRadius: 20,
-                            background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)',
-                            color: '#fff', fontSize: 13, fontWeight: 'bold', marginBottom: 24,
-                            letterSpacing: '0.05em', textTransform: 'uppercase'
-                          }}>
-                            {apiResponse?.reason?.replace(/_/g, ' ') || apiResponse?.status?.replace(/_/g, ' ') || 'SPOOF DETECTED'}
-                          </div>
-                        </>
-                      )}
-                      
-                      <div>
-                        <button onClick={() => {
-                          setResult(null);
-                          setCurrentStep(0);
-                          setSpoofScore(0);
-                          startCamera();
-                        }} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto', background: '#fff', color: result === 'pass' ? '#00b35f' : '#ff3366', border: 'none', padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
-                          <Camera size={14} /> Restart Verification
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              
 
               {/* Session Status Tag */}
               {streaming && (
                 <div style={{ position: 'absolute', bottom: 12, left: 12, fontFamily: 'monospace', fontSize: 11, color: '#475569' }}>
                   {fps} FPS · Proc: {processingTime.toFixed(0)}ms
                 </div>
+              )}
+              </>
               )}
             </div>
 

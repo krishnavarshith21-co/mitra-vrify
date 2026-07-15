@@ -91,9 +91,12 @@ async def identity_enroll(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    print(f"=== ENROLL REQUEST RECEIVED ===")
+    print(f"Request payload: session_id={data.session_id}, subject_id={data.subject_id}, image length={len(data.image)}")
+
     from app.services.cv.mediapipe_engine import (
         b64_to_numpy, _calculate_face_embedding,
-        _validate_enrollment_quality, MP_AVAILABLE, CV2_AVAILABLE
+        _validate_enrollment_quality, MP_AVAILABLE, CV2_AVAILABLE, SESSION_CACHE
     )
     # pyrefly: ignore [missing-import]
     import cv2
@@ -105,6 +108,14 @@ async def identity_enroll(
         
     # --- Stage 1: Camera initialized ---
     print("[Enrollment] Stage 1: Camera initialized")
+    
+    if data.session_id and data.session_id in SESSION_CACHE:
+        print(f"Session found: {data.session_id}")
+        session_data = SESSION_CACHE[data.session_id]
+        print(f"Challenge state: {session_data.get('challenges')}")
+    else:
+        print("Session NOT found in cache!")
+
     frame = b64_to_numpy(data.image)
     if frame is None:
         raise HTTPException(status_code=400, detail="Stage 1 Failed: Invalid image format")
@@ -194,6 +205,7 @@ async def identity_enroll(
 
     # --- Stage 8: Embedding generation ---
     print("[Enrollment] Stage 8: Embedding generation")
+    print("=== EMBEDDING GENERATION STARTED ===")
     try:
         class LM:
             def __init__(self, x, y, z):
@@ -215,6 +227,8 @@ async def identity_enroll(
         else:
             # Fallback for tests
             embedding_vector = _calculate_face_embedding(frame, landmarks)
+            
+        print("=== EMBEDDING GENERATED ===")
             
         if embedding_vector is None or len(embedding_vector) == 0:
             raise ValueError("Empty embedding returned")
@@ -239,6 +253,7 @@ async def identity_enroll(
 
     # --- Stage 10: Embedding storage ---
     print("[Enrollment] Stage 10: Embedding storage")
+    print("=== DATABASE SAVE STARTED ===")
     try:
         user_id = str(data.subject_id or current_user.id)
         await db.execute(delete(FaceProfile).where(FaceProfile.user_id == user_id))
@@ -260,6 +275,7 @@ async def identity_enroll(
 
     # --- Stage 11: Enrollment successful ---
     print("[Enrollment] Stage 11: Enrollment successful")
+    print("=== RESPONSE SENT ===")
     return IdentityEnrollResponse(
         status="success",
         message=f"Enrollment successful. Quality: {quality['quality_score']:.0%}",

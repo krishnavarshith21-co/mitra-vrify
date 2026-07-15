@@ -692,7 +692,8 @@ export default function EnterpriseDemoPage() {
       }
 
       if (data.result === 'pass') {
-        if (!isMonitoring) setOverallResult('pass');
+        // In Enterprise API (Continuous Monitoring), we don't set overallResult on challenge completion,
+        // because the user must explicitly click "Enroll Current Face".
         
         // Log monitoring success periodically
         if (isMonitoring && (fpsCountRef.current % 5 === 0)) {
@@ -987,7 +988,16 @@ export default function EnterpriseDemoPage() {
   }
 
   const enrollFace = async () => {
-    if (challenges.length > 0 && !challengePassed.every(Boolean)) return;
+    console.log("=== ENROLL BUTTON CLICKED ===");
+    console.log("Button enabled state:", !(enrolling || confidence < 0.5 || !faceInsideGuide || (challenges.length > 0 && !challengePassed.every(Boolean))));
+    console.log("challengePassed array:", challengePassed);
+    console.log("sessionId:", sessionId);
+    console.log("isEnrolling:", enrolling);
+    
+    if (challenges.length > 0 && !challengePassed.every(Boolean)) {
+        console.warn("Enrollment aborted: challenges not completed.");
+        return;
+    }
     const video = videoRef.current; const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const ctx = canvas.getContext('2d');
@@ -998,6 +1008,9 @@ export default function EnterpriseDemoPage() {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const base64Image = canvas.toDataURL('image/jpeg', 0.80);
       setEnrollmentSnapshot(base64Image);
+      
+      console.log("API request payload:", { image: "base64...", subjectId: undefined, sessionId: sessionId });
+      
       const res = await livenessAPI.enrollFace(base64Image, undefined, sessionId);
       if (res.data && res.data.embedding_vector) {
         setIsStabilizing(true);
@@ -1247,8 +1260,8 @@ export default function EnterpriseDemoPage() {
             {streaming && !overallResult && (
               <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
                 {!hasFaceEnrolled ? (
-                  <button onClick={enrollFace} disabled={enrolling || confidence < 0.5 || !faceInsideGuide}
-                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: enrolling ? 'rgba(100,100,100,0.3)' : 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: enrolling || confidence < 0.5 ? 'not-allowed' : 'pointer', opacity: confidence < 0.5 ? 0.5 : 1 }}>
+                  <button onClick={enrollFace} disabled={enrolling || confidence < 0.5 || !faceInsideGuide || (challenges.length > 0 && !challengePassed.every(Boolean))}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: enrolling ? 'rgba(100,100,100,0.3)' : 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: (enrolling || confidence < 0.5 || (challenges.length > 0 && !challengePassed.every(Boolean))) ? 'not-allowed' : 'pointer', opacity: (confidence < 0.5 || (challenges.length > 0 && !challengePassed.every(Boolean))) ? 0.5 : 1 }}>
                     {enrolling ? 'Enrolling...' : 'Enroll Current Face'}
                   </button>
                 ) : (

@@ -1,3 +1,6 @@
+# pyright: reportAttributeAccessIssue=false
+# pyright: reportMissingImports=false
+# pyright: reportPossiblyUnboundVariable=false
 """
 MediaPipe-based computer vision engine for MITRA VERIFY.
 Implements face liveness detection, anti-spoof, and identity verification.
@@ -804,7 +807,7 @@ def _gaze_estimation(landmarks, w, h):
     return {"x": round(gaze_x, 4), "y": round(gaze_y, 4)}, True
 
 
-def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score, challenge_type=None, challenge_passed=False) -> float:
+def _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score, challenge_type=None, challenge_passed: bool | None = None) -> float:
     # Base risk starts at 0.15
     risk = 0.15
     
@@ -903,7 +906,7 @@ def _calculate_face_embedding(frame: np.ndarray, landmarks) -> list[float]:
     return embedding
 
 
-def _compute_cosine_similarity(emb_a: list[float], emb_b: list[float]) -> float:
+def _compute_cosine_similarity(emb_a: list[float], emb_b: list[float]) -> tuple[float, float]:
     import json
     if isinstance(emb_a, str):
         try:
@@ -920,30 +923,25 @@ def _compute_cosine_similarity(emb_a: list[float], emb_b: list[float]) -> float:
     b = np.array(emb_b)
     if len(a) != len(b) or len(a) == 0:
         print("LENGTH MISMATCH!", len(a), len(b))
-        return 0.0
+        return 0.0, 0.0
         
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
     if norm_a < 0.001 or norm_b < 0.001:
-        return 0.0
+        return 0.0, 0.0
         
     a = a / norm_a
     b = b / norm_b
     
-    # Calculate Euclidean distance between the structural ratio vectors
+    # Calculate true cosine similarity
+    similarity = float(np.dot(a, b))
+    
+    # Calculate Euclidean distance for logging
     dist = np.linalg.norm(a - b)
     
-    # Map euclidean distance to pseudo-cosine space for sharp identity discrimination
-    # Typical normalized distance for same face is ~0.005.
-    # Typical normalized distance for different faces is > 0.035.
-    # Formula: similarity = 1.0 - (dist * 10.0)
-    # dist = 0.005 -> sim = 0.95 (PASS)
-    # dist = 0.035 -> sim = 0.65 (FAIL)
-    
-    similarity = 1.0 - (dist * 10.0)
     final_similarity = float(np.clip(similarity, 0.0, 1.0))
-    print(f"Cosine Similarity Used for Decision: {final_similarity} (Raw Distance: {dist:.4f})")
-    return final_similarity
+    print(f"[Verification] Cosine Similarity: {final_similarity:.4f} (Distance: {dist:.4f})")
+    return final_similarity, float(dist)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1738,22 +1736,33 @@ def _process_demo_frame_inner(
     # 1. Bounding box & guidance checks
     bbox = _calculate_bbox(landmarks, w, h)
     
-    # Bounding box margin check (Face partially visible)
+    # Bounding box margin check (Face partially visible / not centered)
     if api_type == "enterprise":
-        if bbox["x"] < 0.02 or bbox["y"] < 0.02 or (bbox["x"] + bbox["w"]) > 0.98 or (bbox["y"] + bbox["h"]) > 0.98:
+        if bbox["x"] < 0.05 or bbox["y"] < 0.05 or (bbox["x"] + bbox["w"]) > 0.95 or (bbox["y"] + bbox["h"]) > 0.95:
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
-                "bbox": bbox, "status": "FACE_PARTIALLY_VISIBLE", "challenge_passed": False, "enrolled_matched": False
+                "bbox": bbox, "status": "FACE_NOT_CENTERED", "reason": "Face not centered or partially visible", "challenge_passed": False, "enrolled_matched": False
             }
-        if bbox["w"] < 0.22:
+        if bbox["w"] < 0.25:
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
-                "bbox": bbox, "status": "FACE_TOO_SMALL", "challenge_passed": False, "enrolled_matched": False
+                "bbox": bbox, "status": "FACE_TOO_SMALL", "reason": "Face too small", "challenge_passed": False, "enrolled_matched": False
             }
-        if bbox["w"] > 0.70:
+        
+        # Blur detection
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        if laplacian_var < 50:
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
-                "bbox": bbox, "status": "FACE_TOO_LARGE", "challenge_passed": False, "enrolled_matched": False
+                "bbox": bbox, "status": "BLUR_DETECTED", "reason": "Blur detected", "challenge_passed": False, "enrolled_matched": False
+            }
+        
+        # Confidence check
+        if face_confidence < 0.5:
+            return {
+                "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
+                "bbox": bbox, "status": "LOW_CONFIDENCE", "reason": "Face confidence too low", "challenge_passed": False, "enrolled_matched": False
             }
 
     # 2. EAR & MAR
@@ -1800,6 +1809,13 @@ def _process_demo_frame_inner(
     blink_detected = avg_ear < 0.22
     mouth_movement = mar > 0.18
     head_rotation = abs(yaw) > 12.0 or abs(pitch) > 8.0
+    
+    # Strict Yaw/Pitch validation for embedding comparison
+    if api_type == "enterprise" and head_rotation:
+        return {
+            "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
+            "bbox": bbox, "status": "POSE_INVALID", "reason": "Face turned beyond allowed yaw/pitch", "challenge_passed": False, "enrolled_matched": False
+        }
     
     # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
     history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)  # type: ignore
@@ -1940,7 +1956,7 @@ def _process_demo_frame_inner(
 
     # Calculate spoof score dynamically passing the challenge details
     t_spoof_start = time.perf_counter()
-    spoof_score = _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score, challenge_type, challenge_passed)
+    spoof_score = _calculate_spoof_risk(frame, landmarks, history, texture_score, replay_score, challenge_type, bool(challenge_passed) if challenge_passed is not None else None)
     timings["spoof_detection"] = (time.perf_counter() - t_spoof_start) * 1000
     
     if api_type == "enterprise":
@@ -1964,38 +1980,46 @@ def _process_demo_frame_inner(
     
     # Identity verification against stored enrollment
     similarity_score = 0.0
+    embedding_distance = 0.0
     enrolled_matched = False
     status = "ready"
     reason = None
+    match_reason = ""
     
     active_enrollment = enrolled_embedding if enrolled_embedding is not None else enrolled_signature
     if active_enrollment and api_type == "enterprise":
-        raw_similarity = _compute_cosine_similarity(current_signature, active_enrollment)
+        raw_similarity, dist = _compute_cosine_similarity(current_signature, active_enrollment)
         similarity_score = raw_similarity
+        embedding_distance = dist
             
         required_threshold = 0.85
         low_confidence_threshold = 0.70
         
+        print(f"[Verification] Threshold={required_threshold}, Distance={embedding_distance:.4f}, Similarity={similarity_score:.4f}")
+        
         if similarity_score >= required_threshold:
             enrolled_matched = True
-            print("MATCH_SUCCESS")
+            match_reason = "PASS"
+            print(f"[Verification] Decision: {match_reason}")
             if history:
                 history["wrong_person_frames"] = 0
         elif similarity_score >= low_confidence_threshold:
             enrolled_matched = False
-            print("MATCH_LOW_CONFIDENCE")
+            match_reason = "LOW CONFIDENCE"
+            print(f"[Verification] Decision: {match_reason}")
             if history:
                 history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
         else:
             enrolled_matched = False
-            print("MATCH_FAILED")
+            match_reason = "FAIL"
+            print(f"[Verification] Decision: {match_reason}")
             if history:
                 history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
                 
         if history and history.get("wrong_person_frames", 0) >= 5:
             return {
                 "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count), # type: ignore
-                "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": "IDENTITY_MISMATCH", "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "spoof_score": 1.0 # type: ignore
+                "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": match_reason, "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "distance": float(embedding_distance), "spoof_score": 1.0 # type: ignore
             }
 
     # Default status logic
@@ -2107,10 +2131,11 @@ def _process_demo_frame_inner(
         "challenge_type": challenge_type,
         "challenge_passed": bool(challenge_passed),  # type: ignore
         "similarity_score": float(similarity_score),  # type: ignore
+        "distance": float(embedding_distance), # type: ignore
         "enrolled_matched": bool(enrolled_matched),  # type: ignore
         "enrollment_signature": current_signature,
         "status": status,
-        "reason": reason if reason else "",
+        "reason": reason if reason else match_reason,
         "timings": timings
     }
 
@@ -2136,16 +2161,34 @@ def run_identity_verify(image_b64: str, subject_id: Optional[str] = None, enroll
         enrolled_embedding=enrolled_vector,
         api_type="enterprise"
     )
+    
+    # Retrieve reasoning logic from the results
+    match_reason = result.get("reason", "")
+    enrolled_matched = result.get("enrolled_matched", False)
+    if not match_reason and "status" in result and result["status"] == "ready":
+        # If it reached here but didn't return early with UNAUTHORIZED_PERSON,
+        # we can determine reason from enrolled_matched and score.
+        score = result.get("similarity_score", 0.0)
+        if score >= 0.85:
+            match_reason = "PASS"
+        elif score >= 0.70:
+            match_reason = "LOW CONFIDENCE"
+        else:
+            match_reason = "FAIL"
+            
+    # Identity dict must include identity_match, similarity, distance, confidence, reason
     identity = {
-        "matched": result.get("enrolled_matched", False),
-        "subject_id": subject_id or result.get("subject_id", "unknown"),
-        "similarity_score": result.get("similarity_score", 0.0),
-        "embedding_distance": 1.0 - result.get("similarity_score", 0.0)
+        "identity_match": enrolled_matched,
+        "similarity": result.get("similarity_score", 0.0),
+        "distance": result.get("distance", 0.0),
+        "confidence": result.get("face_confidence", 0.0),
+        "reason": match_reason,
+        "subject_id": subject_id or result.get("subject_id", "unknown")
     }
     elapsed = (time.time() - start) * 1000
     return {
         "session_id": result.get("session_id") or str(uuid.uuid4()),
-        "result": "pass" if result.get("enrolled_matched", False) else "fail",
+        "result": "pass" if enrolled_matched else "fail",
         "confidence": result.get("face_confidence", 0.0),
         "processing_time": round(elapsed, 2),
         "identity": identity,
@@ -2159,7 +2202,7 @@ def run_identity_verify(image_b64: str, subject_id: Optional[str] = None, enroll
         "continuous_session": result.get("session_id"),
         "timestamp": datetime.now(timezone.utc),
         "status": result.get("status"),
-        "reason": result.get("reason"),
+        "reason": match_reason,
         "spoof_score": result.get("spoof_score", 0.0),
         "deepfake_risk": result.get("deepfake_risk", 0.0),
     }

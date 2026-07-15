@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token, decode_supabase_token
 from app.models.models import User, Session as UserSession, AuditLog
@@ -39,7 +39,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
                         role="admin" if supabase_payload.get("email") == "admin@mitraverify.com" else "user",
                         email_verified=supabase_payload.get("email_verified", False),
                         is_active=True,
-                        created_at=datetime.utcnow()
+                        created_at=datetime.now(timezone.utc)
                     )
                     db.add(user)
                     await db.commit()
@@ -83,7 +83,7 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
         role="user",
         email_verified=False,
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(user)
     # Add Audit log
@@ -95,7 +95,7 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
         resource_id=user.id,
         meta_data={"email": user.email},
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()
@@ -106,12 +106,12 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
 async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email, User.is_active == True))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user or not verify_password(data.password, str(user.password_hash)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     access_token  = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
     refresh_token = create_refresh_token({"sub": user.id})
     # Update last login
-    await db.execute(update(User).where(User.id == user.id).values(last_login=datetime.utcnow()))
+    await db.execute(update(User).where(User.id == user.id).values(last_login=datetime.now(timezone.utc)))
     # Store session
     session = UserSession(
         id=str(uuid.uuid4()),
@@ -121,8 +121,8 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         ip_address=request.client.host if request.client else "unknown",
         user_agent=request.headers.get("user-agent", ""),
         is_active=True,
-        created_at=datetime.utcnow(),
-        expires_at=datetime.utcnow() + timedelta(minutes=60)
+        created_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=60)
     )
     db.add(session)
     # Add Audit log
@@ -134,7 +134,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         resource_id=session.id,
         meta_data={"user_agent": request.headers.get("user-agent", "")},
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()
@@ -155,7 +155,7 @@ async def logout(current_user: User = Depends(get_current_user), token: str = De
         resource_type="session",
         meta_data={"email": current_user.email},
         ip_address="internal",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()

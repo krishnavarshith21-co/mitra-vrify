@@ -26,6 +26,7 @@ def test():
         roll=0.0,
         challenge_type="face_centered"
     )
+    assert cache is not None
     print("First call successful, smile_ratios length:", len(cache["smile_ratios"]))
     
     # Manually delete smile_ratios to simulate the old bug state
@@ -42,6 +43,7 @@ def test():
         roll=0.0,
         challenge_type="face_centered"
     )
+    assert cache2 is not None
     print("Second call successful, smile_ratios length:", len(cache2["smile_ratios"]))
 
 if __name__ == "__main__":

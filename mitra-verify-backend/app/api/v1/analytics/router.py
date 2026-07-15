@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
 from app.models.models import VerificationLog, ApiKey, ApiUsage
 from app.schemas.schemas import AnalyticsOverview
@@ -130,7 +130,7 @@ async def get_usage(days: int = 30, current_user: User = Depends(get_current_use
     key_ids = [r[0] for r in keys_result.fetchall()]
     if not key_ids:
         return {"data": []}
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     logs = await db.execute(
         select(VerificationLog.created_at, VerificationLog.result, VerificationLog.api_type)
         .where(and_(VerificationLog.api_key_id.in_(key_ids), VerificationLog.created_at >= since))

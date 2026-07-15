@@ -1,4 +1,5 @@
 import cv2
+# pyright: reportAttributeAccessIssue=false
 import mediapipe as mp
 import numpy as np
 import sys

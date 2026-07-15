@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func, delete
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import uuid
 import psutil
@@ -162,7 +162,7 @@ async def update_user_role(
         resource_id=user.id,
         meta_data={"target_email": user.email, "new_role": data.role},
         ip_address="internal",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     
@@ -197,7 +197,7 @@ async def update_user_status(
         resource_id=user.id,
         meta_data={"target_email": user.email, "is_active": data.is_active},
         ip_address="internal",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     
@@ -273,7 +273,7 @@ async def clear_system_logs(
             level="WARNING",
             message=f"System logs cleared by administrator {current_admin.email}",
             meta_data={"admin_id": current_admin.id},
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(clear_log)
         await db.commit()
@@ -298,7 +298,7 @@ async def clear_audit_logs(
             resource_type="logs",
             meta_data={"cleared_by": current_admin.email},
             ip_address="internal",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(clear_audit)
         await db.commit()
@@ -346,7 +346,7 @@ async def reset_database(
             resource_type="database",
             meta_data={"reset_by": current_admin.email},
             ip_address="internal",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(reset_audit)
         

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from app.core.database import get_db
 from app.core.security import generate_api_key, hash_api_key, get_key_prefix
@@ -28,7 +28,7 @@ async def create_key(data: ApiKeyCreate, current_user: User = Depends(get_curren
         is_active=True,
         request_count=0,
         rate_limit=100,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(key)
     # Add Audit log
@@ -40,7 +40,7 @@ async def create_key(data: ApiKeyCreate, current_user: User = Depends(get_curren
         resource_id=key.id,
         meta_data={"name": key.name, "api_type": key.api_type, "prefix": key.key_prefix},
         ip_address="internal",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()
@@ -71,7 +71,7 @@ async def revoke_key(key_id: str, current_user: User = Depends(get_current_user)
         resource_id=key.id,
         meta_data={"name": key.name, "prefix": key.key_prefix},
         ip_address="internal",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(audit)
     await db.commit()
@@ -87,7 +87,7 @@ async def get_api_key_from_header(x_api_key: Optional[str] = Header(None), db: A
         raise HTTPException(status_code=401, detail="Invalid or revoked API key")
     # Update usage stats
     await db.execute(update(ApiKey).where(ApiKey.id == key.id).values(
-        last_used_at=datetime.utcnow(),
+        last_used_at=datetime.now(timezone.utc),
         request_count=ApiKey.request_count + 1
     ))
     await db.commit()

@@ -61,7 +61,7 @@ async def basic_liveness(
         spoof_score=0.0,
         deepfake_risk=0.0,
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(log)
     await db.commit()
@@ -73,7 +73,7 @@ async def basic_liveness(
         processing_time=cv_result.get("processing_time", 0.0),
         liveness_score=cv_result.get("liveness_score", 0.0),
         checks=cv_result.get("checks", {}),
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 
 @router.post("/advanced", response_model=AdvancedLivenessResponse)
@@ -118,7 +118,7 @@ async def advanced_liveness(
         spoof_score=cv_result.get("spoof_score", 0.0),
         deepfake_risk=cv_result.get("deepfake_risk", 0.0),
         ip_address=request.client.host if request.client else "unknown",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(log)
     await db.commit()
@@ -132,7 +132,7 @@ async def advanced_liveness(
         deepfake_risk=cv_result.get("deepfake_risk", 0.0),
         challenge_result=cv_result.get("challenge_result"),
         checks=cv_result.get("checks", {}),
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
 @router.post("/enterprise", response_model=AdvancedLivenessResponse)
 async def enterprise_liveness(
@@ -420,7 +420,7 @@ async def demo_process(
                     spoof_score=float(spoof_val),
                     deepfake_risk=float(deepfake_val),
                     ip_address=request.client.host if request.client else "127.0.0.1",
-                    created_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.add(log)
                 try:
@@ -486,7 +486,7 @@ async def demo_log_event(
         spoof_score=1.0 if data.event_type in ("SPOOF_DETECTED", "CAMERA_LOST") else 0.0,
         deepfake_risk=0.0,
         ip_address=request.client.host if request.client else "127.0.0.1",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(log)
     try:

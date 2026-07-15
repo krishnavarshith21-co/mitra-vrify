@@ -429,9 +429,9 @@ def _evaluate_challenge(challenge_type: str, landmarks, w: int, h: int, history=
             passed = False
             if len(yaws) >= 5:
                 min_yaw = min(yaws)
-                if min_yaw < -15.0:
+                if min_yaw < -20.0:
                     # check if we returned to neutral
-                    if yaws[-1] > -5.0:
+                    if yaws[-1] > -10.0:
                         passed = True
             detected = f"Yaw={yaw:.1f}°"
         else:
@@ -444,8 +444,8 @@ def _evaluate_challenge(challenge_type: str, landmarks, w: int, h: int, history=
             passed = False
             if len(yaws) >= 5:
                 max_yaw = max(yaws)
-                if max_yaw > 15.0:
-                    if yaws[-1] < 5.0:
+                if max_yaw > 20.0:
+                    if yaws[-1] < 10.0:
                         passed = True
             detected = f"Yaw={yaw:.1f}°"
         else:
@@ -1606,7 +1606,7 @@ def _process_demo_frame_inner(
                 status_code = "FACE_LOST"
                 reason_code = "no_face_detected"
             elif time.time() - session.get("challenge_start_time", time.time()) > 30.0:
-                status_code = "SPOOF_DETECTED"
+                status_code = "CHALLENGE_FAILED"
                 reason_code = "CHALLENGE_TIMEOUT"
                 
         return {
@@ -2024,7 +2024,7 @@ def _process_demo_frame_inner(
 
     # Default status logic
     if status == "ready" and session_id and session_id in SESSION_CACHE:
-        if time.time() - SESSION_CACHE[session_id].get("challenge_start_time", time.time()) > 30.0:
+        if challenge_type != "monitoring" and time.time() - SESSION_CACHE[session_id].get("challenge_start_time", time.time()) > 30.0:
             return {
                 "face_present": True,
                 "detected_faces": int(detected_faces),

@@ -465,6 +465,7 @@ export default function EnterpriseDemoPage() {
   const [currentChallenge, setCurrentChallenge] = useState(0);
   const [challengePassed, setChallengePassed] = useState<boolean[]>([]);
   const challengeProgress = challenges.length > 0 ? Math.round((currentChallenge / challenges.length) * 100) : 0;
+  const [challengeError, setChallengeError] = useState<string | null>(null);
   const [overallResult, setOverallResult] = useState<'pass' | 'fail' | null>(null);
 
   // State machine steps
@@ -583,6 +584,9 @@ export default function EnterpriseDemoPage() {
     }
   }, [logout, sessionId]);
 
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [monitoringAudit, setMonitoringAudit] = useState<{time: string, event: string, status: string}[]>([]);
+
   // Load enrollment
   useEffect(() => {
     const loadEnrolled = async () => {
@@ -605,11 +609,14 @@ export default function EnterpriseDemoPage() {
     loadEnrolled();
   }, []);
 
+  const isMonitoringRef = useRef(false);
+  useEffect(() => { isMonitoringRef.current = isMonitoring; }, [isMonitoring]);
+
   // Frame processor
   const sendFrameToBackend = useCallback(async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || !streaming || isProcessing || overallResult) return;
+    if (!video || !canvas || !streaming || isProcessing || (overallResult && !isMonitoring)) return;
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
     const ctx = canvas.getContext('2d');
@@ -654,11 +661,15 @@ export default function EnterpriseDemoPage() {
 
       const state: 'FACE_WARNING' | 'FACE_RECOVERY' | 'FACE_LOST' = faceLostDuration < 2.0 ? 'FACE_WARNING' : faceLostDuration < 5.0 ? 'FACE_RECOVERY' : 'FACE_LOST';
       setFaceTrackingState(state); prevTrackingStateRef.current = state;
+      
+      if (isMonitoring && faceLostDuration > 10.0) {
+        triggerSessionTermination('Session Timeout (Face Lost)');
+      }
     };
 
     try {
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
-      const activeChallengeId = currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined;
+      const activeChallengeId = isMonitoring ? 'monitoring' : (currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined);
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, hasFaceEnrolled ? (enrolledEmbedding || undefined) : undefined, 'enterprise');
       const data = res?.data;
       setApiResponse(data);
@@ -671,8 +682,22 @@ export default function EnterpriseDemoPage() {
         if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
       }
 
+      if (data.status === "CHALLENGE_FAILED") {
+        setChallengeError("Challenge timeout. Please try again.");
+        // Reset challenge timer for another attempt
+        setChallengeTimer(30);
+        return;
+      } else {
+        setChallengeError(null);
+      }
+
       if (data.result === 'pass') {
-        setOverallResult('pass');
+        if (!isMonitoring) setOverallResult('pass');
+        
+        // Log monitoring success periodically
+        if (isMonitoring && (fpsCountRef.current % 5 === 0)) {
+           setMonitoringAudit(prev => [{ time: new Date().toLocaleTimeString(), event: 'Identity Verified', status: 'secure' }, ...prev].slice(0, 50));
+        }
       } else if (data.result === 'fail') {
         triggerSessionTermination(data.status || 'VERIFICATION FAILED');
         return;
@@ -819,7 +844,7 @@ export default function EnterpriseDemoPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [streaming, sessionId, hasFaceEnrolled, enrolledEmbedding, currentChallenge, challenges, isProcessing, overallResult, triggerSessionTermination, mismatchCount, isStabilizing]);
+  }, [streaming, sessionId, hasFaceEnrolled, enrolledEmbedding, currentChallenge, challenges, isProcessing, overallResult, isMonitoring, triggerSessionTermination, mismatchCount, isStabilizing]);
 
   // Animation loop
   const requestRef = useRef<number>(0);
@@ -836,7 +861,8 @@ export default function EnterpriseDemoPage() {
   const animationLoop = useCallback((_timestamp: number) => {
     if (!streamingRef.current) return;
     const now = Date.now();
-    if (now - lastFrameTimeRef.current >= 100) { sendFrameToBackendRef.current(); lastFrameTimeRef.current = now; }
+    const interval = isMonitoringRef.current ? 1500 : 100;
+    if (now - lastFrameTimeRef.current >= interval) { sendFrameToBackendRef.current(); lastFrameTimeRef.current = now; }
     requestRef.current = requestAnimationFrame(animationLoop);
   }, []);
 
@@ -880,14 +906,22 @@ export default function EnterpriseDemoPage() {
           device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : /Tablet|iPad/i.test(navigator.userAgent) ? 'Tablet' : 'Desktop'
         }).catch(console.error);
       });
+      
+      // Auto-transition to Continuous Monitoring after initial verification success
+      if (overallResult === 'pass' && !isMonitoring) {
+        const t = setTimeout(() => {
+          setIsMonitoring(true);
+        }, 2500);
+        return () => clearTimeout(t);
+      }
     }
-  }, [overallResult]);
+  }, [overallResult, isMonitoring]);
 
   async function startCamera() {
     setError(null); faceVisibleStartRef.current = null; setFaceVisibleDuration(0);
     setSessionTime(0); setOverallResult(null); setSessionTerminated(false); setTerminationReason('');
     setModelStatus('Loading'); faceDetectionHistoryRef.current = []; similarityHistoryRef.current = [];
-    setMismatchCount(0); setShowReport(false);
+    setMismatchCount(0); setShowReport(false); setIsMonitoring(false); setMonitoringAudit([]);
     if (typeof window !== 'undefined') sessionStorage.removeItem('mv_mismatch_count');
     consecutiveValidFramesRef.current = 0; currentChallengeRef.current = 0; setConsecutiveValidFrames(0);
     setFaceTrackingState('FACE_PRESENT'); prevTrackingStateRef.current = 'FACE_PRESENT';
@@ -942,6 +976,7 @@ export default function EnterpriseDemoPage() {
     faceVisibleStartRef.current = null; setFaceVisibleDuration(0); setChallenges([]); setChallengePassed([]);
     setSessionTerminated(false); setTerminationReason(''); setShowReport(false);
     setFaceTrackingState('FACE_PRESENT'); prevTrackingStateRef.current = 'FACE_PRESENT';
+    setIsMonitoring(false); setMonitoringAudit([]);
     setLostFrames(0); setRecoveredFrames(0); setTimeSinceFaceSeen(0);
     setLiveEmbedding([]); setLastMatchTime(null); setRawYaw(0); setYawDirection('CENTER');
     setYaw(0); setPitch(0); setRoll(0);
@@ -952,6 +987,7 @@ export default function EnterpriseDemoPage() {
   }
 
   const enrollFace = async () => {
+    if (challenges.length > 0 && !challengePassed.every(Boolean)) return;
     const video = videoRef.current; const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const ctx = canvas.getContext('2d');
@@ -969,7 +1005,8 @@ export default function EnterpriseDemoPage() {
         localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
         localStorage.setItem('mv_enrolled_signature', JSON.stringify(res.data.embedding_vector));
         await refreshUser();
-        setTimeout(() => { setIsStabilizing(false); }, 1000);
+        setEnrollmentSuccess(true);
+        setTimeout(() => { setIsStabilizing(false); setEnrollmentSuccess(false); }, 2000);
       } else {
         alert("Failed to enroll face: Invalid response from backend");
       }
@@ -986,7 +1023,8 @@ export default function EnterpriseDemoPage() {
     await refreshUser();
   };
 
-  type EnterpriseState = 'FACE_DETECTED' | 'FACE_ENROLLED' | 'IDENTITY_MATCHED' | 'CHALLENGES_COMPLETED' | 'AUTHENTICATED';
+
+  type EnterpriseState = 'FACE_DETECTED' | 'FACE_ENROLLED' | 'IDENTITY_MATCHED' | 'CHALLENGES_COMPLETED' | 'AUTHENTICATED' | 'MONITORING';
   const enterpriseState = useMemo<EnterpriseState | null>(() => {
     if (!streaming || sessionTerminated) return null;
     const isFaceDetected = confidence > 0.50 && detectedFaces === 1 && faceInsideGuide;
@@ -995,10 +1033,11 @@ export default function EnterpriseDemoPage() {
     if (similarity < 0.75) return 'FACE_ENROLLED';
     const isChallengesCompleted = challengePassed.length > 0 && challengePassed.every(Boolean);
     if (!isChallengesCompleted) return 'IDENTITY_MATCHED';
+    if (isMonitoring) return 'MONITORING';
     const isAuthenticated = isChallengesCompleted && confidence > 0.50 && detectedFaces === 1 && faceInsideGuide && spoofScore < 0.45 && deepfakeRisk < 0.30 && similarity >= 0.75;
     if (isAuthenticated) return 'AUTHENTICATED';
     return 'CHALLENGES_COMPLETED';
-  }, [streaming, sessionTerminated, confidence, detectedFaces, faceInsideGuide, hasFaceEnrolled, similarity, challengePassed, spoofScore, deepfakeRisk]);
+  }, [streaming, sessionTerminated, confidence, detectedFaces, faceInsideGuide, hasFaceEnrolled, similarity, challengePassed, spoofScore, deepfakeRisk, isMonitoring]);
 
   const isVerified = overallResult === 'pass';
 
@@ -1136,11 +1175,14 @@ export default function EnterpriseDemoPage() {
                 <BiometricScannerOverlay
                   faceInside={faceInsideGuide} confidence={confidence} detectedFaces={detectedFaces} bbox={bbox} ear={ear} mar={mar}
                   challengeLabel={
+                    enrollmentSuccess ? 'ENROLLMENT SUCCESSFUL' :
+                    enrolling ? 'ENROLLING...' :
                     detectedFaces > 1 ? 'MULTIPLE FACES DETECTED' :
                     faceTrackingState === 'FACE_WARNING' || faceTrackingState === 'FACE_RECOVERY' ? 'FACE TRACKING LOST' :
                     confidence < 0.50 ? 'CONFIDENCE TOO LOW' :
                     !faceInsideGuide ? 'POSITION FACE INSIDE OVAL' :
-                    !hasFaceEnrolled ? 'READY TO ENROLL' :
+                    (!hasFaceEnrolled && challengePassed.length > 0 && challengePassed.every(Boolean)) ? 'READY TO ENROLL' :
+                    (!hasFaceEnrolled) ? `ENROLLMENT CHALLENGE ${currentChallenge + 1}/${challenges.length}` :
                     similarity < 0.75 ? 'IDENTITY MISMATCH' :
                     `VERIFYING IDENTITY... ${challengeTimer}s`
                   }
@@ -1258,6 +1300,34 @@ export default function EnterpriseDemoPage() {
               </div>
             )}
 
+            {/* Continuous Monitoring Panel */}
+            {isMonitoring && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: faceTrackingState === 'FACE_PRESENT' ? '#00ff88' : '#ffb800', boxShadow: `0 0 10px ${faceTrackingState === 'FACE_PRESENT' ? '#00ff88' : '#ffb800'}` }} />
+                    LIVE MONITORING
+                  </div>
+                  <div style={{ fontSize: 10, color: faceTrackingState === 'FACE_PRESENT' ? '#00d4ff' : '#ffb800', fontWeight: 700, fontFamily: 'monospace' }}>
+                    {faceTrackingState === 'FACE_PRESENT' ? 'SECURE' : 'REACQUIRING...'}
+                  </div>
+                </div>
+                <MetricBar label="Live Match" value={similarity * 100} />
+                <MetricBar label="Liveness Score" value={(passiveLiveness?.score ?? 0) * 100} />
+                
+                <div style={{ marginTop: 12, padding: '8px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)', maxHeight: 120, overflowY: 'auto' }}>
+                  <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', fontWeight: 700, marginBottom: 6 }}>Audit Timeline</div>
+                  {monitoringAudit.map((log, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: '#94a3b8', marginBottom: 4, fontFamily: 'monospace' }}>
+                      <span>{log.time}</span>
+                      <span style={{ color: log.status === 'secure' ? '#00ff88' : log.status === 'warning' ? '#ffb800' : '#ff3366' }}>{log.event}</span>
+                    </div>
+                  ))}
+                  {monitoringAudit.length === 0 && <div style={{ fontSize: 10, color: '#475569', fontStyle: 'italic', textAlign: 'center' }}>Awaiting events...</div>}
+                </div>
+              </div>
+            )}
+
             {/* Session Shield */}
             { (
               <div className="glass" style={{ padding: 14, borderRadius: 14, textAlign: 'center' }}>
@@ -1287,6 +1357,11 @@ export default function EnterpriseDemoPage() {
                   <CheckBadge key={ch.id} label={`${ch.icon} ${ch.label}`} passed={challengePassed[i]} checking={i === currentChallenge && streaming && !overallResult} />
                 ))}
               </div>
+              {challengeError && (
+                <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,51,102,0.15)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontSize: 11, fontWeight: 600 }}>
+                  {challengeError}
+                </div>
+              )}
             </div>
 
             {/* Fraud Detection Panel */}

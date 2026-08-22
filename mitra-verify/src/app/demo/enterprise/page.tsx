@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Camera, Fingerprint, AlertTriangle, CheckCircle, Lock, XCircle, Shield, AlertCircle, RefreshCw, ShieldCheck, ShieldAlert, FileText } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
+import { livenessAPI, checkHealth, getApiBaseUrl, parseNetworkError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { processHeadPose } from '@/lib/headPose';
 import dynamic from 'next/dynamic';
@@ -348,6 +348,7 @@ export default function EnterpriseDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [currentApiBase, setCurrentApiBase] = useState<string>('');
 
   // Developer Ecosystem Hooks
    
@@ -366,17 +367,21 @@ export default function EnterpriseDemoPage() {
   useEffect(() => {
     async function performHealthCheck() {
       try {
+        const baseUrl = await getApiBaseUrl();
+        setCurrentApiBase(baseUrl);
         const res = await checkHealth();
         if (res.data && res.data.status === 'ok') {
           setBackendHealthy(true);
         } else {
           setBackendHealthy(false);
-          setDiagnosticInfo({ url: `${API_BASE}/health`, status: res.status || 'unknown', body: JSON.stringify(res.data), reason: 'Health endpoint returned non-ok status' });
+          setDiagnosticInfo({ url: `${baseUrl}/health`, status: res.status || 'unknown', body: JSON.stringify(res.data), reason: 'Health endpoint returned non-ok status' });
         }
       } catch (err: any) {
         console.warn('Backend health check failed', err);
         setBackendHealthy(false);
-        setDiagnosticInfo({ url: `${API_BASE}/health`, status: err.response?.status || 'network_error', body: err.response ? JSON.stringify(err.response.data) : (err.message || 'Connection Refused'), reason: parseNetworkError(err, `${API_BASE}/health`) });
+        const baseUrl = await getApiBaseUrl().catch(() => 'unknown-url');
+        setCurrentApiBase(baseUrl);
+        setDiagnosticInfo({ url: `${baseUrl}/health`, status: err.response?.status || 'network_error', body: err.response ? JSON.stringify(err.response.data) : (err.message || 'Connection Refused'), reason: parseNetworkError(err, `${baseUrl}/health`) });
       }
     }
     performHealthCheck();

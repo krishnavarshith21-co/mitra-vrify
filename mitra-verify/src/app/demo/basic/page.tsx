@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowLeft, Camera, AlertCircle, CheckCircle, Eye, Activity, Clock, Zap, Terminal, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
+import { livenessAPI, checkHealth, getApiBaseUrl, parseNetworkError } from '@/lib/api';
 import { processHeadPose } from '@/lib/headPose';
 import PageTransition from '@/components/cyber/PageTransition';
 import dynamic from 'next/dynamic';
@@ -117,6 +117,7 @@ export default function BasicDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [currentApiBase, setCurrentApiBase] = useState<string>('');
   
   // Developer Ecosystem Hooks
    
@@ -200,13 +201,15 @@ export default function BasicDemoPage() {
   useEffect(() => {
     async function performHealthCheck() {
       try {
+        const baseUrl = await getApiBaseUrl();
+        setCurrentApiBase(baseUrl);
         const res = await checkHealth();
         if (res.data && res.data.status === 'ok') {
           setBackendHealthy(true);
         } else {
           setBackendHealthy(false);
           setDiagnosticInfo({
-            url: `${API_BASE}/health`,
+            url: `${baseUrl}/health`,
             status: res.status || 'unknown',
             body: JSON.stringify(res.data),
             reason: 'Health endpoint returned non-ok status'
@@ -215,11 +218,13 @@ export default function BasicDemoPage() {
       } catch (err: any) {
         console.warn('Backend health check failed', err);
         setBackendHealthy(false);
+        const baseUrl = await getApiBaseUrl().catch(() => 'unknown-url');
+        setCurrentApiBase(baseUrl);
         setDiagnosticInfo({
-          url: `${API_BASE}/health`,
+          url: `${baseUrl}/health`,
           status: err.response?.status || 'network_error',
           body: err.response ? JSON.stringify(err.response.data) : (err.message || 'Connection Refused'),
-          reason: parseNetworkError(err, `${API_BASE}/health`)
+          reason: parseNetworkError(err, `${baseUrl}/health`)
         });
       }
     }
@@ -1510,7 +1515,7 @@ Result: ${data.result || 'pending'}
                   className="terminal" style={{ fontSize: 11, overflow: 'hidden' }}>
                   <div style={{ color: 'var(--brand-cyan)', marginBottom: 8, fontSize: 10, letterSpacing: '0.08em', fontWeight: 700 }}>DEVELOPER DEBUG PANEL</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'monospace' }}>
-                    <div>Current API URL: <span style={{ color: '#f8fafc' }}>{API_BASE}</span></div>
+                    <div>Current API URL: <span style={{ color: '#f8fafc' }}>{currentApiBase || 'Loading...'}</span></div>
                     <div>Backend Status: <span style={{ color: backendHealthy ? 'var(--brand-green)' : 'var(--brand-red)' }}>{backendHealthy ? 'ONLINE' : 'OFFLINE'}</span></div>
                     <div>Authentication Status: <span style={{ color: user ? 'var(--brand-green)' : 'var(--brand-red)' }}>{user ? 'AUTHENTICATED' : 'UNAUTHENTICATED'}</span></div>
                     <div>Current JWT: <span style={{ color: '#f8fafc' }}>{jwtToken ? `${jwtToken.substring(0, 10)}...${jwtToken.substring(jwtToken.length - 10)}` : 'NULL'}</span></div>

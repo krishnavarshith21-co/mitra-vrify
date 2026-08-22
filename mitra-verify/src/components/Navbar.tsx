@@ -108,6 +108,7 @@ export default function Navbar() {
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+            <NavItem href="/">Home</NavItem>
             <NavItem href="/compare">Compare APIs</NavItem>
             <NavItem href="/docs">Documentation</NavItem>
             <NavItem 
@@ -117,6 +118,9 @@ export default function Navbar() {
               Demos
             </NavItem>
             <NavItem href="/about">About</NavItem>
+            {isAuthenticated && user && (
+              <NavItem href="/dashboard">Dashboard</NavItem>
+            )}
             {(user?.email === 'admin@mitraverify.com' || user?.role === 'admin') && (
               <NavItem href="/admin">Admin Dashboard</NavItem>
             )}
@@ -159,7 +163,7 @@ export default function Navbar() {
                       )}
                       <Link href="/dashboard" prefetch={false} className="group/item px-3 py-2 text-[13px] text-slate-300 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
-                        Security Console
+                        Dashboard
                       </Link>
                       <Link href="/applications" prefetch={false} className="group/item px-3 py-2 text-[13px] text-slate-300 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
@@ -234,6 +238,9 @@ export default function Navbar() {
             {/* Nav Links */}
             <div className="flex-1 overflow-y-auto px-4 py-6">
               <div className="flex flex-col gap-1">
+                <Link href="/" prefetch={false} onClick={() => setMobileOpen(false)} className={`mobile-nav-link ${pathname === '/' ? 'text-[#00E5FF] bg-white/[0.02]' : ''}`}>
+                  Home
+                </Link>
                 <Link href="/compare" prefetch={false} onClick={() => setMobileOpen(false)} className={`mobile-nav-link ${pathname === '/compare' ? 'text-[#00E5FF] bg-white/[0.02]' : ''}`}>
                   Compare APIs
                 </Link>
@@ -293,7 +300,7 @@ export default function Navbar() {
                   <>
                     <div className="h-px bg-white/[0.06] my-3" />
                     <Link href="/dashboard" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
-                      Security Console
+                      Dashboard
                     </Link>
                     <Link href="/applications" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
                       Applications

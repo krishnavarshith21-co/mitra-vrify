@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowLeft, Camera, Shield, RotateCcw, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { livenessAPI, checkHealth, API_BASE, parseNetworkError } from '@/lib/api';
+import { livenessAPI, checkHealth, getApiBaseUrl, parseNetworkError } from '@/lib/api';
 import { processHeadPose } from '@/lib/headPose';
 const BiometricScannerOverlay = dynamic(() => import('@/components/cyber/BiometricScannerOverlay'), { ssr: false });
 const AdvLiveMetrics = dynamic(() => import('@/components/advanced/panels').then(mod => mod.AdvLiveMetrics), { ssr: false });
@@ -42,6 +42,7 @@ export default function AdvancedDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [currentApiBase, setCurrentApiBase] = useState<string>('');
   
   // Developer Ecosystem Hooks
    
@@ -131,13 +132,15 @@ export default function AdvancedDemoPage() {
   useEffect(() => {
     async function performHealthCheck() {
       try {
+        const baseUrl = await getApiBaseUrl();
+        setCurrentApiBase(baseUrl);
         const res = await checkHealth();
         if (res.data && res.data.status === 'ok') {
           setBackendHealthy(true);
         } else {
           setBackendHealthy(false);
           setDiagnosticInfo({
-            url: `${API_BASE}/health`,
+            url: `${baseUrl}/health`,
             status: res.status || 'unknown',
             body: JSON.stringify(res.data),
             reason: 'Health endpoint returned non-ok status'
@@ -146,11 +149,13 @@ export default function AdvancedDemoPage() {
       } catch (err: any) {
         console.warn('Backend health check failed', err);
         setBackendHealthy(false);
+        const baseUrl = await getApiBaseUrl().catch(() => 'unknown-url');
+        setCurrentApiBase(baseUrl);
         setDiagnosticInfo({
-          url: `${API_BASE}/health`,
+          url: `${baseUrl}/health`,
           status: err.response?.status || 'network_error',
           body: err.response ? JSON.stringify(err.response.data) : (err.message || 'Connection Refused'),
-          reason: parseNetworkError(err, `${API_BASE}/health`)
+          reason: parseNetworkError(err, `${baseUrl}/health`)
         });
       }
     }

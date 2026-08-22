@@ -1,22 +1,8 @@
 import axios from 'axios';
 import { supabase } from './supabase';
 
-// Read API URL from environment variable
-let API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-if (API_BASE && !API_BASE.startsWith('http://') && !API_BASE.startsWith('https://')) {
-  API_BASE = 'https://' + API_BASE;
-}
-
-if (API_BASE && !API_BASE.endsWith('/api/v1')) {
-  API_BASE = API_BASE.replace(/\/+$/, '') + '/api/v1';
-}
-
-console.log(`[MITRA VERIFY] API Base URL: ${API_BASE}`);
-
 // ── Shared axios instance for all authenticated API calls ─────────────────────
 const api = axios.create({
-  baseURL: API_BASE,
   timeout: 15000, // 15s — Render cold starts can be slow
   headers: {
     'Content-Type': 'application/json',
@@ -24,9 +10,71 @@ const api = axios.create({
   },
 });
 
+let configPromise: Promise<string> | null = null;
+let currentApiBaseUrl = '';
+
+/**
+ * Loads the API base URL from GitHub at runtime.
+ * Fallback to local /config.json if GitHub fetch fails (e.g. local dev fallback).
+ */
+export async function getApiBaseUrl(): Promise<string> {
+  if (currentApiBaseUrl) return currentApiBaseUrl;
+  if (configPromise) return configPromise;
+
+  configPromise = new Promise(async (resolve, reject) => {
+    try {
+      // Primary: Fetch from external GitHub configuration file with timestamp cache busting
+      const githubUrl = `https://raw.githubusercontent.com/krishnavarshith21-co/mitra-vrify/main/backend_config.json?t=${Date.now()}`;
+      let response = await fetch(githubUrl).catch(() => null);
+      
+      // Fallback: Local /config.json for local development
+      if (!response || !response.ok) {
+        console.warn(`[MITRA VERIFY] Failed to load GitHub config, falling back to local /config.json`);
+        response = await fetch('/config.json');
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(`Failed to load configuration: ${response?.status}`);
+      }
+
+      const config = await response.json();
+      let base = config.apiBaseUrl;
+      
+      if (!base) {
+        throw new Error('apiBaseUrl is missing in configuration');
+      }
+
+      if (!base.startsWith('http://') && !base.startsWith('https://')) {
+        base = 'https://' + base;
+      }
+      if (!base.endsWith('/api/v1')) {
+        base = base.replace(/\/+$/, '') + '/api/v1';
+      }
+      
+      currentApiBaseUrl = base;
+      api.defaults.baseURL = base;
+      console.log(`[MITRA VERIFY] API Base URL dynamically configured to: ${currentApiBaseUrl}`);
+      resolve(currentApiBaseUrl);
+    } catch (err) {
+      console.error('[MITRA VERIFY] FATAL: Configuration Error. Backend config could not be loaded.', err);
+      reject(err);
+    }
+  });
+
+  return configPromise;
+}
+
 // ── Request interceptor: inject auth token ────────────────────────────────────
 api.interceptors.request.use(
   async config => {
+    // 1. Ensure runtime configuration is loaded first
+    try {
+      const baseUrl = await getApiBaseUrl();
+      config.baseURL = baseUrl;
+    } catch (err) {
+      return Promise.reject(new Error('Backend configuration (config.json) could not be loaded.'));
+    }
+
     const url = `${config.baseURL || ''}${config.url || ''}`;
     let hasSession = false;
     let hasToken = false;
@@ -179,10 +227,10 @@ export const applicationsAPI = {
 
 // ── Platform: Verification Sessions ───────────────────────────────────────────
 export const verificationAPI = {
-  getSession: (sessionId: string) => axios.get(`${API_BASE}/verification/sessions/${sessionId}`),
-  startSession: (sessionId: string) => axios.post(`${API_BASE}/verification/sessions/${sessionId}/start`),
+  getSession: (sessionId: string) => api.get(`/verification/sessions/${sessionId}`),
+  startSession: (sessionId: string) => api.post(`/verification/sessions/${sessionId}/start`),
   processFrame: (sessionId: string, data: { image: string; frame_id?: string; challenge_type?: string }) => 
-    axios.post(`${API_BASE}/verification/sessions/${sessionId}/process`, data),
+    api.post(`/verification/sessions/${sessionId}/process`, data),
 };
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -197,7 +245,6 @@ export const adminAPI = {
   clearAuditLogs: () => api.delete('/admin/logs/audit'),
 };
 
-export { API_BASE };
 export const checkHealth = () => api.get('/health');
 
 export function parseNetworkError(error: unknown, targetUrl: string): string {

@@ -1,4 +1,4 @@
 # mitra-vrify
-# mitra-vrify
 # mitraverify
-# mitraverify
+
+(Repository identity alignment)

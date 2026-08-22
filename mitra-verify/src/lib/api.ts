@@ -24,9 +24,11 @@ export async function getApiBaseUrl(): Promise<string> {
 
   configPromise = new Promise(async (resolve, reject) => {
     try {
-      // Primary: Fetch from external GitHub configuration file with timestamp cache busting
-      const githubUrl = `https://raw.githubusercontent.com/krishnavarshith21-co/mitra-vrify/main/backend_config.json?t=${Date.now()}`;
-      let response = await fetch(githubUrl).catch(() => null);
+      // Primary: Fetch from external GitHub configuration file using GitHub API to bypass CDN cache
+      const githubUrl = `https://api.github.com/repos/krishnavarshith21-co/mitra-vrify/contents/backend_config.json?t=${Date.now()}`;
+      let response = await fetch(githubUrl, {
+        headers: { 'Accept': 'application/vnd.github.v3.raw' }
+      }).catch(() => null);
       
       // Fallback: Local /config.json ONLY if we are in local development
       if ((!response || !response.ok) && process.env.NODE_ENV !== 'production') {

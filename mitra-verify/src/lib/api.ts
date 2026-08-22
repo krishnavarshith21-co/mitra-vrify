@@ -7,6 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Bypass-Tunnel-Reminder': 'true',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 
@@ -15,7 +16,7 @@ let currentApiBaseUrl = '';
 
 /**
  * Loads the API base URL from GitHub at runtime.
- * Fallback to local /config.json if GitHub fetch fails (e.g. local dev fallback).
+ * Fallback to local /config.json ONLY for local development.
  */
 export async function getApiBaseUrl(): Promise<string> {
   if (currentApiBaseUrl) return currentApiBaseUrl;
@@ -27,14 +28,14 @@ export async function getApiBaseUrl(): Promise<string> {
       const githubUrl = `https://raw.githubusercontent.com/krishnavarshith21-co/mitra-vrify/main/backend_config.json?t=${Date.now()}`;
       let response = await fetch(githubUrl).catch(() => null);
       
-      // Fallback: Local /config.json for local development
-      if (!response || !response.ok) {
-        console.warn(`[MITRA VERIFY] Failed to load GitHub config, falling back to local /config.json`);
+      // Fallback: Local /config.json ONLY if we are in local development
+      if ((!response || !response.ok) && process.env.NODE_ENV !== 'production') {
+        console.warn(`[MITRA VERIFY] Failed to load GitHub config, falling back to local /config.json for local dev`);
         response = await fetch('/config.json');
       }
 
       if (!response || !response.ok) {
-        throw new Error(`Failed to load configuration: ${response?.status}`);
+        throw new Error(`Failed to load configuration from GitHub. Status: ${response?.status}. Vercel fallback disabled.`);
       }
 
       const config = await response.json();

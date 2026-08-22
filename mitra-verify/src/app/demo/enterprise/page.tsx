@@ -731,7 +731,7 @@ export default function EnterpriseDemoPage() {
         "CAMERA_FEED_FROZEN": "SESSION TERMINATED",
         "UNAUTHORIZED_PERSON": "UNAUTHORIZED PERSON",
         "IDENTITY_CHANGED": "UNAUTHORIZED PERSON",
-        "SPOOF_DETECTED": noFaceTimeoutError ? "FACE NOT DETECTED" : (backendStatus === 'ERROR' ? "PROCESSING ERROR" : (backendStatus === 'OFFLINE' || backendStatus === 'TIMEOUT' ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED")),
+        "SPOOF_DETECTED": error ? "PROCESSING ERROR" : (backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"),
         "FACE_LOST": "FACE LOST"
       };
 

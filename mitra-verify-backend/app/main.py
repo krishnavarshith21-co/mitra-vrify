@@ -14,6 +14,8 @@ from app.api.v1.auth.router import router as auth_router
 from app.api.v1.identity.router import router as identity_router
 from app.api.v1.keys.router import router as keys_router
 from app.api.v1.liveness.router import router as liveness_router
+from app.api.v1.applications.router import router as applications_router
+from app.api.v1.verification.router import router as verification_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, init_db
 from app.core.security import hash_password
@@ -202,6 +204,8 @@ app.include_router(liveness_router, prefix="/api/v1")
 app.include_router(identity_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(applications_router, prefix="/api/v1")
+app.include_router(verification_router, prefix="/api/v1")
 
 import time
 

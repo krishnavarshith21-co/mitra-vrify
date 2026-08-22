@@ -165,6 +165,26 @@ export const analyticsAPI = {
   }) => api.post('/analytics/events', { ...data, processingTimeMs: Math.round(data.processingTimeMs) }),
 };
 
+// ── Platform: Applications ────────────────────────────────────────────────────
+export const applicationsAPI = {
+  create: (data: { name: string; api_level: string; allowed_redirect_uris: string[] }) => 
+    api.post('/applications', data),
+  list: () => api.get('/applications'),
+  get: (id: string) => api.get(`/applications/${id}`),
+  update: (id: string, data: { name?: string; api_level?: string; allowed_redirect_uris?: string[] }) => 
+    api.put(`/applications/${id}`, data),
+  delete: (id: string) => api.delete(`/applications/${id}`),
+  rotateKeys: (id: string) => api.post(`/applications/${id}/rotate-keys`),
+};
+
+// ── Platform: Verification Sessions ───────────────────────────────────────────
+export const verificationAPI = {
+  getSession: (sessionId: string) => axios.get(`${API_BASE}/verification/sessions/${sessionId}`),
+  startSession: (sessionId: string) => axios.post(`${API_BASE}/verification/sessions/${sessionId}/start`),
+  processFrame: (sessionId: string, data: { image: string; frame_id?: string; challenge_type?: string }) => 
+    axios.post(`${API_BASE}/verification/sessions/${sessionId}/process`, data),
+};
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 export const adminAPI = {
   stats: () => api.get('/admin/stats'),

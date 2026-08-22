@@ -161,6 +161,10 @@ export default function Navbar() {
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
                         Security Console
                       </Link>
+                      <Link href="/applications" prefetch={false} className="group/item px-3 py-2 text-[13px] text-slate-300 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
+                        Applications
+                      </Link>
                       <Link href="/api-keys" prefetch={false} className="group/item px-3 py-2 text-[13px] text-slate-300 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-all duration-200 flex items-center gap-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-600 group-hover/item:bg-[#00E5FF] group-hover/item:shadow-[0_0_8px_#00E5FF] transition-all" />
                         API Keys
@@ -290,6 +294,9 @@ export default function Navbar() {
                     <div className="h-px bg-white/[0.06] my-3" />
                     <Link href="/dashboard" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
                       Security Console
+                    </Link>
+                    <Link href="/applications" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
+                      Applications
                     </Link>
                     <Link href="/api-keys" prefetch={false} onClick={() => setMobileOpen(false)} className="mobile-nav-link">
                       API Keys

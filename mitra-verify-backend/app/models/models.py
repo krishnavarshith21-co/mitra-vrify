@@ -212,3 +212,81 @@ class FaceEnrollment(Base):
     embedding: Mapped[dict | list] = mapped_column(JSONType, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     user = relationship("User", backref=backref("face_enrollment", uselist=False))
+
+
+# ── Platform: Verification-as-a-Service Models ──────────────────────────────
+
+class ApiLevel(str, enum.Enum):
+    api1 = "api1"
+    api2 = "api2"
+    api3 = "api3"
+
+class VerificationSessionStatus(str, enum.Enum):
+    CREATED = "CREATED"
+    IN_PROGRESS = "IN_PROGRESS"
+    VERIFIED = "VERIFIED"
+    FAILED = "FAILED"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+
+class VerificationFailureReason(str, enum.Enum):
+    FACE_NOT_DETECTED = "FACE_NOT_DETECTED"
+    MULTIPLE_FACES = "MULTIPLE_FACES"
+    LIVENESS_FAILED = "LIVENESS_FAILED"
+    SPOOF_DETECTED = "SPOOF_DETECTED"
+    TIMEOUT = "TIMEOUT"
+    SESSION_EXPIRED = "SESSION_EXPIRED"
+    CANCELLED = "CANCELLED"
+    PROCESSING_ERROR = "PROCESSING_ERROR"
+
+
+class ClientApplication(Base):
+    """Represents a client's registered application that uses MITRA VERIFY."""
+    __tablename__ = "client_applications"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=gen_uuid)
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_level: Mapped[str] = mapped_column(SAEnum(ApiLevel), nullable=False, default=ApiLevel.api1)
+    client_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    api_key_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    api_key_prefix: Mapped[str] = mapped_column(String(50), nullable=False)
+    server_secret_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    server_secret_prefix: Mapped[str] = mapped_column(String(50), nullable=False)
+    allowed_redirect_uris: Mapped[dict | list] = mapped_column(JSONType, nullable=False, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    request_count: Mapped[int] = mapped_column(Integer, default=0)
+    verified_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now)
+
+    owner = relationship("User", backref="client_applications")
+    verification_sessions = relationship("VerificationSession", back_populates="application")
+
+
+class VerificationSession(Base):
+    """Represents a single verification attempt initiated by a client application."""
+    __tablename__ = "verification_sessions"
+    id: Mapped[str] = mapped_column(String, primary_key=True)  # "sess_" + uuid
+    application_id: Mapped[str] = mapped_column(String, ForeignKey("client_applications.id"), nullable=False, index=True)
+    api_level: Mapped[str] = mapped_column(SAEnum(ApiLevel), nullable=False)
+    redirect_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
+    status: Mapped[str] = mapped_column(
+        SAEnum(VerificationSessionStatus),
+        nullable=False,
+        default=VerificationSessionStatus.CREATED
+    )
+    failure_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    liveness_session_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    result_retrieved: Mapped[bool] = mapped_column(Boolean, default=False)
+    result_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    application = relationship("ClientApplication", back_populates="verification_sessions")
+

@@ -208,3 +208,69 @@ class DashboardAnalyticsResponse(BaseModel):
     timeline: list[DashboardTimelineNode]
     threat_statistics: DashboardThreatStatistics
     live_activity: list[DashboardLiveActivity]
+
+
+# ── Platform: Client Application Schemas ─────────────────────────────────────
+
+class ClientApplicationCreate(BaseModel):
+    name: str
+    api_level: str = "api1"  # api1 | api2 | api3
+    allowed_redirect_uris: list[str] = []
+
+class ClientApplicationUpdate(BaseModel):
+    name: str | None = None
+    api_level: str | None = None
+    allowed_redirect_uris: list[str] | None = None
+
+class ClientApplicationOut(BaseModel):
+    id: str
+    name: str
+    api_level: str
+    client_id: str
+    api_key_prefix: str
+    server_secret_prefix: str
+    allowed_redirect_uris: list[str]
+    is_active: bool
+    request_count: int
+    verified_count: int
+    failed_count: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ClientApplicationCreatedOut(ClientApplicationOut):
+    """Returned only on creation — contains plaintext credentials (shown once)."""
+    api_key: str
+    server_secret: str
+
+# ── Platform: Verification Session Schemas ───────────────────────────────────
+
+class VerificationSessionCreate(BaseModel):
+    application_id: str
+    api_level: str | None = None  # Overrides app default if provided
+    redirect_uri: str
+
+class VerificationSessionCreatedOut(BaseModel):
+    session_id: str
+    verification_url: str
+    expires_at: datetime
+
+class VerificationSessionPublicOut(BaseModel):
+    """Public session metadata (no secrets) — for the hosted verification page."""
+    session_id: str
+    api_level: str
+    application_name: str
+    status: str
+    expires_at: datetime
+
+class VerificationSessionResultOut(BaseModel):
+    """Server-to-server authoritative result."""
+    session_id: str
+    status: str
+    api_level: str
+    confidence: float
+    failure_reason: str | None = None
+    verified_at: datetime | None = None
+    created_at: datetime
+

@@ -1,0 +1,89 @@
+--- Starting End-to-End Verification ---
+Registering user test_ca3442e9@example.com...
+Logging in...
+Session ID: 64e7fd14-da3e-45df-9805-e483de270836
+Raw response 1: {
+  "face_present": true,
+  "detected_faces": 1,
+  "face_confidence": 0.9382562238496845,
+  "landmark_count": 478,
+  "bbox": {
+    "x": 0.3903999328613281,
+    "y": 0.41591382026672363,
+    "w": 0.2994943857192993,
+    "h": 0.34017789363861084
+  },
+  "status": "POSE_INVALID",
+  "reason": "Face turned beyond allowed yaw/pitch",
+  "challenge_passed": false,
+  "enrolled_matched": false,
+  "frame_id": "df3e9dcd-0327-4e12-a895-afc6d7f8e894",
+  "processed_timestamp": 1787470729333,
+  "tracking_state": "TRACKING",
+  "debug": {
+    "received": "YES",
+    "decoded": "FAILED/SKIPPED",
+    "mediapipe_executed": "FAILED/SKIPPED"
+  }
+}
+Frame 01 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 02 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 03 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 04 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 05 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 06 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 07 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 08 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 09 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 10 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 11 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 12 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 13 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 14 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 15 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 16 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 17 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 18 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 19 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 20 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 21 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 22 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 23 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 24 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 25 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 26 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 27 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 28 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 29 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 30 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 31 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 32 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 33 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 34 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 35 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 36 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 37 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 38 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 39 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 40 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 41 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 42 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 43 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 44 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 45 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 46 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 47 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 48 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 49 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 50 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 51 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 52 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 53 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 54 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 55 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 56 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 57 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 58 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+Frame 59 => sequence_id=None, session_id=64e7fd14-da3e-45df-9805-e483de270836, accepted_frames=None, rejected_frames=None, last_reason=None, ready=None
+
+[FAILED] Did not reach 15 accepted frames.

@@ -456,8 +456,7 @@ export default function EnterpriseDemoPage() {
   const [currentFps, setCurrentFps] = useState(0);
 
   // Enrollment states
-  const [enrolledEmbedding, setEnrolledEmbedding] = useState<number[] | null>(null);
-  type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLED' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
+    type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLED' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
   const [phase, setPhase] = useState<Phase>('IDLE');
   const phaseRef = useRef<Phase>('IDLE');
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -658,7 +657,7 @@ export default function EnterpriseDemoPage() {
       try {
         const res = await livenessAPI.getEnrolledFace();
         if (res.data && res.data.enrolled && res.data.embedding_vector) {
-          setEnrolledEmbedding(res.data.embedding_vector);
+          
           localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
           return;
         }
@@ -667,8 +666,7 @@ export default function EnterpriseDemoPage() {
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('enrolledEmbedding') || localStorage.getItem('mv_enrolled_signature');
         if (stored) {
-          try { setEnrolledEmbedding(JSON.parse(stored)); } catch (e) { console.warn('Failed to parse', e); }
-        }
+                  }
       }
     };
     loadEnrolled();
@@ -722,7 +720,7 @@ export default function EnterpriseDemoPage() {
     try {
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
       const activeChallengeId = phase === 'CONTINUOUS_MONITORING' ? 'monitoring' : (phase === 'LIVENESS_CHALLENGES' && currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined);
-      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, hasFaceEnrolled ? (enrolledEmbedding || undefined) : undefined, 'enterprise');
+      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise');
       const data = res?.data;
       setApiResponse(data);
       if (!data) return;
@@ -1182,7 +1180,7 @@ export default function EnterpriseDemoPage() {
       if (res.data && res.data.embedding_vector) {
         console.log('[ENROLL DEBUG] SUCCESS — enrollment complete');
         setIsStabilizing(true);
-        setEnrolledEmbedding(res.data.embedding_vector);
+        
         localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
         localStorage.setItem('mv_enrolled_signature', JSON.stringify(res.data.embedding_vector));
         await refreshUser();
@@ -1210,7 +1208,7 @@ export default function EnterpriseDemoPage() {
   };
 
   const clearEnrollment = async () => {
-    setEnrolledEmbedding(null);
+    
     localStorage.removeItem('enrolledEmbedding'); localStorage.removeItem('mv_enrolled_signature');
     setSimilarity(0); similarityHistoryRef.current = []; setConsecutiveValidFrames(0);
     setPhase('ENROLLMENT');
@@ -1682,7 +1680,21 @@ export default function EnterpriseDemoPage() {
               </div>
             )}
             
-            {phase === 'ACCESS_GRANTED' && (
+                        {phase === 'IDENTITY_VERIFIED' && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#00ff88' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    IDENTITY VERIFIED
+                  </div>
+                  <CheckCircle size={16} color="#00ff88" />
+                </div>
+                <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.4, marginBottom: 12 }}>
+                  Live face matched enrolled template. Starting liveness challenges...
+                </div>
+              </div>
+            )}
+            
+{phase === 'ACCESS_GRANTED' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#00ff88' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>

@@ -2255,7 +2255,6 @@ def _process_demo_frame_inner(
     session_id: str | None = None,
     challenge_type: str | None = None,
     enrolled_signature: list[float] | None = None,
-    enrolled_embedding: list[float] | None = None,
     api_type: str | None = None
 ) -> dict:
     if api_type is None:
@@ -3068,10 +3067,14 @@ def _process_demo_frame_inner(
         if current_stage == "IDENTITY_VERIFYING":
             if enrolled_matched:
                 session["stage"] = "IDENTITY_VERIFIED"
-                session["stage"] = "LIVENESS_CHALLENGES"  # Start challenges
-            elif not enrolled_matched and history.get("wrong_person_frames", 0) >= 15:
+                session["identity_verified_time"] = time.time()
+            elif not enrolled_matched and history.get("wrong_person_frames", 0) >= 30:
                 session["stage"] = "FAILED"
                 status = "UNAUTHORIZED_PERSON"
+                
+        elif current_stage == "IDENTITY_VERIFIED":
+            if time.time() - session.get("identity_verified_time", 0) > 1.5:
+                session["stage"] = "LIVENESS_CHALLENGES"
                 
         elif current_stage == "LIVENESS_CHALLENGES":
             # For simplicity, if they pass the current challenge, move to VERIFIED
@@ -3364,7 +3367,6 @@ def process_demo_frame(
     session_id: str | None = None,
     challenge_type: str | None = None,
     enrolled_signature: list[float] | None = None,
-    enrolled_embedding: list[float] | None = None,
     api_type: str | None = None
 ) -> dict:
     t_start = time.perf_counter()
@@ -3375,7 +3377,6 @@ def process_demo_frame(
             session_id=session_id,
             challenge_type=challenge_type,
             enrolled_signature=enrolled_signature,
-            enrolled_embedding=enrolled_embedding,
             api_type=api_type
         )
     except Exception as e:

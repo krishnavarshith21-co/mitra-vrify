@@ -1,0 +1,25 @@
+--- Starting End-to-End TRACE Verification ---
+Session ID: ddb61205-fb53-45f9-84b8-56e93b110218
+
+--- BEGIN FRAME TRACE ---
+Frame 01 => status=ready reason='' yaw=11.13 pitch=-4.26 roll=179.64 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 02 => status=ready reason='' yaw=11.13 pitch=-4.26 roll=179.64 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 03 => status=ready reason='' yaw=11.13 pitch=-4.26 roll=179.64 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 04 => status=ready reason='' yaw=11.13 pitch=-4.26 roll=179.64 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 05 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 06 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 07 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 08 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 09 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 10 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 11 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 12 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 13 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 14 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 15 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 16 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 17 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 18 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+Frame 19 => status=CAMERA_FEED_FROZEN reason='None' yaw=N/A pitch=N/A roll=N/A valid_embeds=0 rejects=0 state=COLLECTING
+
+[FAILED] Did not reach 15 accepted frames.

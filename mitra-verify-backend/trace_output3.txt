@@ -1,0 +1,56 @@
+--- Starting End-to-End TRACE Verification ---
+Session ID: bad22ed1-3f57-4e3e-b0c8-6a1ef0d878ec
+
+--- BEGIN FRAME TRACE ---
+Frame 01 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 02 => status=ready reason='' yaw=8.58 pitch=-4.77 roll=-0.71 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 03 => status=ready reason='' yaw=8.11 pitch=-4.73 roll=-0.58 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 04 => status=ready reason='' yaw=9.75 pitch=-4.24 roll=-0.5 valid_embeds=1 rejects=0 state=COLLECTING
+Frame 05 => status=ready reason='' yaw=8.63 pitch=-5.9 roll=-0.6 valid_embeds=1 rejects=0 state=COLLECTING
+Frame 06 => status=ready reason='' yaw=8.57 pitch=-4.41 roll=-0.59 valid_embeds=1 rejects=0 state=COLLECTING
+Frame 07 => status=ready reason='' yaw=7.79 pitch=-4.31 roll=-0.5 valid_embeds=2 rejects=0 state=COLLECTING
+Frame 08 => status=ready reason='' yaw=3.64 pitch=-5.24 roll=-0.69 valid_embeds=2 rejects=0 state=COLLECTING
+Frame 09 => status=ready reason='' yaw=3.61 pitch=-4.67 roll=-0.68 valid_embeds=2 rejects=0 state=COLLECTING
+Frame 10 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=3 rejects=0 state=COLLECTING
+Frame 11 => status=ready reason='' yaw=8.58 pitch=-4.77 roll=-0.71 valid_embeds=3 rejects=0 state=COLLECTING
+Frame 12 => status=ready reason='' yaw=8.11 pitch=-4.73 roll=-0.58 valid_embeds=3 rejects=0 state=COLLECTING
+Frame 13 => status=ready reason='' yaw=9.75 pitch=-4.24 roll=-0.5 valid_embeds=4 rejects=0 state=COLLECTING
+Frame 14 => status=ready reason='' yaw=8.63 pitch=-5.9 roll=-0.6 valid_embeds=4 rejects=0 state=COLLECTING
+Frame 15 => status=ready reason='' yaw=8.57 pitch=-4.41 roll=-0.59 valid_embeds=4 rejects=0 state=COLLECTING
+Frame 16 => status=ready reason='' yaw=7.79 pitch=-4.31 roll=-0.5 valid_embeds=5 rejects=0 state=COLLECTING
+Frame 17 => status=ready reason='' yaw=3.64 pitch=-5.24 roll=-0.69 valid_embeds=5 rejects=0 state=COLLECTING
+Frame 18 => status=ready reason='' yaw=3.61 pitch=-4.67 roll=-0.68 valid_embeds=5 rejects=0 state=COLLECTING
+Frame 19 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=6 rejects=0 state=COLLECTING
+Frame 20 => status=ready reason='' yaw=8.58 pitch=-4.77 roll=-0.71 valid_embeds=6 rejects=0 state=COLLECTING
+Frame 21 => status=ready reason='' yaw=8.11 pitch=-4.73 roll=-0.58 valid_embeds=6 rejects=0 state=COLLECTING
+Frame 22 => status=ready reason='' yaw=9.75 pitch=-4.24 roll=-0.5 valid_embeds=7 rejects=0 state=COLLECTING
+Frame 23 => status=ready reason='' yaw=8.63 pitch=-5.9 roll=-0.6 valid_embeds=7 rejects=0 state=COLLECTING
+Frame 24 => status=ready reason='' yaw=8.57 pitch=-4.41 roll=-0.59 valid_embeds=7 rejects=0 state=COLLECTING
+Frame 25 => status=ready reason='' yaw=7.79 pitch=-4.31 roll=-0.5 valid_embeds=8 rejects=0 state=COLLECTING
+Frame 26 => status=ready reason='' yaw=3.64 pitch=-5.24 roll=-0.69 valid_embeds=8 rejects=0 state=COLLECTING
+Frame 27 => status=ready reason='' yaw=3.61 pitch=-4.67 roll=-0.68 valid_embeds=8 rejects=0 state=COLLECTING
+Frame 28 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=9 rejects=0 state=COLLECTING
+Frame 29 => status=ready reason='' yaw=8.58 pitch=-4.77 roll=-0.71 valid_embeds=9 rejects=0 state=COLLECTING
+Frame 30 => status=ready reason='' yaw=8.11 pitch=-4.73 roll=-0.58 valid_embeds=9 rejects=0 state=COLLECTING
+Frame 31 => status=ready reason='' yaw=9.75 pitch=-4.24 roll=-0.5 valid_embeds=10 rejects=0 state=COLLECTING
+Frame 32 => status=ready reason='' yaw=8.63 pitch=-5.9 roll=-0.6 valid_embeds=10 rejects=0 state=COLLECTING
+Frame 33 => status=ready reason='' yaw=8.57 pitch=-4.41 roll=-0.59 valid_embeds=10 rejects=0 state=COLLECTING
+Frame 34 => status=ready reason='' yaw=7.79 pitch=-4.31 roll=-0.5 valid_embeds=11 rejects=0 state=COLLECTING
+Frame 35 => status=ready reason='' yaw=3.64 pitch=-5.24 roll=-0.69 valid_embeds=11 rejects=0 state=COLLECTING
+Frame 36 => status=ready reason='' yaw=3.61 pitch=-4.67 roll=-0.68 valid_embeds=11 rejects=0 state=COLLECTING
+Frame 37 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=12 rejects=0 state=COLLECTING
+Frame 38 => status=ready reason='' yaw=8.58 pitch=-4.77 roll=-0.71 valid_embeds=12 rejects=0 state=COLLECTING
+Frame 39 => status=ready reason='' yaw=8.11 pitch=-4.73 roll=-0.58 valid_embeds=12 rejects=0 state=COLLECTING
+Frame 40 => status=ready reason='' yaw=9.75 pitch=-4.24 roll=-0.5 valid_embeds=13 rejects=0 state=COLLECTING
+Frame 41 => status=ready reason='' yaw=8.63 pitch=-5.9 roll=-0.6 valid_embeds=13 rejects=0 state=COLLECTING
+Frame 42 => status=ready reason='' yaw=8.57 pitch=-4.41 roll=-0.59 valid_embeds=13 rejects=0 state=COLLECTING
+Frame 43 => status=ready reason='' yaw=7.79 pitch=-4.31 roll=-0.5 valid_embeds=14 rejects=0 state=COLLECTING
+Frame 44 => status=ready reason='' yaw=3.64 pitch=-5.24 roll=-0.69 valid_embeds=14 rejects=0 state=COLLECTING
+Frame 45 => status=ready reason='' yaw=3.61 pitch=-4.67 roll=-0.68 valid_embeds=14 rejects=0 state=COLLECTING
+Frame 46 => status=ready reason='' yaw=11.6 pitch=-4.74 roll=-0.6 valid_embeds=15 rejects=0 state=READY
+
+[SUCCESS] 15 unique embeddings achieved. Backend reports READY.
+
+--- Transitioning to ENROLLING ---
+
+[FAILED] Enrollment rejected.

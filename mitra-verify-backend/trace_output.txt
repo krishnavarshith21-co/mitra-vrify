@@ -1,0 +1,25 @@
+--- Starting End-to-End TRACE Verification ---
+Session ID: 30e27383-85b8-41af-ac11-6e115995512d
+
+--- BEGIN FRAME TRACE ---
+Frame 01 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 02 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 03 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 04 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 05 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 06 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 07 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 08 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 09 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 10 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 11 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 12 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 13 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 14 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 15 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 16 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 17 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 18 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+Frame 19 => status=invalid_image reason='None' yaw=0.0 pitch=0.0 roll=0.0 valid_embeds=0 rejects=0 state=COLLECTING
+
+[FAILED] Did not reach 15 accepted frames.

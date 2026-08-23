@@ -241,7 +241,6 @@ class DemoProcessRequest(BaseModel):
     session_id: str | None = None
     challenge_type: str | None = None
     enrolled_signature: list[float] | None = None
-    enrolled_embedding: list[float] | None = None
     api_type: str | None = None
 
 @router.get("/debug_cv", tags=["Demo"])
@@ -410,7 +409,6 @@ async def demo_process(
         session_id=data.session_id,
         challenge_type=data.challenge_type,
         enrolled_signature=data.enrolled_signature,
-        enrolled_embedding=data.enrolled_embedding,
         api_type=data.api_type
     )
     

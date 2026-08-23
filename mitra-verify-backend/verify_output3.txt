@@ -1,0 +1,89 @@
+--- Starting End-to-End Verification ---
+Registering user test_834961b9@example.com...
+Logging in...
+Session ID: 8e45d00f-1070-4f2b-8361-6ca3f465ea5d
+Raw response 1: {
+  "face_present": true,
+  "detected_faces": 1,
+  "face_confidence": 0.9382562238496845,
+  "landmark_count": 478,
+  "bbox": {
+    "x": 0.3903999328613281,
+    "y": 0.41591382026672363,
+    "w": 0.2994943857192993,
+    "h": 0.34017789363861084
+  },
+  "status": "POSE_INVALID",
+  "reason": "Face turned beyond allowed yaw/pitch",
+  "challenge_passed": false,
+  "enrolled_matched": false,
+  "frame_id": "7f40bb30-8c70-4079-b832-3dbecf8bead7",
+  "processed_timestamp": 1787471066300,
+  "tracking_state": "TRACKING",
+  "debug": {
+    "received": "YES",
+    "decoded": "FAILED/SKIPPED",
+    "mediapipe_executed": "FAILED/SKIPPED"
+  }
+}
+Frame 01 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=1, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 02 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=2, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 03 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=3, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 04 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=4, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 05 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=5, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 06 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=6, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 07 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=7, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 08 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=8, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 09 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=9, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 10 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=10, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 11 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=11, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 12 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=12, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 13 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=13, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 14 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=14, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 15 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=15, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 16 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=16, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 17 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=17, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 18 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=18, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 19 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=19, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 20 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=20, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 21 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=21, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 22 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=22, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 23 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=23, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 24 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=24, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 25 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=25, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 26 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=26, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 27 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=27, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 28 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=28, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 29 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=29, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 30 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=30, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 31 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=31, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 32 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=32, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 33 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=33, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 34 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=34, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 35 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=35, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 36 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=36, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 37 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=37, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 38 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=38, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 39 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=39, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 40 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=40, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 41 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=41, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 42 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=42, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 43 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=43, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 44 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=44, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 45 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=45, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 46 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=46, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 47 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=47, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 48 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=48, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 49 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=49, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 50 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=50, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 51 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=51, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 52 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=52, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 53 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=53, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 54 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=54, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 55 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=55, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 56 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=56, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 57 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=57, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 58 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=58, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+Frame 59 => sequence_id=None, session_id=8e45d00f-1070-4f2b-8361-6ca3f465ea5d, accepted_frames=0, rejected_frames=59, last_reason=Face turned beyond allowed yaw/pitch, ready=False
+
+[FAILED] Did not reach 15 accepted frames.

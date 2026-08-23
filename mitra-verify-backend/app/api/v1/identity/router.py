@@ -474,6 +474,9 @@ async def identity_enroll(
     # Transition session stage directly to IDENTITY_VERIFYING
     if data.session_id and data.session_id in SESSION_CACHE:
         SESSION_CACHE[data.session_id]["stage"] = "IDENTITY_VERIFYING"
+        # STORE THE EMBEDDING SECURELY IN THE BACKEND SESSION
+        SESSION_CACHE[data.session_id]["enrolled_embedding"] = best_embedding
+        SESSION_CACHE[data.session_id]["enrolled_template_available"] = True
     
     final_q = quality.get('quality_score', 0.0)
     # Check if quality_score was calculated during the multi-sample template creation

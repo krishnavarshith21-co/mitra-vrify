@@ -105,7 +105,6 @@ class IdentityEnrollResponse(BaseModel):
     status: str
     message: str
     user_id: str
-    embedding_vector: list[float] | list[list[float]]
     created_at: datetime
 
 

@@ -10,6 +10,7 @@
 MediaPipe-based computer vision engine for MITRA VERIFY.
 Implements face liveness detection, anti-spoof, and identity verification.
 """
+IDENTITY_MATCH_THRESHOLD = 0.88
 import base64
 import math
 import os
@@ -2993,7 +2994,9 @@ def _process_demo_frame_inner(
     id_metrics = None
     
     
-    active_enrollment = enrolled_embedding if enrolled_embedding is not None else enrolled_signature
+    active_enrollment = None
+    if session_id and session_id in SESSION_CACHE:
+        active_enrollment = SESSION_CACHE[session_id].get("enrolled_embedding")
     if active_enrollment and api_type == "enterprise":
         if session_id and session_id in SESSION_CACHE:
             session = SESSION_CACHE[session_id]
@@ -3021,7 +3024,7 @@ def _process_demo_frame_inner(
             embedding_distance = dist
             
             # Enterprise Production Thresholds
-            required_threshold = 0.88
+            required_threshold = IDENTITY_MATCH_THRESHOLD
             low_confidence_threshold = 0.75
             
             if similarity_score >= required_threshold:
@@ -3073,8 +3076,17 @@ def _process_demo_frame_inner(
                 status = "UNAUTHORIZED_PERSON"
                 
         elif current_stage == "IDENTITY_VERIFIED":
-            if time.time() - session.get("identity_verified_time", 0) > 1.5:
+            is_identity_secure = (
+                enrolled_matched and
+                similarity_score >= required_threshold and
+                detected_faces == 1 and
+                face_present
+            )
+            if is_identity_secure and time.time() - session.get("identity_verified_time", 0) > 1.5:
                 session["stage"] = "LIVENESS_CHALLENGES"
+            elif not is_identity_secure and history.get("wrong_person_frames", 0) >= 30:
+                session["stage"] = "FAILED"
+                status = "UNAUTHORIZED_PERSON"
                 
         elif current_stage == "LIVENESS_CHALLENGES":
             # For simplicity, if they pass the current challenge, move to VERIFIED
@@ -3086,14 +3098,20 @@ def _process_demo_frame_inner(
                     enrolled_matched and
                     detected_faces == 1 and
                     spoof_score < 0.4 and
-                    is_high_quality
+                    is_high_quality and
+                    session["stage"] == "LIVENESS_VERIFIED"
                 )
                 if is_secure:
                     session["stage"] = "ACCESS_GRANTED"
-                    session["stage"] = "CONTINUOUS_MONITORING"
+                    # We will rely on frontend requesting the next stage or backend auto transition
+                    session["access_granted_time"] = time.time()
                 else:
                     session["stage"] = "FAILED"
                     status = "SECURITY_CHECK_FAILED"
+                    
+        elif current_stage == "ACCESS_GRANTED":
+            if time.time() - session.get("access_granted_time", 0) > 2.0:
+                 session["stage"] = "CONTINUOUS_MONITORING"
                     
         elif current_stage == "CONTINUOUS_MONITORING":
             if not enrolled_matched and history.get("wrong_person_frames", 0) >= 15:

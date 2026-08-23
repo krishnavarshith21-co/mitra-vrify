@@ -487,7 +487,6 @@ async def identity_enroll(
         status="success",
         message=f"Enrollment successful. Quality: {final_q:.0f}/100",
         user_id=user_id,
-        embedding_vector=embedding_list,
         created_at=datetime.now(timezone.utc)
     )
     print("RETURN:", response)
@@ -506,7 +505,6 @@ async def get_enrolled_identity(
     if enrolled:
         return {
             "enrolled": True,
-            "embedding_vector": enrolled.embedding_vector,
             "created_at": enrolled.created_at
         }
     return {"enrolled": False}

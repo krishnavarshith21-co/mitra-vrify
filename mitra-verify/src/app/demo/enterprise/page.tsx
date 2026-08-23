@@ -651,23 +651,15 @@ export default function EnterpriseDemoPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [monitoringAudit, setMonitoringAudit] = useState<{time: string, event: string, status: string}[]>([]);
 
-  // Load enrollment
+  // Load enrollment status
   useEffect(() => {
     const loadEnrolled = async () => {
       try {
         const res = await livenessAPI.getEnrolledFace();
-        if (res.data && res.data.enrolled && res.data.embedding_vector) {
-          
-          localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
-          return;
+        if (res.data && res.data.enrolled) {
+          // Found server-side enrolled identity
         }
       } catch (e) { console.warn('Failed to fetch enrolled face from backend', e); }
-
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('enrolledEmbedding') || localStorage.getItem('mv_enrolled_signature');
-        if (stored) {
-                  }
-      }
     };
     loadEnrolled();
   }, []);
@@ -811,6 +803,11 @@ export default function EnterpriseDemoPage() {
           const backendState = data.enrollment_progress.state as Phase;
           setPhase(prev => {
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
+            // Reset stale data on transition to verification
+            if (prev === 'ENROLLMENT' && backendState === 'IDENTITY_VERIFYING') {
+              setSimilarity(0);
+              setConfidence(0);
+            }
             return backendState;
           });
           console.log(`[STATE SYNC] backend_state=${backendState} in_flight=${enrollRequestInFlightRef.current}`);
@@ -1017,13 +1014,7 @@ export default function EnterpriseDemoPage() {
     setModelStatus('Loading'); faceDetectionHistoryRef.current = []; similarityHistoryRef.current = [];
     setMismatchCount(0); 
     
-    // Check if enrolled face exists locally before jumping phase
-    const stored = typeof window !== 'undefined' ? (localStorage.getItem('enrolledEmbedding') || localStorage.getItem('mv_enrolled_signature')) : null;
-    if (enrolledEmbedding || stored) {
-      setPhase('CHALLENGES');
-    } else {
-      setPhase('ENROLLMENT');
-    }
+    setPhase('ENROLLMENT');
     
     setShowReport(false); setIsMonitoring(false); setMonitoringAudit([]);
     if (typeof window !== 'undefined') sessionStorage.removeItem('mv_mismatch_count');
@@ -1177,23 +1168,22 @@ export default function EnterpriseDemoPage() {
       }
 
       // Handle successful enrollment
-      if (res.data && res.data.embedding_vector) {
+      if (res.data && res.data.status === 'success') {
         console.log('[ENROLL DEBUG] SUCCESS — enrollment complete');
         setIsStabilizing(true);
         
-        localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
-        localStorage.setItem('mv_enrolled_signature', JSON.stringify(res.data.embedding_vector));
         await refreshUser();
         setEnrollmentSuccess(true);
         setEnrollmentStatus('ENROLLED');
         setEnrollmentError(null);
-        setTimeout(() => {
-          setPhase('CHALLENGES');
-        }, 1500);
+        
+        // Ensure request inflight is dropped so we can fetch the state loop
+        enrollRequestInFlightRef.current = false;
       } else {
-        console.log('[ENROLL DEBUG] FAILED — no embedding_vector in response');
+        console.log('[ENROLL DEBUG] FAILED — enrollment unsuccessful');
         setEnrollmentStatus('FAILED');
         setEnrollmentError('Enrollment failed: invalid response from backend.');
+        enrollRequestInFlightRef.current = false;
       }
     } catch (err: unknown) {
       console.error('[ENROLL DEBUG] ERROR', err);
@@ -1549,8 +1539,8 @@ export default function EnterpriseDemoPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                     <div style={{ textAlign: 'center', color: '#00ff88', fontSize: 13, fontWeight: 'bold' }}>✓ Identity enrolled</div>
                     <div style={{ display: 'flex', gap: 10 }}>
-                      <button onClick={() => setPhase('CHALLENGES')} style={{ flex: 2, padding: '10px 0', borderRadius: 10, background: 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer' }}>
-                        Continue Verification
+                      <button disabled={true} style={{ flex: 2, padding: '10px 0', borderRadius: 10, background: '#334155', color: '#94a3b8', fontWeight: 700, fontSize: 13, border: 'none', cursor: 'not-allowed' }}>
+                        Processing...
                       </button>
                       <button onClick={clearEnrollment} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
                         Clear Enrollment

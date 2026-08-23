@@ -848,6 +848,7 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
             "pitch_history": [],
             "roll_history": [],
             "blink_history": [],
+            "stage": "ENROLLMENT", # ENROLLMENT, ENROLLED, IDENTITY_VERIFYING, IDENTITY_VERIFIED, LIVENESS_CHALLENGES, LIVENESS_VERIFIED, ACCESS_GRANTED, CONTINUOUS_MONITORING, ACCESS_REVOKED
             "mouth_history": [],
             "multiple_faces_frames": 0,
             "face_lost_frames": 0,
@@ -2062,15 +2063,20 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
     # Authoritative Readiness Condition
     is_ready = (valid >= 15) and (not missing_poses) and (not missing_exprs)
     
+    session_stage = session.get("stage", "ENROLLMENT")
+    
     # Determine deterministic state
-    if is_ready:
-        state = "READY"
-    elif valid >= 15:
-        state = "COVERAGE_INCOMPLETE"
-    elif valid > 0 or rejected > 0:
-        state = "COLLECTING"
+    if session_stage == "ENROLLMENT":
+        if is_ready:
+            state = "READY"
+        elif valid >= 15:
+            state = "COVERAGE_INCOMPLETE"
+        elif valid > 0 or rejected > 0:
+            state = "COLLECTING"
+        else:
+            state = "IDLE"
     else:
-        state = "IDLE"
+        state = session_stage
         
     return {
         "active": True,
@@ -2943,8 +2949,8 @@ def _process_demo_frame_inner(
     elif yaw > 20: pose_category = "Left 30"
     elif yaw > 8: pose_category = "Left 15"
     
-    if pitch > 10: pose_category = "Down"
-    elif pitch < -10: pose_category = "Up"
+    if pitch > 10: pose_category = "Up"
+    elif pitch < -10: pose_category = "Down"
     
     # Track Expression Coverage
     expr_category = "Neutral"
@@ -2962,6 +2968,8 @@ def _process_demo_frame_inner(
         # Add to coverage even if frame isn't captured (to show user feedback)
         history["pose_coverage"].add(pose_category)
         history["expression_coverage"].add(expr_category)
+        
+        print(f"[POSE DEBUG] yaw={yaw:.1f} pitch={pitch:.1f} roll={roll:.1f} candidate={pose_category} UP={pitch > 10} DOWN={pitch < -10} coverage={list(history.get('pose_coverage', []))}")
             
         frame_count = history.get("frame_count", 0)
         history["frame_count"] = frame_count + 1
@@ -3052,29 +3060,58 @@ def _process_demo_frame_inner(
                 match_reason = "FAIL"
 
                 
-    if enrolled_matched == False and history and history.get("wrong_person_frames", 0) >= 15:
-        ret_early = {
-            "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count),
-            "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": match_reason, "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "distance": float(embedding_distance), "spoof_score": 1.0
-        }
-        if api_type == "enterprise":
-            ret_early["enterprise_report"] = _build_enterprise_report(
-                identity_match=similarity_score,
-                confidence=face_confidence,
-                liveness_score=0.0,
-                spoof_score=spoof_score,
-                fraud_result={},
-                verification_time_ms=0.0,
-                challenge_results=[],
-                pose_validation={},
-                quality_score=0.0,
-                landmark_geometry={},
-                passive_liveness={},
-                session_id=session_id or "",
-                enrolled_matched=False,
-                id_metrics=id_metrics
-            )
-        return ret_early
+    if api_type == "enterprise" and session_id and session_id in SESSION_CACHE:
+        session = SESSION_CACHE[session_id]
+        current_stage = session.get("stage", "ENROLLMENT")
+        
+        # State transitions
+        if current_stage == "IDENTITY_VERIFYING":
+            if enrolled_matched:
+                session["stage"] = "IDENTITY_VERIFIED"
+                session["stage"] = "LIVENESS_CHALLENGES"  # Start challenges
+            elif not enrolled_matched and history.get("wrong_person_frames", 0) >= 15:
+                session["stage"] = "FAILED"
+                status = "UNAUTHORIZED_PERSON"
+                
+        elif current_stage == "LIVENESS_CHALLENGES":
+            # For simplicity, if they pass the current challenge, move to VERIFIED
+            if challenge_passed:
+                session["stage"] = "LIVENESS_VERIFIED"
+                
+                # Check ALL security conditions for ACCESS_GRANTED
+                is_secure = (
+                    enrolled_matched and
+                    detected_faces == 1 and
+                    spoof_score < 0.4 and
+                    is_high_quality
+                )
+                if is_secure:
+                    session["stage"] = "ACCESS_GRANTED"
+                    session["stage"] = "CONTINUOUS_MONITORING"
+                else:
+                    session["stage"] = "FAILED"
+                    status = "SECURITY_CHECK_FAILED"
+                    
+        elif current_stage == "CONTINUOUS_MONITORING":
+            if not enrolled_matched and history.get("wrong_person_frames", 0) >= 15:
+                session["stage"] = "ACCESS_REVOKED"
+                status = "UNAUTHORIZED_PERSON"
+            elif detected_faces != 1 and history.get("multiple_faces_frames", 0) >= 15:
+                session["stage"] = "ACCESS_REVOKED"
+                status = "MULTIPLE_FACES"
+            elif spoof_score > 0.5:
+                session["stage"] = "ACCESS_REVOKED"
+                status = "SPOOF_DETECTED"
+
+    # Default fallback for old unauthorized person block
+    elif enrolled_matched == False and history and history.get("wrong_person_frames", 0) >= 15:
+        status = "UNAUTHORIZED_PERSON"
+        if api_type != "enterprise":
+            ret_early = {
+                "face_present": True, "detected_faces": int(detected_faces), "face_confidence": float(face_confidence), "landmark_count": int(landmark_count),
+                "bbox": bbox, "status": "UNAUTHORIZED_PERSON", "reason": match_reason, "challenge_passed": False, "enrolled_matched": False, "similarity_score": float(similarity_score), "distance": float(embedding_distance), "spoof_score": 1.0
+            }
+            return ret_early
 
     # Default status logic
     if status == "ready" and session_id and session_id in SESSION_CACHE:

@@ -457,13 +457,13 @@ export default function EnterpriseDemoPage() {
 
   // Enrollment states
   const [enrolledEmbedding, setEnrolledEmbedding] = useState<number[] | null>(null);
-  const [phase, setPhase] = useState<'IDLE' | 'ENROLLMENT' | 'CHALLENGES' | 'MONITORING'>('IDLE');
+  type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLED' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
+  const [phase, setPhase] = useState<Phase>('IDLE');
+  const phaseRef = useRef<Phase>('IDLE');
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [enrolling, setEnrolling] = useState(false);
   
-  type EnrollmentStatus = 'IDLE' | 'CAMERA_ACTIVE' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY' | 'ENROLLING' | 'ENROLLED' | 'FAILED';
-  const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus>('IDLE');
-  const enrollmentStatusRef = useRef<EnrollmentStatus>('IDLE');
-  const enrollRequestInFlightRef = useRef<boolean>(false);
+        const enrollRequestInFlightRef = useRef<boolean>(false);
   const sessionIdRef = useRef<string>('');
   const lastSequenceIdRef = useRef<number>(-1);
   const [isStabilizing, setIsStabilizing] = useState(false);
@@ -475,8 +475,7 @@ export default function EnterpriseDemoPage() {
   const hasFaceEnrolled = useMemo(() => !!enrolledEmbedding, [enrolledEmbedding]);
 
   // Sync refs with state to prevent stale closures
-  useEffect(() => { enrollmentStatusRef.current = enrollmentStatus; }, [enrollmentStatus]);
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+    useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   
   const enrollmentTimeRef = useRef<number | null>(null);
   useEffect(() => {
@@ -722,7 +721,7 @@ export default function EnterpriseDemoPage() {
 
     try {
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
-      const activeChallengeId = phase === 'MONITORING' ? 'monitoring' : (phase === 'CHALLENGES' && currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined);
+      const activeChallengeId = phase === 'CONTINUOUS_MONITORING' ? 'monitoring' : (phase === 'LIVENESS_CHALLENGES' && currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined);
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, hasFaceEnrolled ? (enrolledEmbedding || undefined) : undefined, 'enterprise');
       const data = res?.data;
       setApiResponse(data);
@@ -811,22 +810,12 @@ export default function EnterpriseDemoPage() {
             setEnrollmentError(null);
           }
           // Use backend state as single source of truth
-          const backendState = data.enrollment_progress.state;
-          setEnrollmentStatus(prev => {
-            // Only preserve ENROLLING if a request is actually in-flight
+          const backendState = data.enrollment_progress.state as Phase;
+          setPhase(prev => {
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
-            // Once ENROLLED, stay ENROLLED (until phase shifts)
-            if (prev === 'ENROLLED') return prev;
-            // Map backend state directly
-            if (backendState === 'READY') return 'READY';
-            if (backendState === 'COVERAGE_INCOMPLETE') return 'COVERAGE_INCOMPLETE';
-            if (backendState === 'COLLECTING') return 'COLLECTING';
-            if (backendState === 'IDLE') return 'IDLE';
-            // Fallback: derive from ready flag
-            if (data.enrollment_progress!.ready) return 'READY';
-            return 'COLLECTING';
+            return backendState;
           });
-          console.log(`[ENROLL DEBUG] session=${sessionIdRef.current.substring(0, 8)} backend_state=${backendState} valid=${data.enrollment_progress.valid_frames}/15 ready=${data.enrollment_progress.ready} frontend_state=${enrollmentStatusRef.current} in_flight=${enrollRequestInFlightRef.current}`);
+          console.log(`[STATE SYNC] backend_state=${backendState} in_flight=${enrollRequestInFlightRef.current}`);
         }
       }
       
@@ -905,7 +894,7 @@ export default function EnterpriseDemoPage() {
         else { setFaceVisibleDuration((Date.now() - faceVisibleStartRef.current) / 1000); }
 
         // State machine progression MUST run if face is present, regardless of perfectly centered or not
-        if (phase === 'CHALLENGES') {
+        if (phase === 'LIVENESS_CHALLENGES') {
           
           if (currentChallenge === 0) {
             // First challenge is ALWAYS face centered
@@ -1043,7 +1032,7 @@ export default function EnterpriseDemoPage() {
     consecutiveValidFramesRef.current = 0; currentChallengeRef.current = 0; setConsecutiveValidFrames(0);
     setEnrollmentError(null);
     enrollRequestInFlightRef.current = false;
-    enrollmentStatusRef.current = 'IDLE';
+    setPhase('IDLE');
     setFaceTrackingState('FACE_PRESENT'); prevTrackingStateRef.current = 'FACE_PRESENT';
     setLostFrames(0); setRecoveredFrames(0); setTimeSinceFaceSeen(0);
     setLastMatchTime(null);
@@ -1107,7 +1096,7 @@ export default function EnterpriseDemoPage() {
     setLandmarkGeometry(null); setPassiveLiveness(null); setFraudDetection(null); setPoseValidation(null);
     setEnrollmentError(null);
     enrollRequestInFlightRef.current = false;
-    enrollmentStatusRef.current = 'IDLE';
+    setPhase('IDLE');
   }
 
   const enrollFace = async () => {
@@ -1118,7 +1107,7 @@ export default function EnterpriseDemoPage() {
     }
 
     // === ATOMIC GUARD 2: Enrollment status via ref (prevents stale closures) ===
-    if (enrollmentStatusRef.current !== 'READY') {
+    if (phaseRef.current !== 'READY') {
       console.log(`[ENROLL DEBUG] BLOCKED — enrollmentStatus=${enrollmentStatusRef.current}, expected READY`);
       return;
     }
@@ -1319,13 +1308,13 @@ export default function EnterpriseDemoPage() {
             <div>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: '#ffb800', marginBottom: 3 }}>Biometric Enrollment Required</h3>
               <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-                {enrollmentStatus === 'IDLE' || enrollmentStatus === 'CAMERA_ACTIVE' ? "Start the camera and align your face inside the oval." :
-                 enrollmentStatus === 'COLLECTING' ? "Keep your face centered and hold still while high-quality frames are collected." :
-                 enrollmentStatus === 'COVERAGE_INCOMPLETE' ? "Move your head to complete the required pose coverage." :
-                 enrollmentStatus === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
-                 enrollmentStatus === 'ENROLLING' ? "Enrolling your biometric profile..." :
-                 enrollmentStatus === 'ENROLLED' ? "Biometric enrollment completed." :
-                 enrollmentStatus === 'FAILED' ? "Enrollment failed. Please try again." :
+                {phase === 'IDLE' || phase === 'IDLE' ? "Start the camera and align your face inside the oval." :
+                 phase === 'COLLECTING' ? "Keep your face centered and hold still while high-quality frames are collected." :
+                 phase === 'COVERAGE_INCOMPLETE' ? "Move your head to complete the required pose coverage." :
+                 phase === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
+                 phase === 'ENROLLING' ? "Enrolling your biometric profile..." :
+                 phase === 'ENROLLED' ? "Biometric enrollment completed." :
+                 phase === 'FAILED' ? "Enrollment failed. Please try again." :
                  "Start the camera, align your face inside the oval, and click Enroll Current Face."}
               </p>
             </div>
@@ -1395,7 +1384,7 @@ export default function EnterpriseDemoPage() {
                     confidence < 0.50 ? 'CONFIDENCE TOO LOW' :
                     !faceInsideGuide ? 'POSITION FACE INSIDE OVAL' :
                     phase === 'ENROLLMENT' ? 'READY TO ENROLL - CLICK BUTTON BELOW' :
-                    phase === 'CHALLENGES' ? `LIVENESS CHALLENGE ${currentChallenge + 1}/${challenges.length}` :
+                    phase === 'LIVENESS_CHALLENGES' ? `LIVENESS CHALLENGE ${currentChallenge + 1}/${challenges.length}` :
                     similarity < 0.75 ? 'IDENTITY MISMATCH' :
                     `VERIFYING IDENTITY... ${challengeTimer}s`
                   }
@@ -1463,24 +1452,24 @@ export default function EnterpriseDemoPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button 
                       onClick={enrollFace} 
-                      disabled={enrollmentStatus !== 'READY'}
+                      disabled={phase !== 'READY'}
                       style={{ 
                         flex: 1, 
                         padding: '10px 0', 
                         borderRadius: 10, 
-                        background: enrollmentStatus === 'READY' ? 'linear-gradient(135deg, #00ff88, #00cc66)' : 'rgba(100,100,100,0.3)', 
-                        color: enrollmentStatus === 'READY' ? '#000' : '#94a3b8', 
+                        background: phase === 'READY' ? 'linear-gradient(135deg, #00ff88, #00cc66)' : 'rgba(100,100,100,0.3)', 
+                        color: phase === 'READY' ? '#000' : '#94a3b8', 
                         fontWeight: 700, 
                         fontSize: 13, 
                         border: 'none', 
-                        cursor: enrollmentStatus === 'READY' ? 'pointer' : 'not-allowed', 
+                        cursor: phase === 'READY' ? 'pointer' : 'not-allowed', 
                         transition: 'all 0.3s ease'
                       }}>
-                      {enrollmentStatus === 'ENROLLING' ? 'ENROLLING...' : 
-                       enrollmentStatus === 'READY' ? 'ENROLL CURRENT FACE' : 
-                       enrollmentStatus === 'COVERAGE_INCOMPLETE' ? 'COVERAGE INCOMPLETE' : 
-                       enrollmentStatus === 'FAILED' ? 'ENROLLMENT FAILED' : 
-                       enrollmentStatus === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
+                      {phase === 'ENROLLING' ? 'ENROLLING...' : 
+                       phase === 'READY' ? 'ENROLL CURRENT FACE' : 
+                       phase === 'COVERAGE_INCOMPLETE' ? 'COVERAGE INCOMPLETE' : 
+                       phase === 'FAILED' ? 'ENROLLMENT FAILED' : 
+                       phase === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
                        enrollmentProgress ? `COLLECTING FRAMES ${enrollmentProgress.valid_frames}/${enrollmentProgress.required_frames || 15}` : 
                        'COLLECTING FRAMES...'}
                     </button>
@@ -1499,7 +1488,7 @@ export default function EnterpriseDemoPage() {
                         {enrollmentError}
                       </div>
                     )}
-                    {!enrollmentError && enrollmentStatus === 'COVERAGE_INCOMPLETE' && enrollmentProgress && (
+                    {!enrollmentError && phase === 'COVERAGE_INCOMPLETE' && enrollmentProgress && (
                       <div className="absolute inset-x-4 bottom-28 flex flex-col items-center">
                         <div className="bg-black/80 backdrop-blur-md px-6 py-4 rounded-xl border border-yellow-500/40 shadow-2xl flex flex-col items-center max-w-sm w-full">
                           <div className="text-yellow-400 font-bold tracking-widest mb-1 text-sm">ENROLLMENT ALMOST READY</div>
@@ -1539,7 +1528,7 @@ export default function EnterpriseDemoPage() {
                         </div>
                       </div>
                     )}
-                    {!enrollmentError && enrollmentStatus === 'COLLECTING' && enrollmentProgress && (
+                    {!enrollmentError && phase === 'COLLECTING' && enrollmentProgress && (
                       <div className="absolute inset-x-4 bottom-28 flex flex-col items-center">
                         <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-xl border border-white/10 shadow-2xl flex flex-col items-center">
                           <div className="text-white/60 text-xs font-mono tracking-widest mb-2">COLLECTING HIGH-QUALITY FRAMES</div>
@@ -1592,29 +1581,35 @@ export default function EnterpriseDemoPage() {
                 <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 16 }}>Enterprise Verification Stages</div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: phase === 'ENROLLMENT' ? 1 : (phase === 'IDLE' ? 0.3 : 0.6) }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'ENROLLMENT' ? '#00d4ff22' : (phase === 'CHALLENGES' || phase === 'MONITORING' ? '#00ff8822' : '#334155'), border: `1px solid ${phase === 'ENROLLMENT' ? '#00d4ff' : (phase === 'CHALLENGES' || phase === 'MONITORING' ? '#00ff88' : '#475569')}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {phase === 'CHALLENGES' || phase === 'MONITORING' ? <CheckCircle size={14} color="#00ff88" /> : <span style={{ fontSize: 10, color: phase === 'ENROLLMENT' ? '#00d4ff' : '#475569' }}>1</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#00d4ff22', border: `1px solid #00d4ff`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: '#00d4ff' }}>1</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: phase === 'ENROLLMENT' ? 700 : 500, color: phase === 'ENROLLMENT' ? '#00d4ff' : (phase === 'CHALLENGES' || phase === 'MONITORING' ? '#00ff88' : '#94a3b8') }}>Enrollment</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#00d4ff' }}>Enrollment</div>
                   </div>
-                  
                   <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: phase === 'CHALLENGES' ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'CHALLENGES' ? '#00d4ff22' : (phase === 'MONITORING' ? '#00ff8822' : '#334155'), border: `1px solid ${phase === 'CHALLENGES' ? '#00d4ff' : (phase === 'MONITORING' ? '#00ff88' : '#475569')}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {phase === 'MONITORING' ? <CheckCircle size={14} color="#00ff88" /> : <span style={{ fontSize: 10, color: phase === 'CHALLENGES' ? '#00d4ff' : '#475569' }}>2</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'IDENTITY_VERIFYING' || phase === 'IDENTITY_VERIFIED') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'IDENTITY_VERIFYING' ? '#ffb80022' : '#334155', border: `1px solid ${phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#475569' }}>2</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: phase === 'CHALLENGES' ? 700 : 500, color: phase === 'CHALLENGES' ? '#00d4ff' : (phase === 'MONITORING' ? '#00ff88' : '#94a3b8') }}>Liveness Challenges</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#94a3b8' }}>Identity</div>
                   </div>
-                  
                   <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: phase === 'MONITORING' ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'MONITORING' ? '#00ff8822' : '#334155', border: `1px solid ${phase === 'MONITORING' ? '#00ff88' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: phase === 'MONITORING' ? '#00ff88' : '#475569' }}>3</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'LIVENESS_CHALLENGES' || phase === 'LIVENESS_VERIFIED') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff22' : '#334155', border: `1px solid ${phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#475569' }}>3</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: phase === 'MONITORING' ? 700 : 500, color: phase === 'MONITORING' ? '#00ff88' : '#94a3b8' }}>Continuous Monitoring</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#94a3b8' }}>Liveness</div>
+                  </div>
+                  <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'CONTINUOUS_MONITORING' || phase === 'ACCESS_GRANTED') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'CONTINUOUS_MONITORING' ? '#00ff8822' : '#334155', border: `1px solid ${phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#475569' }}>4</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#94a3b8' }}>Monitoring</div>
                   </div>
                 </div>
               </div>
@@ -1673,7 +1668,62 @@ export default function EnterpriseDemoPage() {
             )}
 
             {/* Challenge Progress */}
-            {phase === 'CHALLENGES' && (
+                        {phase === 'IDENTITY_VERIFYING' && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#ffb800', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    IDENTITY VERIFICATION
+                  </div>
+                  <div className="pulse-dot" style={{ backgroundColor: '#ffb800' }} />
+                </div>
+                <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.4, marginBottom: 12 }}>
+                  Analyzing live face against enrolled biometric template...
+                </div>
+              </div>
+            )}
+            
+            {phase === 'ACCESS_GRANTED' && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#00ff88' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    ACCESS GRANTED
+                  </div>
+                  <CheckCircle size={16} color="#00ff88" />
+                </div>
+                <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.4, marginBottom: 12 }}>
+                  Identity and liveness verified successfully. Initiating continuous monitoring...
+                </div>
+              </div>
+            )}
+            
+            {phase === 'FAILED' && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#ef4444' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    ACCESS DENIED
+                  </div>
+                  <AlertTriangle size={16} color="#ef4444" />
+                </div>
+                <div style={{ fontSize: 13, color: '#ef4444', lineHeight: 1.4, marginBottom: 12 }}>
+                  Identity verification failed or security violation detected.
+                </div>
+              </div>
+            )}
+            
+            {phase === 'ACCESS_REVOKED' && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#ef4444' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    ACCESS REVOKED
+                  </div>
+                  <AlertTriangle size={16} color="#ef4444" />
+                </div>
+                <div style={{ fontSize: 13, color: '#ef4444', lineHeight: 1.4, marginBottom: 12 }}>
+                  Session terminated due to security policy violation during continuous monitoring.
+                </div>
+              </div>
+            )}
+{phase === 'LIVENESS_CHALLENGES' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', maxHeight: '400px', flexShrink: 0 }}>
                 <div style={{ flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

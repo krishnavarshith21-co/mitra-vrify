@@ -471,6 +471,10 @@ async def identity_enroll(
     # --- Stage 11: Enrollment successful ---
     print("[Enrollment] Stage 11: Enrollment successful")
     
+    # Transition session stage directly to IDENTITY_VERIFYING
+    if data.session_id and data.session_id in SESSION_CACHE:
+        SESSION_CACHE[data.session_id]["stage"] = "IDENTITY_VERIFYING"
+    
     final_q = quality.get('quality_score', 0.0)
     # Check if quality_score was calculated during the multi-sample template creation
     if 'template_quality_score' in session_data:

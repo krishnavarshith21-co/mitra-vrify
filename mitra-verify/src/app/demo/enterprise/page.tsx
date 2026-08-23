@@ -178,7 +178,7 @@ interface BiometricResponse {
   risk_score?: number;
   enrollment_progress?: {
     active: boolean;
-    state: 'IDLE' | 'COLLECTING' | 'READY';
+    state: 'IDLE' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY';
     frame_sequence_id: number;
     valid_frames: number;
     required_frames: number;
@@ -186,6 +186,8 @@ interface BiometricResponse {
     last_reject_reason: string | null;
     pose_coverage: string[];
     expression_coverage: string[];
+    missing_poses?: string[];
+    missing_expressions?: string[];
     ready: boolean;
     quality_pass: boolean;
   };
@@ -1471,6 +1473,7 @@ export default function EnterpriseDemoPage() {
                       }}>
                       {enrollmentStatus === 'ENROLLING' ? 'ENROLLING...' : 
                        enrollmentStatus === 'READY' ? 'ENROLL CURRENT FACE' : 
+                       enrollmentStatus === 'COVERAGE_INCOMPLETE' ? 'COVERAGE INCOMPLETE' : 
                        enrollmentStatus === 'FAILED' ? 'ENROLLMENT FAILED' : 
                        enrollmentStatus === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
                        enrollmentProgress ? `COLLECTING FRAMES ${enrollmentProgress.valid_frames}/${enrollmentProgress.required_frames || 15}` : 
@@ -1489,6 +1492,34 @@ export default function EnterpriseDemoPage() {
                         textAlign: 'center'
                       }}>
                         {enrollmentError}
+                      </div>
+                    )}
+                    {!enrollmentError && enrollmentStatus === 'COVERAGE_INCOMPLETE' && enrollmentProgress && (
+                      <div style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        background: 'rgba(255,184,0,0.06)', 
+                        border: '1px solid rgba(255,184,0,0.2)', 
+                        fontSize: 11, 
+                        color: '#ffb800', 
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
+                        <div>QUALITY FRAMES: {enrollmentProgress.valid_frames}/{enrollmentProgress.required_frames || 15}</div>
+                        <div style={{ fontWeight: 700 }}>POSE COVERAGE: INCOMPLETE</div>
+                        {enrollmentProgress.missing_poses && enrollmentProgress.missing_poses.length > 0 && (
+                          <div style={{ color: '#d4a100' }}>
+                            Missing Poses: {enrollmentProgress.missing_poses.join(', ')}
+                          </div>
+                        )}
+                        {enrollmentProgress.missing_expressions && enrollmentProgress.missing_expressions.length > 0 && (
+                          <div style={{ color: '#d4a100' }}>
+                            Missing Expressions: {enrollmentProgress.missing_expressions.join(', ')}
+                          </div>
+                        )}
                       </div>
                     )}
                     {!enrollmentError && enrollmentStatus === 'COLLECTING' && enrollmentProgress && (

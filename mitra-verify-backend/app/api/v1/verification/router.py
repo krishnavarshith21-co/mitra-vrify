@@ -360,7 +360,8 @@ async def process_verification_frame(
                 "UNAUTHORIZED_PERSON": "LIVENESS_FAILED",
                 "IDENTITY_CHANGED": "LIVENESS_FAILED",
             }
-            session.failure_reason = reason_map.get(status, "LIVENESS_FAILED")
+            status_str = str(status) if status is not None else ""
+            session.failure_reason = reason_map.get(status_str, "LIVENESS_FAILED")
 
         session.completed_at = now
 

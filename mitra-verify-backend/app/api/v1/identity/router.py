@@ -40,6 +40,11 @@ async def identity_verify(
     enrolled_vector = getattr(enrolled, "embedding_vector", None)
     if enrolled and getattr(enrolled, "is_encrypted", False) and isinstance(enrolled_vector, dict) and "encrypted_data" in enrolled_vector:
         enrolled_vector = decrypt_template(enrolled_vector["encrypted_data"])    
+        
+    if enrolled_vector is not None and not isinstance(enrolled_vector, list):
+        print(f"RAISE: HTTPException(500, Corrupted enrolled template format for user {subject_id})")
+        raise HTTPException(status_code=500, detail="Corrupted enrolled template format")
+        
     cv_result = run_identity_verify(data.image, subject_id, enrolled_vector)
 
     stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
@@ -131,7 +136,10 @@ async def identity_verify(
 
     
     # Inject template version and drift to response
-    template_meta = enrolled.template_metadata if enrolled and hasattr(enrolled, "template_metadata") else {}
+    template_meta = getattr(enrolled, "template_metadata", {})
+    if not isinstance(template_meta, dict):
+        template_meta = {}
+        
     if template_meta:
         if "identity" in cv_result:
             cv_result["identity"]["template_version"] = getattr(enrolled, "template_version", 1)
@@ -170,10 +178,14 @@ async def identity_enroll(
         _calculate_face_embedding,
         _validate_enrollment_quality,
         b64_to_numpy,
+        _build_enrollment_progress,
     )
-    
+
     if not MP_AVAILABLE or not CV2_AVAILABLE:
-        from app.services.cv.mediapipe_engine import MP_INIT_ERROR
+        try:
+            from app.services.cv.mediapipe_engine import MP_INIT_ERROR
+        except ImportError:
+            MP_INIT_ERROR = None
         error_msg = f"Computer vision engine is unavailable. Details: {MP_INIT_ERROR}" if MP_INIT_ERROR else "Computer vision engine is unavailable."
         print(f"RAISE: HTTPException(500, {error_msg})")
         raise HTTPException(status_code=500, detail=error_msg)
@@ -191,19 +203,21 @@ async def identity_enroll(
                 "required_embeddings": 15,
                 "message": "Enrollment session expired. Restart enrollment.",
             }
-        session_pre = SESSION_CACHE[data.session_id]
-        pre_embeddings = len(session_pre.get("enrollment_embeddings", []))
-        if pre_embeddings < 15:
-            print(f"[Enrollment] BLOCKED — Pre-validation: only {pre_embeddings}/15 embeddings")
+            
+        progress = _build_enrollment_progress(data.session_id)
+        if progress["state"] != "READY":
+            print(f"[Enrollment] BLOCKED — Pre-validation: state is {progress['state']}")
             return {
                 "success": False,
                 "code": "ENROLLMENT_NOT_READY",
-                "state": "COLLECTING",
-                "valid_embeddings": pre_embeddings,
+                "state": progress["state"],
+                "valid_embeddings": progress["valid_frames"],
                 "required_embeddings": 15,
-                "pose_coverage": list(session_pre.get("pose_coverage", set())),
-                "expression_coverage": list(session_pre.get("expression_coverage", set())),
-                "message": f"Continue enrollment. {pre_embeddings}/15 valid frames collected.",
+                "pose_coverage": progress["pose_coverage"],
+                "expression_coverage": progress["expression_coverage"],
+                "missing_poses": progress.get("missing_poses", []),
+                "missing_expressions": progress.get("missing_expressions", []),
+                "message": f"Continue enrollment. {progress['valid_frames']}/15 valid frames collected.",
             }
 
     # --- Stage 1: Camera initialized ---
@@ -457,7 +471,10 @@ async def identity_enroll(
     # --- Stage 11: Enrollment successful ---
     print("[Enrollment] Stage 11: Enrollment successful")
     
-    final_q = quality_score if 'quality_score' in locals() else quality.get('quality_score', 0)
+    final_q = quality.get('quality_score', 0.0)
+    # Check if quality_score was calculated during the multi-sample template creation
+    if 'template_quality_score' in session_data:
+        final_q = session_data['template_quality_score']
     
     response = IdentityEnrollResponse(
         status="success",

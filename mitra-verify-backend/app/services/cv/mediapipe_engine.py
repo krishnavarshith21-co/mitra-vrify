@@ -2036,6 +2036,8 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
             "last_reject_reason": None,
             "pose_coverage": [],
             "expression_coverage": [],
+            "missing_poses": ["Front", "Left 15", "Right 15", "Up", "Down"],
+            "missing_expressions": ["Neutral", "Smile"],
             "ready": False,
             "frame_sequence_id": 0,
             "quality_pass": quality_pass,
@@ -2043,17 +2045,33 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
     session = SESSION_CACHE[session_id]
     valid = len(session.get("enrollment_embeddings", []))
     rejected = session.get("rejected_frames", 0) + extra_rejected
-    pose_cov = list(session.get("pose_coverage", set()))
-    expr_cov = list(session.get("expression_coverage", set()))
+    
+    pose_cov_set = session.get("pose_coverage", set())
+    expr_cov_set = session.get("expression_coverage", set())
+    pose_cov = list(pose_cov_set)
+    expr_cov = list(expr_cov_set)
+    
+    # Calculate missing coverage
+    required_poses = {"Front", "Left 15", "Right 15", "Up", "Down"}
+    required_exprs = {"Neutral", "Smile"}
+    missing_poses = list(required_poses - pose_cov_set)
+    missing_exprs = list(required_exprs - expr_cov_set)
+    
     frame_seq = session.get("frame_count", 0)
-    is_ready = valid >= 15
-    # Determine state
+    
+    # Authoritative Readiness Condition
+    is_ready = (valid >= 15) and (not missing_poses) and (not missing_exprs)
+    
+    # Determine deterministic state
     if is_ready:
         state = "READY"
+    elif valid >= 15:
+        state = "COVERAGE_INCOMPLETE"
     elif valid > 0 or rejected > 0:
         state = "COLLECTING"
     else:
         state = "IDLE"
+        
     return {
         "active": True,
         "state": state,
@@ -2063,6 +2081,8 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
         "last_reject_reason": reject_reason or session.get("last_reject_reason"),
         "pose_coverage": pose_cov,
         "expression_coverage": expr_cov,
+        "missing_poses": missing_poses,
+        "missing_expressions": missing_exprs,
         "ready": is_ready,
         "frame_sequence_id": frame_seq,
         "quality_pass": quality_pass,
@@ -2239,6 +2259,8 @@ def _process_demo_frame_inner(
             api_type = "basic"
     t_start = time.perf_counter()
     timings = {"request_received": t_start}
+    
+    liveness_score = 0.0
     
     print("FACE_DETECTION_STARTED")
     if not MP_AVAILABLE or not CV2_AVAILABLE:
@@ -3206,7 +3228,7 @@ def _process_demo_frame_inner(
         
         # Explicitly requested by user for root payload compatibility
         ret["identity_match"] = round(similarity_score * 100, 2)
-        ret["liveness_score"] = round(liveness_score * 100, 2) if 'liveness_score' in locals() else 0.0
+        ret["liveness_score"] = round(liveness_score * 100, 2)
         ret["risk_score"] = enterprise_report.get("risk_score", 0.0)
         ret["challenge_progress"] = 0 # Frontend tracks real progress
         ret["lighting"] = ret["lighting_quality"]

@@ -135,7 +135,7 @@ export default function BiometricScannerOverlay({
             letterSpacing: '0.05em',
             boxShadow: `0 0 10px ${activeColor}30`
           }}>
-            FACE MATCH: {Number((confidence * 100) || 0).toFixed(0)}%
+            FACE DETECTION: {Number((confidence * 100) || 0).toFixed(0)}%
           </div>
         </div>
       )}

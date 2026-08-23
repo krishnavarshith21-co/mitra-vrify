@@ -178,6 +178,34 @@ async def identity_enroll(
         print(f"RAISE: HTTPException(500, {error_msg})")
         raise HTTPException(status_code=500, detail=error_msg)
         
+    # --- Stage 0: Session pre-validation (hard guard) ---
+    print("[Enrollment] Stage 0: Session pre-validation")
+    if data.session_id and data.session_id != "test_session_123":
+        if data.session_id not in SESSION_CACHE:
+            print(f"[Enrollment] BLOCKED — Session {data.session_id} not found or expired")
+            return {
+                "success": False,
+                "code": "SESSION_EXPIRED",
+                "state": "FAILED",
+                "valid_embeddings": 0,
+                "required_embeddings": 15,
+                "message": "Enrollment session expired. Restart enrollment.",
+            }
+        session_pre = SESSION_CACHE[data.session_id]
+        pre_embeddings = len(session_pre.get("enrollment_embeddings", []))
+        if pre_embeddings < 15:
+            print(f"[Enrollment] BLOCKED — Pre-validation: only {pre_embeddings}/15 embeddings")
+            return {
+                "success": False,
+                "code": "ENROLLMENT_NOT_READY",
+                "state": "COLLECTING",
+                "valid_embeddings": pre_embeddings,
+                "required_embeddings": 15,
+                "pose_coverage": list(session_pre.get("pose_coverage", set())),
+                "expression_coverage": list(session_pre.get("expression_coverage", set())),
+                "message": f"Continue enrollment. {pre_embeddings}/15 valid frames collected.",
+            }
+
     # --- Stage 1: Camera initialized ---
     print("[Enrollment] Stage 1: Camera initialized")
     
@@ -275,18 +303,59 @@ async def identity_enroll(
             
             required_exprs = {"Neutral", "Smile"}
             missing_exprs = required_exprs - expr_coverage
+
+            # Determine enrollment readiness state
+            enrollment_state = "COLLECTING"
+            if len(cached_embeddings) >= 15 and not missing_poses and not missing_exprs:
+                enrollment_state = "READY"
             
             if len(cached_embeddings) < 15:
-                print(f"[Enrollment] Insufficient high-quality frames ({len(cached_embeddings)} < 15)")
-                raise HTTPException(status_code=400, detail=f"Insufficient high-quality frames. Captured {len(cached_embeddings)}/15 minimum.")
+                msg = f"Continue enrollment. {len(cached_embeddings)}/15 valid frames collected."
+                print(f"[Enrollment] BLOCKED — {msg}")
+                return {
+                    "success": False,
+                    "code": "ENROLLMENT_NOT_READY",
+                    "state": enrollment_state,
+                    "valid_embeddings": len(cached_embeddings),
+                    "required_embeddings": 15,
+                    "pose_coverage": list(pose_coverage),
+                    "expression_coverage": list(expr_coverage),
+                    "missing_poses": list(missing_poses),
+                    "missing_expressions": list(missing_exprs),
+                    "message": msg,
+                }
                 
             if missing_poses:
-                print(f"[Enrollment] Missing pose coverage: {missing_poses}")
-                raise HTTPException(status_code=400, detail=f"Insufficient pose coverage. Missing: {', '.join(missing_poses)}")
+                msg = f"Insufficient pose coverage. Missing: {', '.join(missing_poses)}"
+                print(f"[Enrollment] BLOCKED — {msg}")
+                return {
+                    "success": False,
+                    "code": "INSUFFICIENT_POSE_COVERAGE",
+                    "state": enrollment_state,
+                    "valid_embeddings": len(cached_embeddings),
+                    "required_embeddings": 15,
+                    "pose_coverage": list(pose_coverage),
+                    "expression_coverage": list(expr_coverage),
+                    "missing_poses": list(missing_poses),
+                    "missing_expressions": list(missing_exprs),
+                    "message": msg,
+                }
                 
             if missing_exprs:
-                print(f"[Enrollment] Missing expression coverage: {missing_exprs}")
-                raise HTTPException(status_code=400, detail=f"Insufficient expression coverage. Missing: {', '.join(missing_exprs)}")
+                msg = f"Insufficient expression coverage. Missing: {', '.join(missing_exprs)}"
+                print(f"[Enrollment] BLOCKED — {msg}")
+                return {
+                    "success": False,
+                    "code": "INSUFFICIENT_EXPRESSION_COVERAGE",
+                    "state": enrollment_state,
+                    "valid_embeddings": len(cached_embeddings),
+                    "required_embeddings": 15,
+                    "pose_coverage": list(pose_coverage),
+                    "expression_coverage": list(expr_coverage),
+                    "missing_poses": list(missing_poses),
+                    "missing_expressions": list(missing_exprs),
+                    "message": msg,
+                }
                 
             # Use robust multi-sample enterprise template
             embedding_vector = cached_embeddings

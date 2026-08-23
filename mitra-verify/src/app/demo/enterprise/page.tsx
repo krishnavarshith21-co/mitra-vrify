@@ -176,6 +176,19 @@ interface BiometricResponse {
   identity_match?: number;
   liveness_score?: number;
   risk_score?: number;
+  enrollment_progress?: {
+    active: boolean;
+    state: 'IDLE' | 'COLLECTING' | 'READY';
+    frame_sequence_id: number;
+    valid_frames: number;
+    required_frames: number;
+    rejected_frames: number;
+    last_reject_reason: string | null;
+    pose_coverage: string[];
+    expression_coverage: string[];
+    ready: boolean;
+    quality_pass: boolean;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -444,11 +457,24 @@ export default function EnterpriseDemoPage() {
   const [enrolledEmbedding, setEnrolledEmbedding] = useState<number[] | null>(null);
   const [phase, setPhase] = useState<'IDLE' | 'ENROLLMENT' | 'CHALLENGES' | 'MONITORING'>('IDLE');
   const [enrolling, setEnrolling] = useState(false);
+  
+  type EnrollmentStatus = 'IDLE' | 'CAMERA_ACTIVE' | 'COLLECTING' | 'READY' | 'ENROLLING' | 'ENROLLED' | 'FAILED';
+  const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus>('IDLE');
+  const enrollmentStatusRef = useRef<EnrollmentStatus>('IDLE');
+  const enrollRequestInFlightRef = useRef<boolean>(false);
+  const sessionIdRef = useRef<string>('');
+  const lastSequenceIdRef = useRef<number>(-1);
   const [isStabilizing, setIsStabilizing] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [enrollmentSnapshot, setEnrollmentSnapshot] = useState<string | null>(null);
+  const [enrollmentProgress, setEnrollmentProgress] = useState<BiometricResponse['enrollment_progress'] | null>(null);
+  const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
 
   const hasFaceEnrolled = useMemo(() => !!enrolledEmbedding, [enrolledEmbedding]);
+
+  // Sync refs with state to prevent stale closures
+  useEffect(() => { enrollmentStatusRef.current = enrollmentStatus; }, [enrollmentStatus]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   
   const enrollmentTimeRef = useRef<number | null>(null);
   useEffect(() => {
@@ -675,6 +701,7 @@ export default function EnterpriseDemoPage() {
         setFaceTrackingState('FACE_LOST');
         prevTrackingStateRef.current = 'FACE_LOST';
         setDetectedFaces(0); setLandmarkCount(0); setConfidence(0);
+        setRawLandmarks([]); // FIX: Clear raw landmarks to fix rendering desync
         setGazeDirection(null); setGazeAvailable(false); setFaceInsideGuide(false);
         faceVisibleStartRef.current = null; setFaceVisibleDuration(0); setSimilarity(0);
         setConsecutiveValidFrames(0); noseHistoryRef.current = []; setDetectionStability(0.0);
@@ -765,6 +792,40 @@ export default function EnterpriseDemoPage() {
       if (data.face_tracking) setFaceTracking(data.face_tracking);
       if (data.anti_spoof_details) setAntiSpoofDetails(data.anti_spoof_details);
       if (data.telemetry) setTelemetryData(data.telemetry);
+      if (data.enrollment_progress) {
+        let isLatest = true;
+        if (data.enrollment_progress.frame_sequence_id !== undefined) {
+          if (data.enrollment_progress.frame_sequence_id < lastSequenceIdRef.current) {
+            isLatest = false;
+          } else {
+            lastSequenceIdRef.current = data.enrollment_progress.frame_sequence_id;
+          }
+        }
+        
+        if (isLatest) {
+          setEnrollmentProgress(data.enrollment_progress);
+          // Clear enrollment errors on new valid progress
+          if (data.enrollment_progress.valid_frames > 0) {
+            setEnrollmentError(null);
+          }
+          // Use backend state as single source of truth
+          const backendState = data.enrollment_progress.state;
+          setEnrollmentStatus(prev => {
+            // Only preserve ENROLLING if a request is actually in-flight
+            if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
+            // Once ENROLLED, stay ENROLLED
+            if (prev === 'ENROLLED') return prev;
+            // Map backend state directly
+            if (backendState === 'READY') return 'READY';
+            if (backendState === 'COLLECTING') return 'COLLECTING';
+            if (backendState === 'IDLE') return 'IDLE';
+            // Fallback: derive from ready flag
+            if (data.enrollment_progress!.ready) return 'READY';
+            return 'COLLECTING';
+          });
+          console.log(`[ENROLL DEBUG] session=${sessionIdRef.current.substring(0, 8)} backend_state=${backendState} valid=${data.enrollment_progress.valid_frames}/15 ready=${data.enrollment_progress.ready} frontend_state=${enrollmentStatusRef.current} in_flight=${enrollRequestInFlightRef.current}`);
+        }
+      }
       
       // FPS calculation
       fpsCounterRef.current++;
@@ -977,6 +1038,9 @@ export default function EnterpriseDemoPage() {
     setShowReport(false); setIsMonitoring(false); setMonitoringAudit([]);
     if (typeof window !== 'undefined') sessionStorage.removeItem('mv_mismatch_count');
     consecutiveValidFramesRef.current = 0; currentChallengeRef.current = 0; setConsecutiveValidFrames(0);
+    setEnrollmentError(null);
+    enrollRequestInFlightRef.current = false;
+    enrollmentStatusRef.current = 'IDLE';
     setFaceTrackingState('FACE_PRESENT'); prevTrackingStateRef.current = 'FACE_PRESENT';
     setLostFrames(0); setRecoveredFrames(0); setTimeSinceFaceSeen(0);
     setLastMatchTime(null);
@@ -1038,20 +1102,57 @@ export default function EnterpriseDemoPage() {
     setFaceConfidenceMetric(0); setTrackingConfidence(1.0);
     setEnterpriseReport(null); setFaceQuality(0); setPoseQuality(0); setLightingQuality(0);
     setLandmarkGeometry(null); setPassiveLiveness(null); setFraudDetection(null); setPoseValidation(null);
+    setEnrollmentError(null);
+    enrollRequestInFlightRef.current = false;
+    enrollmentStatusRef.current = 'IDLE';
   }
 
   const enrollFace = async () => {
-    
-    if (enrolling || confidence < 0.90 || !faceInsideGuide || detectedFaces !== 1) {
-        alert("Cannot enroll: Please complete all challenges and ensure your face is centered and clearly visible.");
-        console.warn("Enrollment aborted: Conditions not met.");
-        return;
+    // === ATOMIC GUARD 1: Phase check ===
+    if (phase !== 'ENROLLMENT') {
+      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phase}, expected ENROLLMENT`);
+      return;
     }
+
+    // === ATOMIC GUARD 2: Enrollment status via ref (prevents stale closures) ===
+    if (enrollmentStatusRef.current !== 'READY') {
+      console.log(`[ENROLL DEBUG] BLOCKED — enrollmentStatus=${enrollmentStatusRef.current}, expected READY`);
+      return;
+    }
+
+    // === ATOMIC GUARD 3: Double-submission prevention ===
+    if (enrollRequestInFlightRef.current) {
+      console.log('[ENROLL DEBUG] BLOCKED — enrollment request already in-flight');
+      return;
+    }
+
+    // === ATOMIC GUARD 4: Session exists ===
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) {
+      console.log('[ENROLL DEBUG] BLOCKED — no session_id');
+      setEnrollmentError('Enrollment session unavailable. Restart enrollment.');
+      return;
+    }
+
+    // === ATOMIC GUARD 5: Backend enrollment progress check ===
+    if (!enrollmentProgress || !enrollmentProgress.ready || enrollmentProgress.valid_frames < 15) {
+      console.log(`[ENROLL DEBUG] BLOCKED — backend not ready: valid=${enrollmentProgress?.valid_frames}/15 ready=${enrollmentProgress?.ready}`);
+      return;
+    }
+
     const video = videoRef.current; const canvas = canvasRef.current;
     if (!video || !canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // === SET IN-FLIGHT GUARD ===
+    enrollRequestInFlightRef.current = true;
     setEnrolling(true);
+    setEnrollmentStatus('ENROLLING');
+    setEnrollmentError(null);
+
+    console.log(`[ENROLL DEBUG] SUBMITTING — session=${currentSessionId.substring(0, 8)} valid=${enrollmentProgress.valid_frames}/15 ready=${enrollmentProgress.ready}`);
+
     try {
       const videoRatio = video.videoWidth / video.videoHeight;
       canvas.width = 320; 
@@ -1060,22 +1161,57 @@ export default function EnterpriseDemoPage() {
       const base64Image = canvas.toDataURL('image/jpeg', 0.80);
       setEnrollmentSnapshot(base64Image);
       
+      const res = await livenessAPI.enrollFace(base64Image, undefined, currentSessionId);
 
-      const res = await livenessAPI.enrollFace(base64Image, undefined, sessionId);
+      // Handle structured rejection response (success: false)
+      if (res.data && res.data.success === false) {
+        console.log(`[ENROLL DEBUG] REJECTED by backend — code=${res.data.code} state=${res.data.state} valid=${res.data.valid_embeddings}/${res.data.required_embeddings} msg=${res.data.message}`);
+        
+        if (res.data.code === 'SESSION_EXPIRED') {
+          setEnrollmentError('Enrollment session expired. Restart enrollment.');
+          setEnrollmentStatus('FAILED');
+        } else if (res.data.code === 'ENROLLMENT_NOT_READY') {
+          setEnrollmentError(res.data.message || `Collecting frames — ${res.data.valid_embeddings || 0}/15`);
+          setEnrollmentStatus('COLLECTING');
+        } else if (res.data.code === 'INSUFFICIENT_POSE_COVERAGE') {
+          setEnrollmentError(res.data.message || 'Insufficient pose coverage.');
+          setEnrollmentStatus('COLLECTING');
+        } else if (res.data.code === 'INSUFFICIENT_EXPRESSION_COVERAGE') {
+          setEnrollmentError(res.data.message || 'Insufficient expression coverage.');
+          setEnrollmentStatus('COLLECTING');
+        } else {
+          setEnrollmentError(res.data.message || 'Enrollment not ready.');
+          setEnrollmentStatus('FAILED');
+        }
+        return;
+      }
+
+      // Handle successful enrollment
       if (res.data && res.data.embedding_vector) {
+        console.log('[ENROLL DEBUG] SUCCESS — enrollment complete');
         setIsStabilizing(true);
         setEnrolledEmbedding(res.data.embedding_vector);
         localStorage.setItem('enrolledEmbedding', JSON.stringify(res.data.embedding_vector));
         localStorage.setItem('mv_enrolled_signature', JSON.stringify(res.data.embedding_vector));
         await refreshUser();
         setEnrollmentSuccess(true);
+        setEnrollmentStatus('ENROLLED');
+        setEnrollmentError(null);
       } else {
-        alert("Failed to enroll face: Invalid response from backend");
+        console.log('[ENROLL DEBUG] FAILED — no embedding_vector in response');
+        setEnrollmentStatus('FAILED');
+        setEnrollmentError('Enrollment failed: invalid response from backend.');
       }
     } catch (err: unknown) {
-      const apiErr = err as { response?: { data?: { detail?: string } } };
-      alert(apiErr.response?.data?.detail || "Failed to enroll face");
-    } finally { setEnrolling(false); }
+      console.error('[ENROLL DEBUG] ERROR', err);
+      setEnrollmentStatus('FAILED');
+      const apiErr = err as { response?: { data?: { detail?: string; message?: string } } };
+      const errMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail || 'Enrollment request failed. Please try again.';
+      setEnrollmentError(errMsg);
+    } finally { 
+      setEnrolling(false);
+      enrollRequestInFlightRef.current = false;
+    }
   };
 
   const clearEnrollment = async () => {
@@ -1177,7 +1313,13 @@ export default function EnterpriseDemoPage() {
             <div>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: '#ffb800', marginBottom: 3 }}>Biometric Enrollment Required</h3>
               <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-                Start the camera, align your face inside the oval, and click <strong>Enroll Current Face</strong>.
+                {enrollmentStatus === 'IDLE' || enrollmentStatus === 'CAMERA_ACTIVE' ? "Start the camera and align your face inside the oval." :
+                 enrollmentStatus === 'COLLECTING' ? "Keep your face centered and hold still while high-quality frames are collected." :
+                 enrollmentStatus === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
+                 enrollmentStatus === 'ENROLLING' ? "Enrolling your biometric profile..." :
+                 enrollmentStatus === 'ENROLLED' ? "Biometric enrollment completed." :
+                 enrollmentStatus === 'FAILED' ? "Enrollment failed. Please try again." :
+                 "Start the camera, align your face inside the oval, and click Enroll Current Face."}
               </p>
             </div>
           </div>
@@ -1311,24 +1453,63 @@ export default function EnterpriseDemoPage() {
             {streaming && !overallResult && (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {!hasFaceEnrolled ? (
-                  <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button 
                       onClick={enrollFace} 
-                      disabled={enrolling || confidence < 0.90 || !faceInsideGuide || detectedFaces !== 1 || phase !== 'ENROLLMENT'}
+                      disabled={enrollmentStatus !== 'READY'}
                       style={{ 
                         flex: 1, 
                         padding: '10px 0', 
                         borderRadius: 10, 
-                        background: (enrolling || confidence < 0.90 || !faceInsideGuide || detectedFaces !== 1 || phase !== 'ENROLLMENT') ? 'rgba(100,100,100,0.3)' : 'linear-gradient(135deg, #00ff88, #00cc66)', 
-                        color: (enrolling || confidence < 0.90 || !faceInsideGuide || detectedFaces !== 1 || phase !== 'ENROLLMENT') ? '#94a3b8' : '#000', 
+                        background: enrollmentStatus === 'READY' ? 'linear-gradient(135deg, #00ff88, #00cc66)' : 'rgba(100,100,100,0.3)', 
+                        color: enrollmentStatus === 'READY' ? '#000' : '#94a3b8', 
                         fontWeight: 700, 
                         fontSize: 13, 
                         border: 'none', 
-                        cursor: (enrolling || confidence < 0.90 || !faceInsideGuide || detectedFaces !== 1 || phase !== 'ENROLLMENT') ? 'not-allowed' : 'pointer', 
+                        cursor: enrollmentStatus === 'READY' ? 'pointer' : 'not-allowed', 
                         transition: 'all 0.3s ease'
                       }}>
-                      {enrolling ? 'Enrolling...' : 'Enroll Current Face'}
+                      {enrollmentStatus === 'ENROLLING' ? 'ENROLLING...' : 
+                       enrollmentStatus === 'READY' ? 'ENROLL CURRENT FACE' : 
+                       enrollmentStatus === 'FAILED' ? 'ENROLLMENT FAILED' : 
+                       enrollmentStatus === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
+                       enrollmentProgress ? `COLLECTING FRAMES ${enrollmentProgress.valid_frames}/${enrollmentProgress.required_frames || 15}` : 
+                       'COLLECTING FRAMES...'}
                     </button>
+                    {/* Inline enrollment status / error display */}
+                    {enrollmentError && (
+                      <div style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        background: 'rgba(255,51,102,0.06)', 
+                        border: '1px solid rgba(255,51,102,0.2)', 
+                        fontSize: 11, 
+                        color: '#ff6b8a', 
+                        fontWeight: 500,
+                        textAlign: 'center'
+                      }}>
+                        {enrollmentError}
+                      </div>
+                    )}
+                    {!enrollmentError && enrollmentStatus === 'COLLECTING' && enrollmentProgress && (
+                      <div style={{ 
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        background: 'rgba(0,212,255,0.06)', 
+                        border: '1px solid rgba(0,212,255,0.15)', 
+                        fontSize: 11, 
+                        color: '#00d4ff', 
+                        fontWeight: 500,
+                        textAlign: 'center'
+                      }}>
+                        Collecting high-quality frames — {enrollmentProgress.valid_frames}/{enrollmentProgress.required_frames || 15}
+                        {enrollmentProgress.pose_coverage && (enrollmentProgress.pose_coverage as string[]).length > 0 && (
+                          <span style={{ marginLeft: 8, color: '#475569' }}>
+                            Poses: {(enrollmentProgress.pose_coverage as string[]).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : phase === 'ENROLLMENT' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
@@ -1389,6 +1570,58 @@ export default function EnterpriseDemoPage() {
                     <div style={{ fontSize: 13, fontWeight: phase === 'MONITORING' ? 700 : 500, color: phase === 'MONITORING' ? '#00ff88' : '#94a3b8' }}>Continuous Monitoring</div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Enrollment Progress */}
+            {phase === 'ENROLLMENT' && enrollmentProgress && enrollmentProgress.active && (
+              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+                    BIOMETRIC ENROLLMENT
+                  </div>
+                  <div style={{ fontSize: 11, color: enrollmentProgress.ready ? '#00ff88' : '#ffb800', fontWeight: 700, fontFamily: 'monospace', background: enrollmentProgress.ready ? 'rgba(0,255,136,0.1)' : 'rgba(255,184,0,0.1)', padding: '4px 8px', borderRadius: 4 }}>
+                    {enrollmentProgress.ready ? 'READY' : 'COLLECTING'}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6, fontWeight: 600, color: '#94a3b8' }}>
+                    <span>Progress</span>
+                    <span style={{ color: enrollmentProgress.ready ? '#00ff88' : '#e2e8f0' }}>{enrollmentProgress.valid_frames} / {enrollmentProgress.required_frames}</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                    <motion.div 
+                      animate={{ width: `${Math.min(100, (enrollmentProgress.valid_frames / enrollmentProgress.required_frames) * 100)}%` }} 
+                      transition={{ duration: 0.5 }} 
+                      style={{ height: '100%', borderRadius: 2, background: enrollmentProgress.ready ? '#00ff88' : 'linear-gradient(90deg, #ffb800, #00d4ff)' }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: enrollmentProgress.ready ? 0 : 12 }}>
+                  <div style={{ background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)', padding: '8px', borderRadius: 6, textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Accepted Frames</div>
+                    <div style={{ fontSize: 16, color: '#00ff88', fontWeight: 700, fontFamily: 'monospace' }}>{enrollmentProgress.valid_frames}</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,51,102,0.05)', border: '1px solid rgba(255,51,102,0.2)', padding: '8px', borderRadius: 6, textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Rejected Frames</div>
+                    <div style={{ fontSize: 16, color: '#ff3366', fontWeight: 700, fontFamily: 'monospace' }}>{enrollmentProgress.rejected_frames}</div>
+                  </div>
+                </div>
+
+                {!enrollmentProgress.ready && (
+                  <div style={{ padding: '8px 10px', borderRadius: 8, background: enrollmentProgress.last_reject_reason ? 'rgba(255,51,102,0.1)' : 'rgba(0,255,136,0.1)', border: `1px solid ${enrollmentProgress.last_reject_reason ? 'rgba(255,51,102,0.2)' : 'rgba(0,255,136,0.2)'}`, color: enrollmentProgress.last_reject_reason ? '#ff3366' : '#00ff88', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ fontWeight: 600, fontSize: 10, textTransform: 'uppercase', color: '#94a3b8' }}>Last Frame:</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, fontSize: 11 }}>
+                      {enrollmentProgress.last_reject_reason ? (
+                        <><span>✕</span><span>Rejected: {enrollmentProgress.last_reject_reason}</span></>
+                      ) : (
+                        <><span>✓</span><span>Accepted</span></>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

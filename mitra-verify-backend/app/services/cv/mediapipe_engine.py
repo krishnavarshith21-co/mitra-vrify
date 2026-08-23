@@ -762,11 +762,11 @@ def _head_pose_3d(landmarks, w, h):
 
     model_points = np.array([
         (0.0, 0.0, 0.0),             # Nose tip
-        (0.0, -330.0, -65.0),        # Chin
-        (-225.0, 170.0, -135.0),     # Left eye corner
-        (225.0, 170.0, -135.0),      # Right eye corner
-        (-150.0, -150.0, -125.0),    # Left Mouth corner
-        (150.0, -150.0, -125.0)      # Right mouth corner
+        (0.0, 330.0, 65.0),          # Chin
+        (225.0, -170.0, 135.0),      # Left eye corner (person's left, image right)
+        (-225.0, -170.0, 135.0),     # Right eye corner
+        (150.0, 150.0, 125.0),       # Left Mouth corner
+        (-150.0, 150.0, 125.0)       # Right mouth corner
     ])
 
     focal_length = w
@@ -811,6 +811,8 @@ def _head_pose_3d(landmarks, w, h):
     elif pitch < -180: pitch += 360
     if yaw > 180: yaw -= 360
     elif yaw < -180: yaw += 360
+    if roll > 90: roll -= 180
+    elif roll < -90: roll += 180
     
     return yaw, pitch, roll
 
@@ -1324,7 +1326,7 @@ def _compute_robust_similarity(current_signature: list[float], active_enrollment
         return avg_sim, min_dist, metrics
     else:
         # Fallback to single template comparison
-        s, d = _compute_cosine_similarity(current_signature, active_enrollment) # pyright: ignore
+        s, d = _compute_cosine_similarity(current_signature, active_enrollment) # type: ignore
         return s, d, {"max_similarity": s, "average_similarity": s, "median_similarity": s, "min_distance": d, "template_size": 1}
 
 # ─────────────────────────────────────────────────────────────
@@ -2022,6 +2024,50 @@ def _build_empty_enterprise_report(status: str) -> dict:
         }
     }
 
+def _build_enrollment_progress(session_id: str, quality_pass: bool = True, reject_reason: str | None = None, extra_rejected: int = 0) -> dict:
+    """Build canonical enrollment progress payload. Single source of truth for enrollment state."""
+    if not session_id or session_id not in SESSION_CACHE:
+        return {
+            "active": False,
+            "state": "IDLE",
+            "valid_frames": 0,
+            "required_frames": 15,
+            "rejected_frames": 0,
+            "last_reject_reason": None,
+            "pose_coverage": [],
+            "expression_coverage": [],
+            "ready": False,
+            "frame_sequence_id": 0,
+            "quality_pass": quality_pass,
+        }
+    session = SESSION_CACHE[session_id]
+    valid = len(session.get("enrollment_embeddings", []))
+    rejected = session.get("rejected_frames", 0) + extra_rejected
+    pose_cov = list(session.get("pose_coverage", set()))
+    expr_cov = list(session.get("expression_coverage", set()))
+    frame_seq = session.get("frame_count", 0)
+    is_ready = valid >= 15
+    # Determine state
+    if is_ready:
+        state = "READY"
+    elif valid > 0 or rejected > 0:
+        state = "COLLECTING"
+    else:
+        state = "IDLE"
+    return {
+        "active": True,
+        "state": state,
+        "valid_frames": valid,
+        "required_frames": 15,
+        "rejected_frames": rejected,
+        "last_reject_reason": reject_reason or session.get("last_reject_reason"),
+        "pose_coverage": pose_cov,
+        "expression_coverage": expr_cov,
+        "ready": is_ready,
+        "frame_sequence_id": frame_seq,
+        "quality_pass": quality_pass,
+    }
+
 def _build_enterprise_report(
     identity_match: float,
     confidence: float,
@@ -2388,7 +2434,7 @@ def _process_demo_frame_inner(
             mp_drawing.draw_landmarks(
                 image=debug_img,
                 landmark_list=face_landmarks,
-                connections=mp_face_mesh.FACEMESH_TESSELATION,
+                connections=list(mp_face_mesh.FACEMESH_TESSELATION),
                 landmark_drawing_spec=None,
                 connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
         cv2.imwrite(debug_lm_path, cv2.cvtColor(debug_img, cv2.COLOR_RGB2BGR))
@@ -2656,18 +2702,23 @@ def _process_demo_frame_inner(
     mouth_movement = mar > 0.18
     head_rotation = abs(yaw) > 35.0 or abs(pitch) > 35.0
     
+    # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
+    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)
+
     # Strict Yaw/Pitch validation for embedding comparison
     # Skip this guard when the active challenge requires head movement (look_up, look_down, turn_left, turn_right)
     pose_challenge_active = challenge_type in ("look_up", "look_down", "turn_left", "turn_right")
     if api_type == "enterprise" and head_rotation and not pose_challenge_active:
-        return {
+        payload = {
             "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
             "bbox": bbox, "status": "POSE_INVALID", "reason": "Face turned beyond allowed yaw/pitch", "challenge_passed": False, "enrolled_matched": False,
             "enterprise_report": _build_empty_enterprise_report("POSE_INVALID")
         }
-    
-    # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
-    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)
+        if session_id and session_id in SESSION_CACHE:
+            SESSION_CACHE[session_id]["rejected_frames"] = SESSION_CACHE[session_id].get("rejected_frames", 0) + 1
+            SESSION_CACHE[session_id]["last_reject_reason"] = "Face turned beyond allowed yaw/pitch"
+            payload["enrollment_progress"] = _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Face turned beyond allowed yaw/pitch")
+        return payload
     
     # Apply rolling average to MAR over 5 frames
     if history and len(history["mar"]) > 0:
@@ -2877,7 +2928,7 @@ def _process_demo_frame_inner(
     expr_category = "Neutral"
     if smile_score > 0.35: expr_category = "Smile"
     elif mar > 0.35: expr_category = "Talking/Open Mouth"
-    elif ear < 0.22: expr_category = "Blink"
+    elif avg_ear < 0.22: expr_category = "Blink"
     
     if history is not None:
         if "enrollment_embeddings" not in history:
@@ -3142,6 +3193,9 @@ def _process_demo_frame_inner(
     }
 
     if api_type == "enterprise" and enterprise_report:
+        if session_id and session_id in SESSION_CACHE:
+            ret["enrollment_progress"] = _build_enrollment_progress(session_id, quality_pass=True)
+        
         ret["enterprise_report"] = enterprise_report
         ret["landmark_geometry"] = landmark_geometry
         ret["passive_liveness"] = passive_liveness

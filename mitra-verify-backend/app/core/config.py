@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         if async_db_url:
             self.DATABASE_URL = async_db_url
             
-    CORS_ORIGINS: str = "http://localhost:3005,http://127.0.0.1:3005"
+    CORS_ORIGINS: str = "http://localhost:3005,http://127.0.0.1:3005,https://mitraverify.vercel.app,*"
     ENVIRONMENT: str = "development"
 
     @property

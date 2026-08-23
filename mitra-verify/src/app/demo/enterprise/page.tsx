@@ -460,7 +460,7 @@ export default function EnterpriseDemoPage() {
   const [phase, setPhase] = useState<'IDLE' | 'ENROLLMENT' | 'CHALLENGES' | 'MONITORING'>('IDLE');
   const [enrolling, setEnrolling] = useState(false);
   
-  type EnrollmentStatus = 'IDLE' | 'CAMERA_ACTIVE' | 'COLLECTING' | 'READY' | 'ENROLLING' | 'ENROLLED' | 'FAILED';
+  type EnrollmentStatus = 'IDLE' | 'CAMERA_ACTIVE' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY' | 'ENROLLING' | 'ENROLLED' | 'FAILED';
   const [enrollmentStatus, setEnrollmentStatus] = useState<EnrollmentStatus>('IDLE');
   const enrollmentStatusRef = useRef<EnrollmentStatus>('IDLE');
   const enrollRequestInFlightRef = useRef<boolean>(false);
@@ -815,10 +815,11 @@ export default function EnterpriseDemoPage() {
           setEnrollmentStatus(prev => {
             // Only preserve ENROLLING if a request is actually in-flight
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
-            // Once ENROLLED, stay ENROLLED
+            // Once ENROLLED, stay ENROLLED (until phase shifts)
             if (prev === 'ENROLLED') return prev;
             // Map backend state directly
             if (backendState === 'READY') return 'READY';
+            if (backendState === 'COVERAGE_INCOMPLETE') return 'COVERAGE_INCOMPLETE';
             if (backendState === 'COLLECTING') return 'COLLECTING';
             if (backendState === 'IDLE') return 'IDLE';
             // Fallback: derive from ready flag
@@ -1199,6 +1200,9 @@ export default function EnterpriseDemoPage() {
         setEnrollmentSuccess(true);
         setEnrollmentStatus('ENROLLED');
         setEnrollmentError(null);
+        setTimeout(() => {
+          setPhase('CHALLENGES');
+        }, 1500);
       } else {
         console.log('[ENROLL DEBUG] FAILED — no embedding_vector in response');
         setEnrollmentStatus('FAILED');
@@ -1317,6 +1321,7 @@ export default function EnterpriseDemoPage() {
               <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
                 {enrollmentStatus === 'IDLE' || enrollmentStatus === 'CAMERA_ACTIVE' ? "Start the camera and align your face inside the oval." :
                  enrollmentStatus === 'COLLECTING' ? "Keep your face centered and hold still while high-quality frames are collected." :
+                 enrollmentStatus === 'COVERAGE_INCOMPLETE' ? "Move your head to complete the required pose coverage." :
                  enrollmentStatus === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
                  enrollmentStatus === 'ENROLLING' ? "Enrolling your biometric profile..." :
                  enrollmentStatus === 'ENROLLED' ? "Biometric enrollment completed." :
@@ -1495,50 +1500,61 @@ export default function EnterpriseDemoPage() {
                       </div>
                     )}
                     {!enrollmentError && enrollmentStatus === 'COVERAGE_INCOMPLETE' && enrollmentProgress && (
-                      <div style={{ 
-                        padding: '8px 12px', 
-                        borderRadius: 8, 
-                        background: 'rgba(255,184,0,0.06)', 
-                        border: '1px solid rgba(255,184,0,0.2)', 
-                        fontSize: 11, 
-                        color: '#ffb800', 
-                        fontWeight: 500,
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px'
-                      }}>
-                        <div>QUALITY FRAMES: {enrollmentProgress.valid_frames}/{enrollmentProgress.required_frames || 15}</div>
-                        <div style={{ fontWeight: 700 }}>POSE COVERAGE: INCOMPLETE</div>
-                        {enrollmentProgress.missing_poses && enrollmentProgress.missing_poses.length > 0 && (
-                          <div style={{ color: '#d4a100' }}>
-                            Missing Poses: {enrollmentProgress.missing_poses.join(', ')}
+                      <div className="absolute inset-x-4 bottom-28 flex flex-col items-center">
+                        <div className="bg-black/80 backdrop-blur-md px-6 py-4 rounded-xl border border-yellow-500/40 shadow-2xl flex flex-col items-center max-w-sm w-full">
+                          <div className="text-yellow-400 font-bold tracking-widest mb-1 text-sm">ENROLLMENT ALMOST READY</div>
+                          <div className="text-white/80 text-xs mb-3">
+                            {Math.min(enrollmentProgress.valid_frames, enrollmentProgress.required_frames || 15)}/{enrollmentProgress.required_frames || 15} frames collected
                           </div>
-                        )}
-                        {enrollmentProgress.missing_expressions && enrollmentProgress.missing_expressions.length > 0 && (
-                          <div style={{ color: '#d4a100' }}>
-                            Missing Expressions: {enrollmentProgress.missing_expressions.join(', ')}
+                          
+                          {enrollmentProgress.missing_poses && enrollmentProgress.missing_poses.length > 0 && (
+                            <div className="text-white text-base font-semibold mb-3">
+                              Please look <span className="text-yellow-400 uppercase">{enrollmentProgress.missing_poses[0]}</span>
+                            </div>
+                          )}
+                          {!enrollmentProgress.missing_poses?.length && enrollmentProgress.missing_expressions && enrollmentProgress.missing_expressions.length > 0 && (
+                            <div className="text-white text-base font-semibold mb-3">
+                              Please <span className="text-yellow-400 uppercase">{enrollmentProgress.missing_expressions[0] === 'Neutral' ? 'return to a neutral expression' : 'smile'}</span>
+                            </div>
+                          )}
+
+                          <div className="w-full flex gap-2 flex-wrap justify-center text-[10px] font-mono">
+                            {['Front', 'Left 15', 'Right 15', 'Up', 'Down'].map(pose => {
+                              const isMissing = enrollmentProgress.missing_poses?.includes(pose);
+                              return (
+                                <span key={pose} className={`px-2 py-1 rounded border ${isMissing ? 'border-yellow-500/30 text-yellow-500/50' : 'border-green-500/30 text-green-400 bg-green-500/10'}`}>
+                                  {isMissing ? '○' : '✓'} {pose}
+                                </span>
+                              );
+                            })}
+                            {['Neutral', 'Smile'].map(expr => {
+                              const isMissing = enrollmentProgress.missing_expressions?.includes(expr);
+                              return (
+                                <span key={expr} className={`px-2 py-1 rounded border ${isMissing ? 'border-yellow-500/30 text-yellow-500/50' : 'border-green-500/30 text-green-400 bg-green-500/10'}`}>
+                                  {isMissing ? '○' : '✓'} {expr}
+                                </span>
+                              );
+                            })}
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
                     {!enrollmentError && enrollmentStatus === 'COLLECTING' && enrollmentProgress && (
-                      <div style={{ 
-                        padding: '8px 12px', 
-                        borderRadius: 8, 
-                        background: 'rgba(0,212,255,0.06)', 
-                        border: '1px solid rgba(0,212,255,0.15)', 
-                        fontSize: 11, 
-                        color: '#00d4ff', 
-                        fontWeight: 500,
-                        textAlign: 'center'
-                      }}>
-                        Collecting high-quality frames — {enrollmentProgress.valid_frames}/{enrollmentProgress.required_frames || 15}
-                        {enrollmentProgress.pose_coverage && (enrollmentProgress.pose_coverage as string[]).length > 0 && (
-                          <span style={{ marginLeft: 8, color: '#475569' }}>
-                            Poses: {(enrollmentProgress.pose_coverage as string[]).join(', ')}
-                          </span>
-                        )}
+                      <div className="absolute inset-x-4 bottom-28 flex flex-col items-center">
+                        <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-xl border border-white/10 shadow-2xl flex flex-col items-center">
+                          <div className="text-white/60 text-xs font-mono tracking-widest mb-2">COLLECTING HIGH-QUALITY FRAMES</div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-2 w-32 bg-white/10 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 transition-all duration-300" 
+                                style={{ width: `${Math.min(100, ((Math.min(enrollmentProgress.valid_frames, enrollmentProgress.required_frames || 15)) / (enrollmentProgress.required_frames || 15)) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-blue-400 font-mono font-medium text-lg">
+                              {Math.min(enrollmentProgress.valid_frames, enrollmentProgress.required_frames || 15)}/{enrollmentProgress.required_frames || 15}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

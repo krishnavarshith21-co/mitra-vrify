@@ -181,17 +181,6 @@ async def lifespan(app: FastAPI):
             
     yield
 
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi import Request
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    print(f"OMG VALIDATION ERROR: {exc.errors()}")
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
-    )
 
 app = FastAPI(
     title="MITRA VERIFY API",

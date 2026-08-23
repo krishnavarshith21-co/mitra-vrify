@@ -15,11 +15,12 @@ sleep 1
 
 # 2. Start the FastAPI backend in the background
 echo "[2/3] Starting FastAPI backend on port 8000..."
-cd mitra-verify-backend
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$(dirname "$SCRIPT_DIR")/mitra-verify-backend"
+cd "$BACKEND_DIR"
 source venv/bin/activate
-uvicorn app.main:app --reload --port 8000 &
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
-cd ..
 sleep 3
 
 # 3. Start the permanent Ngrok tunnel

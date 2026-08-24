@@ -7,12 +7,12 @@ from typing import Dict, Any, Optional
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return {"__type__": "set", "data": list(obj)}
-        if isinstance(obj, np.ndarray):
-            return {"__type__": "ndarray", "data": obj.tolist()}
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, set):
+            return {"__type__": "set", "data": list(o)}
+        if isinstance(o, np.ndarray):
+            return {"__type__": "ndarray", "data": o.tolist()}
+        return super().default(o)
 
 def custom_json_decoder(dct):
     if "__type__" in dct:
@@ -31,7 +31,7 @@ class SessionManager:
             self.redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
             self.redis_client.ping()
             print(f"Connected to Redis at {REDIS_URL}")
-        except (redis.ConnectionError, redis.exceptions.ConnectionError):
+        except redis.ConnectionError:
             print(f"WARNING: Could not connect to Redis at {REDIS_URL}. Using in-memory dictionary fallback.")
             self.redis_client = None
 
@@ -94,15 +94,22 @@ class SessionProxy(dict):
         
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
-        self.manager.save_session(self.session_id, dict(self))
+        latest_data = self.manager.get_session(self.session_id) or {}
+        latest_data[key] = value
+        self.manager.save_session(self.session_id, latest_data)
 
     def update(self, *args, **kwargs):
         super().update(*args, **kwargs)
-        self.manager.save_session(self.session_id, dict(self))
+        latest_data = self.manager.get_session(self.session_id) or {}
+        latest_data.update(*args, **kwargs)
+        self.manager.save_session(self.session_id, latest_data)
 
     def pop(self, key, default=None):
         res = super().pop(key, default)
-        self.manager.save_session(self.session_id, dict(self))
+        latest_data = self.manager.get_session(self.session_id) or {}
+        if key in latest_data:
+            latest_data.pop(key)
+        self.manager.save_session(self.session_id, latest_data)
         return res
 
 class SessionCacheDict:

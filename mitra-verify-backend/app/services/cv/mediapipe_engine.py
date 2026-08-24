@@ -2059,12 +2059,13 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
     missing_poses = list(required_poses - pose_cov_set)
     missing_exprs = list(required_exprs - expr_cov_set)
     
-    frame_seq = session.get("frame_count", 0)
+    frame_seq = session.get("frames", [])
+    frame_seq_id = len(frame_seq) if frame_seq else 0
     
     # Authoritative Readiness Condition
     is_ready = (valid >= 15) and (not missing_poses) and (not missing_exprs)
     
-    session_stage = session.get("stage", "ENROLLMENT")
+    session_stage = session.get("stage", "ENROLLMENT"); 
     
     # Determine deterministic state
     if session_stage == "ENROLLMENT":
@@ -2091,7 +2092,7 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
         "missing_poses": missing_poses,
         "missing_expressions": missing_exprs,
         "ready": is_ready,
-        "frame_sequence_id": frame_seq,
+        "frame_sequence_id": frame_seq_id,
         "quality_pass": quality_pass,
     }
 
@@ -2742,9 +2743,9 @@ def _process_demo_frame_inner(
             "bbox": bbox, "status": "POSE_INVALID", "reason": "Face turned beyond allowed yaw/pitch", "challenge_passed": False, "enrolled_matched": False,
             "enterprise_report": _build_empty_enterprise_report("POSE_INVALID")
         }
-        if session_id and session_id in SESSION_CACHE:
-            SESSION_CACHE[session_id]["rejected_frames"] = SESSION_CACHE[session_id].get("rejected_frames", 0) + 1
-            SESSION_CACHE[session_id]["last_reject_reason"] = "Face turned beyond allowed yaw/pitch"
+        if history:
+            history["rejected_frames"] = history.get("rejected_frames", 0) + 1
+            history["last_reject_reason"] = "Face turned beyond allowed yaw/pitch"
             payload["enrollment_progress"] = _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Face turned beyond allowed yaw/pitch")
         return payload
     
@@ -2995,13 +2996,13 @@ def _process_demo_frame_inner(
     
     
     active_enrollment = None
-    if session_id and session_id in SESSION_CACHE:
-        active_enrollment = SESSION_CACHE[session_id].get("enrolled_embedding")
+    if history:
+        active_enrollment = history.get("enrolled_embedding")
         if not active_enrollment:
-            active_enrollment = SESSION_CACHE[session_id].get("enrollment_embeddings")
+            active_enrollment = history.get("enrollment_embeddings")
     if active_enrollment and api_type == "enterprise":
-        if session_id and session_id in SESSION_CACHE:
-            session = SESSION_CACHE[session_id]
+        if history:
+            session = history
             frame_count = session.get("embedding_frame_count", 0) + 1
             session["embedding_frame_count"] = frame_count
             
@@ -3064,10 +3065,12 @@ def _process_demo_frame_inner(
                 match_reason = "FAIL"
 
                 
-    if api_type == "enterprise" and session_id and session_id in SESSION_CACHE:
-        session = SESSION_CACHE[session_id]
+    if api_type == "enterprise" and history:
+        session = history
         if session:
             current_stage = session.get("stage", "ENROLLMENT")
+            
+            
             
             # State transitions
             if current_stage == "IDENTITY_VERIFYING":
@@ -3091,8 +3094,13 @@ def _process_demo_frame_inner(
                     status = "UNAUTHORIZED_PERSON"
                     
             elif current_stage == "LIVENESS_CHALLENGES":
-                # For simplicity, if they pass the current challenge, move to VERIFIED
-                if challenge_passed:
+                # The frontend tracks challenge sequence. We only transition when the frontend requests monitoring.
+                if challenge_type == "monitoring":
+                    
+                    session["stage"] = "CONTINUOUS_MONITORING"
+                    
+                    session["access_granted_time"] = time.time()
+                elif challenge_type == "liveness_verified":
                     session["stage"] = "LIVENESS_VERIFIED"
                     
                     # Check ALL security conditions for ACCESS_GRANTED
@@ -3137,8 +3145,8 @@ def _process_demo_frame_inner(
             return ret_early
 
     # Default status logic
-    if status == "ready" and session_id and session_id in SESSION_CACHE:
-        if challenge_type != "monitoring" and time.time() - SESSION_CACHE[session_id].get("challenge_start_time", time.time()) > 30.0:
+    if status == "ready" and history:
+        if challenge_type != "monitoring" and time.time() - history.get("challenge_start_time", time.time()) > 30.0:
             return {
                 "face_present": True,
                 "detected_faces": int(detected_faces),

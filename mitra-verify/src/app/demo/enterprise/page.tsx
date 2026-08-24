@@ -712,7 +712,9 @@ export default function EnterpriseDemoPage() {
 
     try {
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
-      const activeChallengeId = phase === 'CONTINUOUS_MONITORING' ? 'monitoring' : (phase === 'LIVENESS_CHALLENGES' && currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined);
+      const activeChallengeId = phase === 'CONTINUOUS_MONITORING' ? 'monitoring' : 
+                                (currentChallenge >= challenges.length && challenges.length > 0) ? 'liveness_verified' : 
+                                (phase === 'LIVENESS_CHALLENGES' ? challenges[currentChallenge]?.id : undefined);
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise');
       const data = res?.data;
       setApiResponse(data);
@@ -802,6 +804,9 @@ export default function EnterpriseDemoPage() {
           }
           // Use backend state as single source of truth
           const backendState = data.enrollment_progress.state as Phase;
+          if (backendState === 'CONTINUOUS_MONITORING' && !isMonitoring) {
+            setIsMonitoring(true);
+          }
           setPhase(prev => {
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
             // Reset stale data on transition to verification
@@ -916,10 +921,8 @@ export default function EnterpriseDemoPage() {
               const nextStep = currentChallenge + 1;
               currentChallengeRef.current = nextStep; setCurrentChallenge(nextStep);
               stepStartTimeRef.current = Date.now();
-              if (nextStep >= challenges.length) {
-                setPhase('CONTINUOUS_MONITORING');
-                setIsMonitoring(true);
-              }
+              // Do NOT force setPhase here. The backend must remain authoritative.
+              // We just advance the sequence index, and the payload will start sending 'liveness_verified'.
             }
           }
         } // End if phase === CHALLENGES
@@ -998,13 +1001,7 @@ export default function EnterpriseDemoPage() {
         }).catch(console.error);
       });
       
-      // Auto-transition to Continuous Monitoring after initial verification success
-      if (overallResult === 'pass' && !isMonitoring) {
-        const t = setTimeout(() => {
-          setIsMonitoring(true);
-        }, 2500);
-        return () => clearTimeout(t);
-      }
+      // Dead code timer for overallResult removed.
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overallResult, isMonitoring]);
@@ -1574,10 +1571,10 @@ export default function EnterpriseDemoPage() {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#00d4ff22', border: `1px solid #00d4ff`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: '#00d4ff' }}>1</span>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: (phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? '#00d4ff22' : '#334155', border: `1px solid ${(phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? '#00d4ff' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: (phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? '#00d4ff' : '#475569' }}>1</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#00d4ff' }}>Enrollment</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: (phase === 'IDLE' || phase === 'ENROLLMENT' || phase === 'ENROLLED' || phase === 'COLLECTING' || phase === 'COVERAGE_INCOMPLETE' || phase === 'READY' || phase === 'ENROLLING') ? '#00d4ff' : '#94a3b8' }}>Enrollment</div>
                   </div>
                   <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
                   

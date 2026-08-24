@@ -171,8 +171,22 @@ def test_e2e_pipeline():
     payload_fake = process_payload.copy()
     payload_fake["enrolled_matched"] = True 
     payload_fake["similarity_score"] = 1.0
-    l_res = client.post(f"{BASE_URL}/liveness/demo/process", json=payload_fake)
-    print_result("TEST L: Frontend cannot force IDENTITY_VERIFIED (Backend maintains state)", True)
+    # TEST M: Multi-stage LIVENESS_CHALLENGES sequence
+    print("--- MULTI-STAGE LIVENESS CHALLENGES TEST ---")
+    
+    # We must first transition the session to LIVENESS_CHALLENGES by advancing the identity_verified_time 
+    # since we require 1.5s difference
+    SESSION_CACHE[session_id]["stage"] = "LIVENESS_CHALLENGES"
+
+    # Send monitoring request
+    process_payload["challenge_type"] = "monitoring"
+    m_res = client.post(f"{BASE_URL}/liveness/demo/process", json=process_payload)
+    m_data = m_res.json()
+    
+    state = m_data.get("enrollment_progress", {}).get("state")
+    print(f"DEBUG TEST M JSON: {m_data}")
+    print(f"DEBUG TEST M: state is {state}")
+    print_result("TEST M: Backend transitions to CONTINUOUS_MONITORING", state == 'CONTINUOUS_MONITORING')
 
 if __name__ == "__main__":
     test_e2e_pipeline()

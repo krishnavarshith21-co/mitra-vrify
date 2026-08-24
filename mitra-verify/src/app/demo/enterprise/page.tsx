@@ -1096,11 +1096,9 @@ export default function EnterpriseDemoPage() {
       return;
     }
 
-    // === ATOMIC GUARD 2: Enrollment status via ref (prevents stale closures) ===
-    if (phaseRef.current !== 'READY') {
-      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phaseRef.current}, expected READY`);
-      return;
-    }
+
+    // === ATOMIC GUARD 2: Removed. Backend readiness is validated by GUARD 5 (enrollmentProgress.ready). ===
+    // Checking phaseRef.current against 'READY' was wrong — phaseRef.current is 'ENROLLMENT' when the button is visible.
 
     // === ATOMIC GUARD 3: Double-submission prevention ===
     if (enrollRequestInFlightRef.current) {
@@ -1170,17 +1168,20 @@ export default function EnterpriseDemoPage() {
 
       // Handle successful enrollment
       if (res.data && res.data.status === 'success') {
-        console.log('[ENROLL DEBUG] SUCCESS — enrollment complete');
+        console.log('[ENROLL DEBUG] SUCCESS — enrollment complete, waiting for IDENTITY_VERIFYING from backend');
         setIsStabilizing(true);
+        
+        // Drop in-flight flag FIRST so the state-machine loop can process
+        // backend enrollment_progress.state = IDENTITY_VERIFYING on the next frame
+        enrollRequestInFlightRef.current = false;
         
         await refreshUser();
         setEnrollmentSuccess(true);
-        setPhase('ENROLLED');
-        setEnrollmentError(null);
         setHasFaceEnrolled(true);
-        
-        // Ensure request inflight is dropped so we can fetch the state loop
-        enrollRequestInFlightRef.current = false;
+        setEnrollmentError(null);
+        // Do NOT force setPhase here — let backend state (enrollment_progress.state)
+        // drive the transition to IDENTITY_VERIFYING on the next frame response.
+        // setPhase('ENROLLED') is intentionally omitted.
       } else {
         console.log('[ENROLL DEBUG] FAILED — enrollment unsuccessful');
         setPhase('FAILED');

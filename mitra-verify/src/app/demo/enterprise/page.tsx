@@ -456,7 +456,7 @@ export default function EnterpriseDemoPage() {
   const [currentFps, setCurrentFps] = useState(0);
 
   // Enrollment states
-    type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLED' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
+    type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLING' | 'ENROLLED' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
   const [phase, setPhase] = useState<Phase>('IDLE');
   const phaseRef = useRef<Phase>('IDLE');
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -471,7 +471,7 @@ export default function EnterpriseDemoPage() {
   const [enrollmentProgress, setEnrollmentProgress] = useState<BiometricResponse['enrollment_progress'] | null>(null);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
 
-  const hasFaceEnrolled = useMemo(() => !!enrolledEmbedding, [enrolledEmbedding]);
+  const [hasFaceEnrolled, setHasFaceEnrolled] = useState(false);
 
   // Sync refs with state to prevent stale closures
     useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
@@ -658,6 +658,7 @@ export default function EnterpriseDemoPage() {
         const res = await livenessAPI.getEnrolledFace();
         if (res.data && res.data.enrolled) {
           // Found server-side enrolled identity
+          setHasFaceEnrolled(true);
         }
       } catch (e) { console.warn('Failed to fetch enrolled face from backend', e); }
     };
@@ -916,7 +917,7 @@ export default function EnterpriseDemoPage() {
               currentChallengeRef.current = nextStep; setCurrentChallenge(nextStep);
               stepStartTimeRef.current = Date.now();
               if (nextStep >= challenges.length) {
-                setPhase('MONITORING');
+                setPhase('CONTINUOUS_MONITORING');
                 setIsMonitoring(true);
               }
             }
@@ -932,7 +933,7 @@ export default function EnterpriseDemoPage() {
       setIsProcessing(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [streaming, sessionId, hasFaceEnrolled, enrolledEmbedding, currentChallenge, challenges, isProcessing, overallResult, isMonitoring, triggerSessionTermination, mismatchCount, isStabilizing]);
+  }, [streaming, sessionId, hasFaceEnrolled, currentChallenge, challenges, isProcessing, overallResult, isMonitoring, triggerSessionTermination, mismatchCount, isStabilizing]);
 
   // Animation loop
   const requestRef = useRef<number>(0);
@@ -1097,7 +1098,7 @@ export default function EnterpriseDemoPage() {
 
     // === ATOMIC GUARD 2: Enrollment status via ref (prevents stale closures) ===
     if (phaseRef.current !== 'READY') {
-      console.log(`[ENROLL DEBUG] BLOCKED — enrollmentStatus=${enrollmentStatusRef.current}, expected READY`);
+      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phaseRef.current}, expected READY`);
       return;
     }
 
@@ -1129,7 +1130,7 @@ export default function EnterpriseDemoPage() {
     // === SET IN-FLIGHT GUARD ===
     enrollRequestInFlightRef.current = true;
     setEnrolling(true);
-    setEnrollmentStatus('ENROLLING');
+    setPhase('ENROLLING');
     setEnrollmentError(null);
 
     console.log(`[ENROLL DEBUG] SUBMITTING — session=${currentSessionId.substring(0, 8)} valid=${enrollmentProgress.valid_frames}/15 ready=${enrollmentProgress.ready}`);
@@ -1150,19 +1151,19 @@ export default function EnterpriseDemoPage() {
         
         if (res.data.code === 'SESSION_EXPIRED') {
           setEnrollmentError('Enrollment session expired. Restart enrollment.');
-          setEnrollmentStatus('FAILED');
+          setPhase('FAILED');
         } else if (res.data.code === 'ENROLLMENT_NOT_READY') {
           setEnrollmentError(res.data.message || `Collecting frames — ${res.data.valid_embeddings || 0}/15`);
-          setEnrollmentStatus('COLLECTING');
+          setPhase('COLLECTING');
         } else if (res.data.code === 'INSUFFICIENT_POSE_COVERAGE') {
           setEnrollmentError(res.data.message || 'Insufficient pose coverage.');
-          setEnrollmentStatus('COLLECTING');
+          setPhase('COLLECTING');
         } else if (res.data.code === 'INSUFFICIENT_EXPRESSION_COVERAGE') {
           setEnrollmentError(res.data.message || 'Insufficient expression coverage.');
-          setEnrollmentStatus('COLLECTING');
+          setPhase('COLLECTING');
         } else {
           setEnrollmentError(res.data.message || 'Enrollment not ready.');
-          setEnrollmentStatus('FAILED');
+          setPhase('FAILED');
         }
         return;
       }
@@ -1174,20 +1175,21 @@ export default function EnterpriseDemoPage() {
         
         await refreshUser();
         setEnrollmentSuccess(true);
-        setEnrollmentStatus('ENROLLED');
+        setPhase('ENROLLED');
         setEnrollmentError(null);
+        setHasFaceEnrolled(true);
         
         // Ensure request inflight is dropped so we can fetch the state loop
         enrollRequestInFlightRef.current = false;
       } else {
         console.log('[ENROLL DEBUG] FAILED — enrollment unsuccessful');
-        setEnrollmentStatus('FAILED');
+        setPhase('FAILED');
         setEnrollmentError('Enrollment failed: invalid response from backend.');
         enrollRequestInFlightRef.current = false;
       }
     } catch (err: unknown) {
       console.error('[ENROLL DEBUG] ERROR', err);
-      setEnrollmentStatus('FAILED');
+      setPhase('FAILED');
       const apiErr = err as { response?: { data?: { detail?: string; message?: string } } };
       const errMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail || 'Enrollment request failed. Please try again.';
       setEnrollmentError(errMsg);
@@ -1199,6 +1201,7 @@ export default function EnterpriseDemoPage() {
 
   const clearEnrollment = async () => {
     
+    setHasFaceEnrolled(false);
     localStorage.removeItem('enrolledEmbedding'); localStorage.removeItem('mv_enrolled_signature');
     setSimilarity(0); similarityHistoryRef.current = []; setConsecutiveValidFrames(0);
     setPhase('ENROLLMENT');
@@ -1296,7 +1299,7 @@ export default function EnterpriseDemoPage() {
             <div>
               <h3 style={{ fontSize: 13, fontWeight: 700, color: '#ffb800', marginBottom: 3 }}>Biometric Enrollment Required</h3>
               <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-                {phase === 'IDLE' || phase === 'IDLE' ? "Start the camera and align your face inside the oval." :
+                {phase === 'IDLE' || phase === 'ENROLLMENT' ? "Start the camera and align your face inside the oval." :
                  phase === 'COLLECTING' ? "Keep your face centered and hold still while high-quality frames are collected." :
                  phase === 'COVERAGE_INCOMPLETE' ? "Move your head to complete the required pose coverage." :
                  phase === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :

@@ -485,7 +485,7 @@ export default function BasicDemoPage() {
       else if (currentStep === 2) challengeType = "open_mouth";
       else if (currentStep === 3) challengeType = "turn_left";
 
-      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, challengeType, undefined, 'basic', currentFrameId.toString());
+      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, challengeType, 'basic', currentFrameId.toString());
       const data = res?.data;
       setApiResponse(data);
 

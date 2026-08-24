@@ -296,7 +296,7 @@ export default function AdvancedDemoPage() {
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
       
       const activeChallengeId = currentChallenge < challenges.length ? challenges[currentChallenge].id : undefined;
-      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, undefined, 'advanced');
+      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'advanced');
       const data = res?.data;
 
       if (!data) return;

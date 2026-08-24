@@ -233,7 +233,8 @@ CHALLENGES_METADATA = {
 }
 
 class SessionStartRequest(BaseModel):
-    api_type: str
+    api_type: str = "advanced"
+    session_id: str | None = None
 
 class DemoProcessRequest(BaseModel):
     image: str
@@ -324,7 +325,7 @@ async def debug_cv():
 
 @router.post("/session/start", tags=["Demo"])
 async def start_session(data: SessionStartRequest):
-    session_id = str(uuid.uuid4())
+    session_id = getattr(data, 'session_id', None) or str(uuid.uuid4())
     
     advanced_pool = ['blink_once', 'blink_twice', 'open_mouth', 'smile', 'look_up', 'hold_still']
     enterprise_pool = ['blink_once', 'blink_twice', 'open_mouth', 'smile', 'look_up', 'look_down', 'turn_left', 'turn_right', 'turn_left_45', 'turn_right_45', 'turn_left_90', 'turn_right_90', 'raise_eyebrows', 'nod_head', 'shake_head', 'look_left', 'look_right', 'hold_still', 'follow_target']
@@ -397,9 +398,9 @@ async def start_session(data: SessionStartRequest):
 async def demo_process(
     data: DemoProcessRequest,
     request: Request,
-    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    current_user = None
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     
     cv_result = await run_in_threadpool(

@@ -821,7 +821,7 @@ def _head_pose_3d(landmarks, w, h):
 # ─────────────────────────────────────────────────────────────
 # REAL-TIME DEMO EXTRACTION & VALIDATION PIPELINE (NO MOCKS)
 # ─────────────────────────────────────────────────────────────
-SESSION_CACHE = {}
+from app.services.session_manager import SESSION_CACHE
 
 def update_session_history(session_id: str | None, landmarks: list, ear: float, mar: float, yaw: float, pitch: float, roll: float, challenge_type: str | None = None):
     if not session_id:
@@ -2997,6 +2997,8 @@ def _process_demo_frame_inner(
     active_enrollment = None
     if session_id and session_id in SESSION_CACHE:
         active_enrollment = SESSION_CACHE[session_id].get("enrolled_embedding")
+        if not active_enrollment:
+            active_enrollment = SESSION_CACHE[session_id].get("enrollment_embeddings")
     if active_enrollment and api_type == "enterprise":
         if session_id and session_id in SESSION_CACHE:
             session = SESSION_CACHE[session_id]
@@ -3064,65 +3066,65 @@ def _process_demo_frame_inner(
                 
     if api_type == "enterprise" and session_id and session_id in SESSION_CACHE:
         session = SESSION_CACHE[session_id]
-        current_stage = session.get("stage", "ENROLLMENT")
-        
-        # State transitions
-        if current_stage == "IDENTITY_VERIFYING":
-            if enrolled_matched:
-                session["stage"] = "IDENTITY_VERIFIED"
-                session["identity_verified_time"] = time.time()
-            elif not enrolled_matched and history.get("wrong_person_frames", 0) >= 30:
-                session["stage"] = "FAILED"
-                status = "UNAUTHORIZED_PERSON"
-                
-        elif current_stage == "IDENTITY_VERIFIED":
-            is_identity_secure = (
-                enrolled_matched and
-                similarity_score >= required_threshold and
-                detected_faces == 1 and
-                face_present
-            )
-            if is_identity_secure and time.time() - session.get("identity_verified_time", 0) > 1.5:
-                session["stage"] = "LIVENESS_CHALLENGES"
-            elif not is_identity_secure and history.get("wrong_person_frames", 0) >= 30:
-                session["stage"] = "FAILED"
-                status = "UNAUTHORIZED_PERSON"
-                
-        elif current_stage == "LIVENESS_CHALLENGES":
-            # For simplicity, if they pass the current challenge, move to VERIFIED
-            if challenge_passed:
-                session["stage"] = "LIVENESS_VERIFIED"
-                
-                # Check ALL security conditions for ACCESS_GRANTED
-                is_secure = (
-                    enrolled_matched and
-                    detected_faces == 1 and
-                    spoof_score < 0.4 and
-                    is_high_quality and
-                    session["stage"] == "LIVENESS_VERIFIED"
-                )
-                if is_secure:
-                    session["stage"] = "ACCESS_GRANTED"
-                    # We will rely on frontend requesting the next stage or backend auto transition
-                    session["access_granted_time"] = time.time()
-                else:
+        if session:
+            current_stage = session.get("stage", "ENROLLMENT")
+            
+            # State transitions
+            if current_stage == "IDENTITY_VERIFYING":
+                if enrolled_matched:
+                    session["stage"] = "IDENTITY_VERIFIED"
+                    session["identity_verified_time"] = time.time()
+                elif not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 30:
                     session["stage"] = "FAILED"
-                    status = "SECURITY_CHECK_FAILED"
+                    status = "UNAUTHORIZED_PERSON"
                     
-        elif current_stage == "ACCESS_GRANTED":
-            if time.time() - session.get("access_granted_time", 0) > 2.0:
-                 session["stage"] = "CONTINUOUS_MONITORING"
+            elif current_stage == "IDENTITY_VERIFIED":
+                is_identity_secure = (
+                    enrolled_matched and
+                    similarity_score is not None and similarity_score >= required_threshold and
+                    detected_faces == 1
+                )
+                if is_identity_secure and time.time() - session.get("identity_verified_time", 0) > 1.5:
+                    session["stage"] = "LIVENESS_CHALLENGES"
+                elif not is_identity_secure and history and history.get("wrong_person_frames", 0) >= 30:
+                    session["stage"] = "FAILED"
+                    status = "UNAUTHORIZED_PERSON"
                     
-        elif current_stage == "CONTINUOUS_MONITORING":
-            if not enrolled_matched and history.get("wrong_person_frames", 0) >= 15:
-                session["stage"] = "ACCESS_REVOKED"
-                status = "UNAUTHORIZED_PERSON"
-            elif detected_faces != 1 and history.get("multiple_faces_frames", 0) >= 15:
-                session["stage"] = "ACCESS_REVOKED"
-                status = "MULTIPLE_FACES"
-            elif spoof_score > 0.5:
-                session["stage"] = "ACCESS_REVOKED"
-                status = "SPOOF_DETECTED"
+            elif current_stage == "LIVENESS_CHALLENGES":
+                # For simplicity, if they pass the current challenge, move to VERIFIED
+                if challenge_passed:
+                    session["stage"] = "LIVENESS_VERIFIED"
+                    
+                    # Check ALL security conditions for ACCESS_GRANTED
+                    is_secure = (
+                        enrolled_matched and
+                        detected_faces == 1 and
+                        spoof_score < 0.4 and
+                        is_high_quality and
+                        session["stage"] == "LIVENESS_VERIFIED"
+                    )
+                    if is_secure:
+                        session["stage"] = "ACCESS_GRANTED"
+                        # We will rely on frontend requesting the next stage or backend auto transition
+                        session["access_granted_time"] = time.time()
+                    else:
+                        session["stage"] = "FAILED"
+                        status = "SECURITY_CHECK_FAILED"
+                        
+            elif current_stage == "ACCESS_GRANTED":
+                if time.time() - session.get("access_granted_time", 0) > 2.0:
+                     session["stage"] = "CONTINUOUS_MONITORING"
+                        
+            elif current_stage == "CONTINUOUS_MONITORING":
+                if not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 15:
+                    session["stage"] = "ACCESS_REVOKED"
+                    status = "UNAUTHORIZED_PERSON"
+                elif detected_faces != 1 and history and history.get("multiple_faces_frames", 0) >= 15:
+                    session["stage"] = "ACCESS_REVOKED"
+                    status = "MULTIPLE_FACES"
+                elif spoof_score > 0.5:
+                    session["stage"] = "ACCESS_REVOKED"
+                    status = "SPOOF_DETECTED"
 
     # Default fallback for old unauthorized person block
     elif enrolled_matched == False and history and history.get("wrong_person_frames", 0) >= 15:
@@ -3285,7 +3287,7 @@ def _process_demo_frame_inner(
         ret["lighting_quality"] = round(lighting_quality, 4)
         
         # Explicitly requested by user for root payload compatibility
-        ret["identity_match"] = round(similarity_score * 100, 2)
+        ret["identity_match"] = round(similarity_score * 100, 2) if similarity_score is not None else None
         ret["liveness_score"] = round(liveness_score * 100, 2)
         ret["risk_score"] = enterprise_report.get("risk_score", 0.0)
         ret["challenge_progress"] = 0 # Frontend tracks real progress

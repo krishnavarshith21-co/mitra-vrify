@@ -1,0 +1,214 @@
+============================================================
+[CV ENGINE] STARTUP DIAGNOSTICS
+  Python version:  3.12.13 (main, Mar  3 2026, 12:39:30) [Clang 21.0.0 (clang-2100.0.123.102)]
+  Platform:        macOS-26.6.2-arm64-arm-64bit
+  Architecture:    arm64
+  Processor:       arm
+  numpy version:   2.5.2
+============================================================
+[CV ENGINE] OpenCV loaded: 5.0.0
+[CV ENGINE] MediaPipe loaded: 0.10.14
+[CV ENGINE] mp.solutions.face_mesh: <module 'mediapipe.python.solutions.face_mesh' from '/Users/krishnavarshithkamanaboina/Desktop/mitra-vrify/mitra-verify-backend/venv/lib/python3.12/site-packages/mediapipe/python/solutions/face_mesh.py'>
+[CV ENGINE] mp.solutions.face_detection: <module 'mediapipe.python.solutions.face_detection' from '/Users/krishnavarshithkamanaboina/Desktop/mitra-vrify/mitra-verify-backend/venv/lib/python3.12/site-packages/mediapipe/python/solutions/face_detection.py'>
+[CV ENGINE] ✓ FaceMesh singleton initialized successfully
+[CV ENGINE] InsightFace loaded: 1.0.1
+============================================================
+[CV ENGINE] INIT SUMMARY:
+  CV2_AVAILABLE:        True
+  MP_AVAILABLE:         True
+  INSIGHTFACE_AVAILABLE:True
+  global_face_mesh:     True
+============================================================
+WARNING: Could not connect to Redis at redis://localhost:6379/0. Using in-memory dictionary fallback.
+==================================================
+E2E PIPELINE DIAGNOSTIC TEST (TEST A-L)
+==================================================
+Session started with ID: test_session_d3a6d6a4
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+✅ PASS | TEST A: No enrolled embedding -> cannot verify 
+2026-08-24 13:18:45,568 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-08-24 13:18:45,579 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.full_name, users.role, users.email_verified, users.is_active, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.email = ?
+2026-08-24 13:18:45,579 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ('test_81e5e2bc@example.com',)
+2026-08-24 13:18:45,747 INFO sqlalchemy.engine.Engine INSERT INTO users (id, email, password_hash, full_name, role, email_verified, is_active, created_at, updated_at, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-08-24 13:18:45,747 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ('0d9ad7f2-e8ff-4433-9759-9f577aee0e7a', 'test_81e5e2bc@example.com', '$2b$12$DHnFRtp2Nwbs/xBlvu4nkeQO95DoLfz1/Fom8isUpy6ERsBipAhgC', 'Test User', 'user', 0, 1, '2026-08-24 07:48:45.746989', '2026-08-24 07:48:45.747709', None)
+2026-08-24 13:18:45,748 INFO sqlalchemy.engine.Engine INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, meta_data, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+2026-08-24 13:18:45,748 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ('82a5b38f-5e9e-4d0e-a627-3c9034576935', '0d9ad7f2-e8ff-4433-9759-9f577aee0e7a', 'register', 'user', '0d9ad7f2-e8ff-4433-9759-9f577aee0e7a', '{"email": "test_81e5e2bc@example.com"}', 'testclient', '2026-08-24 07:48:45.747069')
+2026-08-24 13:18:45,748 INFO sqlalchemy.engine.Engine COMMIT
+2026-08-24 13:18:45,749 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-08-24 13:18:45,749 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.full_name, users.role, users.email_verified, users.is_active, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.id = ?
+2026-08-24 13:18:45,749 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ('0d9ad7f2-e8ff-4433-9759-9f577aee0e7a',)
+2026-08-24 13:18:45,750 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-08-24 13:18:45,751 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-08-24 13:18:45,752 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.full_name, users.role, users.email_verified, users.is_active, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.email = ? AND users.is_active = 1
+2026-08-24 13:18:45,752 INFO sqlalchemy.engine.Engine [generated in 0.00005s] ('test_81e5e2bc@example.com',)
+2026-08-24 13:18:45,922 INFO sqlalchemy.engine.Engine UPDATE users SET updated_at=?, last_login=? WHERE users.id = ?
+2026-08-24 13:18:45,922 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ('2026-08-24 07:48:45.922095', '2026-08-24 07:48:45.921661', '0d9ad7f2-e8ff-4433-9759-9f577aee0e7a')
+2026-08-24 13:18:45,922 INFO sqlalchemy.engine.Engine INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, meta_data, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+2026-08-24 13:18:45,922 INFO sqlalchemy.engine.Engine [cached since 0.1742s ago] ('7297c1a5-014e-4b73-854f-88d5af9e5063', '0d9ad7f2-e8ff-4433-9759-9f577aee0e7a', 'login', 'session', '1cf14dd3-8cbd-4875-a4ea-932a4b5cd60b', '{"user_agent": "testclient"}', 'testclient', '2026-08-24 07:48:45.922473')
+2026-08-24 13:18:45,923 INFO sqlalchemy.engine.Engine INSERT INTO sessions (id, user_id, access_token, refresh_token, ip_address, user_agent, is_active, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-08-24 13:18:45,923 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ('1cf14dd3-8cbd-4875-a4ea-932a4b5cd60b', '0d9ad7f2-e8ff-4433-9759-9f577aee0e7a', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZDlhZDdmMi1lOGZmLTQ0MzMtOTc1OS05ZjU3N2FlZTBlN2EiLCJlbWFpbCI6InRlc3RfODFlNWUyYmNAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImV4cCI6MTc4NzU2MTMyNSwidHlwZSI6ImFjY2VzcyJ9.DC4FxHvMaafWYVn0WOdwRmHiBTFX5cossbczyOT6G5g', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZDlhZDdmMi1lOGZmLTQ0MzMtOTc1OS05ZjU3N2FlZTBlN2EiLCJleHAiOjE3OTAxNDk3MjUsInR5cGUiOiJyZWZyZXNoIn0.sqb1o0pqon0C64odNlVw-XIv3OhZBaGl5qSZ5ARQxk8', 'testclient', 'testclient', 1, '2026-08-24 07:48:45.922431', '2026-08-24 08:48:45.922431')
+2026-08-24 13:18:45,923 INFO sqlalchemy.engine.Engine COMMIT
+2026-08-24 13:18:45,927 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-08-24 13:18:45,927 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.full_name, users.role, users.email_verified, users.is_active, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.id = ? AND users.is_active = 1
+2026-08-24 13:18:45,927 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ('0d9ad7f2-e8ff-4433-9759-9f577aee0e7a',)
+ENTER: identity_enroll
+=== ENROLL REQUEST RECEIVED ===
+Request payload: session_id=test_session_d3a6d6a4, subject_id=test_user_e2e, image length=152795
+[Enrollment] Stage 0: Session pre-validation
+[Enrollment] Stage 1: Camera initialized
+Session found: test_session_d3a6d6a4
+Challenge state: None
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+ENTER validate_face
+[Enrollment] Stage 2: Single face detected
+[Enrollment] Stage 3: 468/478 landmarks detected
+ENTER quality_check
+[Enrollment] Stage 4: Face centered
+ENTER lighting_check
+[Enrollment] Stage 6: Lighting validation
+ENTER embedding_generation
+[Enrollment] Stage 8: Embedding generation
+=== EMBEDDING GENERATED ===
+[Enrollment] Stored robust multi-sample template with 15 high-quality frames. Quality Score: 58.57
+=== EMBEDDING GENERATED ===
+[Enrollment] Baseline Similarity: 1.0000 (Multi-Template Size: 15)
+[Enrollment] Stage 9: Embedding normalization
+ENTER database_save
+[Enrollment] Stage 10: Embedding storage
+=== DATABASE SAVE STARTED ===
+2026-08-24 13:18:45,933 INFO sqlalchemy.engine.Engine DELETE FROM face_profiles WHERE face_profiles.user_id = ?
+2026-08-24 13:18:45,933 INFO sqlalchemy.engine.Engine [generated in 0.00005s] ('test_user_e2e',)
+[Enrollment] Embedding type: multi-template, 15 vectors, dim=128
+2026-08-24 13:18:45,935 INFO sqlalchemy.engine.Engine INSERT INTO face_profiles (id, user_id, embedding_vector, original_embedding, embedding_hash, template_version, template_metadata, is_encrypted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+2026-08-24 13:18:45,935 INFO sqlalchemy.engine.Engine [generated in 0.00015s] ('788efee6-940d-4053-ac16-d4939d977683', 'test_user_e2e', '{"encrypted_data": "gAAAAABqi_dd8LN0-faewmJi3eeGx-AKqU-YnC5pwag_rr0UjUSFiNP7_306VQCh5N2fTx70Rf_hbETTETi29vYl0SwM7VigjbVXIFS3hNJ7AYc8HGuBbglP1pCUrrZAJ ... (12644 characters truncated) ... n2mVXmjWutJt5HEI03Zw9wfvUtWHRULW-T1DX2L2ec4MYlDTZs0ZzuGsEHUWrqjBCgLCRe48RReozwve5Mf5Dfy3zntdg_9uDlwHBwoH0fpQQpbe6vhk77F3D8uwThQsQE6LqfanG2Qhkzaw_8="}', '[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0. ... (9332 characters truncated) ... .0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]', '86658a6acf2aece6baefda598eeb33eb9441f73f07f6f4695951001cb92c89ef', 1, '{"quality_score": 58.57142857142857, "pose_coverage": ["Up", "Front", "Right 15", "Left 15", "Down"], "expression_coverage": ["Neutral", "Smile"]}', 1, '2026-08-24 07:48:45.934981', '2026-08-24 07:48:45.934982')
+2026-08-24 13:18:45,935 INFO sqlalchemy.engine.Engine COMMIT
+=== DATABASE SAVE COMPLETE ===
+[Enrollment] Stage 11: Enrollment successful — transitioning session
+[Enrollment] SESSION_CACHE[test_ses...] stage=IDENTITY_VERIFYING, enrolled_embedding stored (not returned to client)
+RETURN: status='success' message='Enrollment successful. Quality: 59/100' user_id='test_user_e2e' created_at=datetime.datetime(2026, 8, 24, 7, 48, 45, 936154, tzinfo=datetime.timezone.utc)
+EXIT: identity_enroll
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 9395
+[DIAGNOSTICS] Decoded bytes length: 7027
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+✅ PASS | TEST B: No live embedding -> cannot verify 
+✅ PASS | TEST C: Similarity not calculated on blank frame -> cannot verify 
+✅ PASS | TEST H: cached_similarity is never initialized to 1.0 
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 171647
+[DIAGNOSTICS] Decoded bytes length: 128716
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+✅ PASS | TEST D: Different face -> remains unverified 
+✅ PASS | TEST E: Similarity below 0.88 -> remains unverified 
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+✅ PASS | TEST I: Session ID mismatch -> cannot verify 
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155547
+[DIAGNOSTICS] Decoded bytes length: 116641
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+Lazy-loading InsightFace (buffalo_sc)...
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /Users/krishnavarshithkamanaboina/.insightface/models/buffalo_sc/det_500m.onnx detection [1, 3, '?', '?'] 127.5 128.0
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+find model: /Users/krishnavarshithkamanaboina/.insightface/models/buffalo_sc/w600k_mbf.onnx recognition ['None', 3, 112, 112] 127.5 127.5
+set det-size: (640, 640)
+InsightFace (buffalo_sc) loaded successfully.
+POLL 0: status=ready match=False
+Frame 0: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155931
+[DIAGNOSTICS] Decoded bytes length: 116931
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 1: status=ready match=False
+Frame 1: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 156191
+[DIAGNOSTICS] Decoded bytes length: 117124
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 2: status=ready match=False
+Frame 2: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155507
+[DIAGNOSTICS] Decoded bytes length: 116613
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 3: status=ready match=False
+Frame 3: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 4: status=ready match=False
+Frame 4: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155547
+[DIAGNOSTICS] Decoded bytes length: 116641
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 5: status=ready match=False
+Frame 5: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155931
+[DIAGNOSTICS] Decoded bytes length: 116931
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 6: status=ready match=False
+Frame 6: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 156191
+[DIAGNOSTICS] Decoded bytes length: 117124
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 7: status=ready match=False
+Frame 7: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 155507
+[DIAGNOSTICS] Decoded bytes length: 116613
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 8: status=ready match=False
+Frame 8: sim=None stage=None reason=VERIFYING status=ready
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+POLL 9: status=ready match=False
+Frame 9: sim=None stage=None reason=VERIFYING status=ready
+❌ FAIL | TEST F: Similarity >= 0.88 from REAL calculation -> identity verified 
+❌ FAIL | TEST G: Identical embedding -> actual calculation produces ~1.0 Actual best sim: 0.0
+
+--- ACTUAL VALUES DURING HAPPY PATH ---
+similarity_score: None
+enrolled_matched: False
+[DIAGNOSTICS] b64_to_numpy called. Raw length: 152795
+[DIAGNOSTICS] Decoded bytes length: 114579
+[DIAGNOSTICS] PIL Image shape: (640, 640), format: None, mode: RGB
+[DIAGNOSTICS] Numpy array shape: (640, 640, 3), dtype: uint8
+[DIAGNOSTICS] Frame received: shape=640x640, channels=3, dtype=uint8
+✅ PASS | TEST L: Frontend cannot force IDENTITY_VERIFIED (Backend maintains state) 

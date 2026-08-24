@@ -174,12 +174,12 @@ async def identity_enroll(
     from app.services.cv.mediapipe_engine import (
         CV2_AVAILABLE,
         MP_AVAILABLE,
-        SESSION_CACHE,
         _calculate_face_embedding,
         _validate_enrollment_quality,
         b64_to_numpy,
         _build_enrollment_progress,
     )
+    from app.services.session_manager import SESSION_CACHE
 
     if not MP_AVAILABLE or not CV2_AVAILABLE:
         try:
@@ -192,7 +192,7 @@ async def identity_enroll(
         
     # --- Stage 0: Session pre-validation (hard guard) ---
     print("[Enrollment] Stage 0: Session pre-validation")
-    if data.session_id and data.session_id != "test_session_123":
+    if data.session_id:
         if data.session_id not in SESSION_CACHE:
             print(f"[Enrollment] BLOCKED — Session {data.session_id} not found or expired")
             return {
@@ -305,7 +305,7 @@ async def identity_enroll(
     print("[Enrollment] Stage 8: Embedding generation")
     print("=== EMBEDDING GENERATED ===")
     try:
-        if data.session_id != "test_session_123" and data.session_id in SESSION_CACHE:
+        if data.session_id and data.session_id in SESSION_CACHE:
             session_data = SESSION_CACHE[data.session_id]
             cached_embeddings = session_data.get("enrollment_embeddings", [])
             pose_coverage = session_data.get("pose_coverage", set())
@@ -413,14 +413,14 @@ async def identity_enroll(
             normalized_list = []
             for emb in embedding_vector:
                 norm = sum(x*x for x in emb) ** 0.5 # pyright: ignore
-                if abs(norm - 1.0) > 0.05:
+                if norm > 0 and abs(norm - 1.0) > 0.05:
                     normalized_list.append((np.array(emb) / norm).tolist())
                 else:
                     normalized_list.append(emb)
             embedding_vector = normalized_list
         else:
             norm = sum(x*x for x in embedding_vector) ** 0.5
-            if abs(norm - 1.0) > 0.05:
+            if norm > 0 and abs(norm - 1.0) > 0.05:
                 embedding_vector = (np.array(embedding_vector) / norm).tolist()
     except Exception as e:
         print(f"RAISE: HTTPException(500, Embedding Normalization Error - {e!s})")
@@ -440,7 +440,7 @@ async def identity_enroll(
         emb_hash = hashlib.sha256(json.dumps(embedding_list).encode()).hexdigest()
         
         # Use the session_data already populated above (do NOT re-fetch — would lose template_quality_score)
-        db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id and data.session_id != "test_session_123") else {}
+        db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id) else {}
         template_meta = {
             "quality_score": db_session_data.get("template_quality_score", 100.0),
             "pose_coverage": db_session_data.get("pose_coverage_list", ["Front"]),
@@ -485,15 +485,21 @@ async def identity_enroll(
     # The raw values are NEVER returned to the frontend.
     if data.session_id and data.session_id in SESSION_CACHE:
         SESSION_CACHE[data.session_id]["stage"] = "IDENTITY_VERIFYING"
-        SESSION_CACHE[data.session_id]["enrolled_embedding"] = embedding_vector  # was: best_embedding (undefined)
+        SESSION_CACHE[data.session_id]["enrolled_embedding"] = embedding_vector
         SESSION_CACHE[data.session_id]["enrolled_template_available"] = True
+        
+        # Prevent TypeError on first frame if the user is slightly blurry/misaligned
+        # (Removed cached_signature injection from here because it pollutes live tracking state)
+            
         print(f"[Enrollment] SESSION_CACHE[{data.session_id[:8]}...] stage=IDENTITY_VERIFYING, enrolled_embedding stored (not returned to client)")
     else:
         print(f"[Enrollment] WARNING: session_id={data.session_id!r} not in SESSION_CACHE — cannot set stage")
+
+
     
     # Calculate final quality score for the response message
     final_q = quality.get('quality_score', 0.0)
-    db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id and data.session_id != "test_session_123") else {}
+    db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id) else {}
     if 'template_quality_score' in db_session_data:
         final_q = db_session_data['template_quality_score']
     

@@ -309,7 +309,6 @@ async def process_verification_frame(
         session_id=session.liveness_session_id,
         challenge_type=data.challenge_type,
         enrolled_signature=None,
-        enrolled_embedding=None,
         api_type=api_type,
     )
 

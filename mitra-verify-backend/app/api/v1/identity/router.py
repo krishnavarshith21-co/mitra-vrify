@@ -439,15 +439,22 @@ async def identity_enroll(
         import json
         emb_hash = hashlib.sha256(json.dumps(embedding_list).encode()).hexdigest()
         
-        session_data = SESSION_CACHE.get(data.session_id, {}) if data.session_id != "test_session_123" else {}
+        # Use the session_data already populated above (do NOT re-fetch — would lose template_quality_score)
+        db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id and data.session_id != "test_session_123") else {}
         template_meta = {
-            "quality_score": session_data.get("template_quality_score", 100.0),
-            "pose_coverage": session_data.get("pose_coverage_list", ["Front"]),
-            "expression_coverage": session_data.get("expression_coverage_list", ["Neutral"])
+            "quality_score": db_session_data.get("template_quality_score", 100.0),
+            "pose_coverage": db_session_data.get("pose_coverage_list", ["Front"]),
+            "expression_coverage": db_session_data.get("expression_coverage_list", ["Neutral"])
         }
         
         from app.core.security import encrypt_template
         encrypted_embedding_list = {"encrypted_data": encrypt_template(embedding_list)}
+        
+        # Diagnostic: log shape/dimension without exposing values
+        if isinstance(embedding_list[0], list):
+            print(f"[Enrollment] Embedding type: multi-template, {len(embedding_list)} vectors, dim={len(embedding_list[0])}")
+        else:
+            print(f"[Enrollment] Embedding type: single-vector, dim={len(embedding_list)}")
         
         new_embedding = FaceProfile(
             id=str(uuid.uuid4()),
@@ -463,26 +470,34 @@ async def identity_enroll(
         )
         db.add(new_embedding)
         await db.commit()
+        print("=== DATABASE SAVE COMPLETE ===")
     except Exception as e:
         await db.rollback()
         print(f"RAISE: HTTPException(500, Embedding Storage Error - {e!s})")
         raise HTTPException(status_code=500, detail=f"Stage 10 Failed: Embedding Storage Error - {e!s}")
 
-    # --- Stage 11: Enrollment successful ---
-    print("[Enrollment] Stage 11: Enrollment successful")
+    # --- Stage 11: Session transition to IDENTITY_VERIFYING ---
+    print("[Enrollment] Stage 11: Enrollment successful — transitioning session")
     
-    # Transition session stage directly to IDENTITY_VERIFYING
+    # FIX: `embedding_vector` is the correctly normalized template.
+    # Store it in SESSION_CACHE so the process_demo_frame loop can compare
+    # the current face against the enrolled template in IDENTITY_VERIFYING.
+    # The raw values are NEVER returned to the frontend.
     if data.session_id and data.session_id in SESSION_CACHE:
         SESSION_CACHE[data.session_id]["stage"] = "IDENTITY_VERIFYING"
-        # STORE THE EMBEDDING SECURELY IN THE BACKEND SESSION
-        SESSION_CACHE[data.session_id]["enrolled_embedding"] = best_embedding
+        SESSION_CACHE[data.session_id]["enrolled_embedding"] = embedding_vector  # was: best_embedding (undefined)
         SESSION_CACHE[data.session_id]["enrolled_template_available"] = True
+        print(f"[Enrollment] SESSION_CACHE[{data.session_id[:8]}...] stage=IDENTITY_VERIFYING, enrolled_embedding stored (not returned to client)")
+    else:
+        print(f"[Enrollment] WARNING: session_id={data.session_id!r} not in SESSION_CACHE — cannot set stage")
     
+    # Calculate final quality score for the response message
     final_q = quality.get('quality_score', 0.0)
-    # Check if quality_score was calculated during the multi-sample template creation
-    if 'template_quality_score' in session_data:
-        final_q = session_data['template_quality_score']
+    db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id and data.session_id != "test_session_123") else {}
+    if 'template_quality_score' in db_session_data:
+        final_q = db_session_data['template_quality_score']
     
+    # Return ONLY metadata — never the embedding values themselves
     response = IdentityEnrollResponse(
         status="success",
         message=f"Enrollment successful. Quality: {final_q:.0f}/100",

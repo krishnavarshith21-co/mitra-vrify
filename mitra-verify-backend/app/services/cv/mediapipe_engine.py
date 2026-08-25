@@ -3075,23 +3075,16 @@ def _process_demo_frame_inner(
             # State transitions
             if current_stage == "IDENTITY_VERIFYING":
                 if enrolled_matched:
-                    session["stage"] = "IDENTITY_VERIFIED"
-                    session["identity_verified_time"] = time.time()
+                    session["stage"] = "LIVENESS_CHALLENGES"
+                    session["challenge_start_time"] = time.time()
                 elif not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 30:
                     session["stage"] = "FAILED"
                     status = "UNAUTHORIZED_PERSON"
                     
             elif current_stage == "IDENTITY_VERIFIED":
-                is_identity_secure = (
-                    enrolled_matched and
-                    similarity_score is not None and similarity_score >= required_threshold and
-                    detected_faces == 1
-                )
-                if is_identity_secure and time.time() - session.get("identity_verified_time", 0) > 1.5:
-                    session["stage"] = "LIVENESS_CHALLENGES"
-                elif not is_identity_secure and history and history.get("wrong_person_frames", 0) >= 30:
-                    session["stage"] = "FAILED"
-                    status = "UNAUTHORIZED_PERSON"
+                # Immediately jump to LIVENESS_CHALLENGES to avoid getting stuck
+                session["stage"] = "LIVENESS_CHALLENGES"
+                session["challenge_start_time"] = time.time()
                     
             elif current_stage == "LIVENESS_CHALLENGES":
                 # The frontend tracks challenge sequence. We only transition when the frontend requests monitoring.
@@ -3146,7 +3139,8 @@ def _process_demo_frame_inner(
 
     # Default status logic
     if status == "ready" and history:
-        if challenge_type != "monitoring" and time.time() - history.get("challenge_start_time", time.time()) > 30.0:
+        current_stage_timeout = history.get("stage", "ENROLLMENT")
+        if current_stage_timeout == "LIVENESS_CHALLENGES" and challenge_type != "monitoring" and time.time() - history.get("challenge_start_time", time.time()) > 30.0:
             return {
                 "face_present": True,
                 "detected_faces": int(detected_faces),

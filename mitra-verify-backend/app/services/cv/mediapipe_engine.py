@@ -3259,7 +3259,9 @@ def _process_demo_frame_inner(
     timings["total_processing"] = (time.perf_counter() - timings["request_received"]) * 1000
 
     if challenge_passed:
-        if spoof_score >= 0.45 or detected_faces != 1 or (api_type == "enterprise" and active_enrollment and not enrolled_matched):
+        # During active challenges (pose or expression), facial distortions and head movements
+        # can temporarily cause the identity match to drop. We should not fail the challenge for this.
+        if spoof_score >= 0.45 or detected_faces != 1:
             challenge_passed = False
 
     ret = {

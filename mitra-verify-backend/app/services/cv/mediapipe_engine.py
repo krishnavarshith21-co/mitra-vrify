@@ -2763,7 +2763,7 @@ def _process_demo_frame_inner(
     head_rotation = abs(yaw) > 35.0 or abs(pitch) > 35.0
     
     # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
-    is_stable = detected_faces == 1 and face_confidence_check > 0.8
+    is_stable = detected_faces == 1 and face_confidence > 0.8
     history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality=is_stable)
 
     # Camera feed frozen check

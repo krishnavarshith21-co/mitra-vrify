@@ -2918,14 +2918,32 @@ def _process_demo_frame_inner(
             count = len(recent_mars) if challenge_passed else 0
             
         elif challenge_type == "HEAD_LEFT":
+            # Screenshot proves: Physical LEFT = POSITIVE yaw
+            expected_direction = "POSITIVE"
+            actual_direction = "POSITIVE" if yaw_disp > 0 else "NEGATIVE"
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
-            challenge_passed, count = _check_consecutive_with_count(recent_yaws, lambda y: y - baseline_yaw < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
-            movement_detected = yaw_disp < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS
+            challenge_passed, count = _check_consecutive_with_count(
+                recent_yaws, 
+                lambda y: y - baseline_yaw > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS, 
+                required_count=CHALLENGE_HOLD_FRAMES
+            )
+            movement_detected = yaw_disp > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS
+            
+            print(f"[CHALLENGE DIAG]\nActive={challenge_type}\nBaselineYaw={baseline_yaw:.1f}\nCurrentYaw={yaw:.1f}\nYawDisplacement={yaw_disp:.1f}\nExpectedDirection={expected_direction}\nActualDirection={actual_direction}\nThreshold={CHALLENGE_ANGLE_THRESHOLD}\nHysteresis={CHALLENGE_HYSTERESIS}\nInTargetZone={movement_detected}\nConsecutive={count}\nRequired={CHALLENGE_HOLD_FRAMES}\nPassed={challenge_passed}\n")
                 
         elif challenge_type == "HEAD_RIGHT":
+            # Physical RIGHT = NEGATIVE yaw
+            expected_direction = "NEGATIVE"
+            actual_direction = "POSITIVE" if yaw_disp > 0 else "NEGATIVE"
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
-            challenge_passed, count = _check_consecutive_with_count(recent_yaws, lambda y: y - baseline_yaw > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
-            movement_detected = yaw_disp > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS
+            challenge_passed, count = _check_consecutive_with_count(
+                recent_yaws, 
+                lambda y: y - baseline_yaw < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS, 
+                required_count=CHALLENGE_HOLD_FRAMES
+            )
+            movement_detected = yaw_disp < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS
+            
+            print(f"[CHALLENGE DIAG]\nActive={challenge_type}\nBaselineYaw={baseline_yaw:.1f}\nCurrentYaw={yaw:.1f}\nYawDisplacement={yaw_disp:.1f}\nExpectedDirection={expected_direction}\nActualDirection={actual_direction}\nThreshold={CHALLENGE_ANGLE_THRESHOLD}\nHysteresis={CHALLENGE_HYSTERESIS}\nInTargetZone={movement_detected}\nConsecutive={count}\nRequired={CHALLENGE_HOLD_FRAMES}\nPassed={challenge_passed}\n")
                 
         elif challenge_type == "HEAD_UP":
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]

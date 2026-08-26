@@ -813,6 +813,9 @@ export default function EnterpriseDemoPage() {
           }
           setPhase(prev => {
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
+            // If we are showing a failure, don't immediately overwrite it with READY from the background loop
+            if (prev === 'FAILED' && backendState === 'READY') return prev;
+            
             // Reset stale data on transition to verification
             if (prev === 'ENROLLMENT' && backendState === 'IDENTITY_VERIFYING') {
               setSimilarity(0);
@@ -1092,8 +1095,8 @@ export default function EnterpriseDemoPage() {
 
   const enrollFace = async () => {
     // === ATOMIC GUARD 1: Phase check ===
-    if (phase !== 'ENROLLMENT') {
-      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phase}, expected ENROLLMENT`);
+    if (phase !== 'ENROLLMENT' && phase !== 'READY') {
+      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phase}, expected ENROLLMENT or READY`);
       return;
     }
 
@@ -1325,7 +1328,7 @@ export default function EnterpriseDemoPage() {
                  phase === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
                  phase === 'ENROLLING' ? "Enrolling your biometric profile..." :
                  phase === 'ENROLLED' ? "Biometric enrollment completed." :
-                 phase === 'FAILED' ? "Enrollment failed. Please try again." :
+                 phase === 'FAILED' ? (enrollmentError || "Enrollment failed. Please try again.") :
                  "Start the camera, align your face inside the oval, and click Enroll Current Face."}
               </p>
             </div>

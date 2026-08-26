@@ -924,6 +924,7 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
     cache.setdefault("eyebrow_ratios", []).append(eyebrow_ratio)
     
     # Smile ratio (Lip corner distance vs face width)
+    smile_ratio = 0.32
     if len(landmarks) > 291:
         w_mouth = np.linalg.norm(np.asarray([float(landmarks[291].x), float(landmarks[291].y)], dtype=np.float64) - np.asarray([float(landmarks[61].x), float(landmarks[61].y)], dtype=np.float64))
         w_face = np.linalg.norm(np.asarray([float(landmarks[454].x), float(landmarks[454].y)], dtype=np.float64) - np.asarray([float(landmarks[234].x), float(landmarks[234].y)], dtype=np.float64))

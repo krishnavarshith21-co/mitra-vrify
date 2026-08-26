@@ -529,3 +529,13 @@ async def get_enrolled_identity(
             "created_at": enrolled.created_at
         }
     return {"enrolled": False}
+
+
+@router.delete("/enrolled")
+async def clear_enrolled_identity(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    await db.execute(delete(FaceProfile).where(FaceProfile.user_id == current_user.id))
+    await db.commit()
+    return {"success": True}

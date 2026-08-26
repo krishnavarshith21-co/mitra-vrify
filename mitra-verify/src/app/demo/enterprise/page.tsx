@@ -460,6 +460,7 @@ export default function EnterpriseDemoPage() {
   const [phase, setPhase] = useState<Phase>('IDLE');
   const phaseRef = useRef<Phase>('IDLE');
   useEffect(() => { phaseRef.current = phase; }, [phase]);
+  const sessionGenerationRef = useRef<number>(0);
   const [enrolling, setEnrolling] = useState(false);
   
         const enrollRequestInFlightRef = useRef<boolean>(false);
@@ -670,6 +671,7 @@ export default function EnterpriseDemoPage() {
 
   // Frame processor
   const sendFrameToBackend = useCallback(async () => {
+    const currentGeneration = sessionGenerationRef.current;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !streaming || isProcessing || (overallResult && !isMonitoring)) return;
@@ -711,14 +713,16 @@ export default function EnterpriseDemoPage() {
     };
 
     try {
+      if (currentGeneration !== sessionGenerationRef.current) { setIsProcessing(false); return; }
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
-      const activeChallengeId = phase === 'CONTINUOUS_MONITORING' ? 'monitoring' : 
+      const activeChallengeId = phaseRef.current === 'CONTINUOUS_MONITORING' ? 'monitoring' : 
                                 (currentChallenge >= challenges.length && challenges.length > 0) ? 'liveness_verified' : 
-                                (phase === 'LIVENESS_CHALLENGES' ? challenges[currentChallenge]?.id : undefined);
+                                (phaseRef.current === 'LIVENESS_CHALLENGES' ? challenges[currentChallenge]?.id : undefined);
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise');
       const data = res?.data;
+      if (currentGeneration !== sessionGenerationRef.current) { setIsProcessing(false); return; }
       setApiResponse(data);
-      if (!data) return;
+      if (!data) { setIsProcessing(false); return; }
 
       if (data.status === "cv_engine_unavailable" || data.error?.includes("CV engine not available")) {
         setModelStatus("Failed"); setError("Face detection model failed to load on the server.");
@@ -895,7 +899,7 @@ export default function EnterpriseDemoPage() {
         else { setFaceVisibleDuration((Date.now() - faceVisibleStartRef.current) / 1000); }
 
         // State machine progression MUST run if face is present, regardless of perfectly centered or not
-        if (phase === 'LIVENESS_CHALLENGES') {
+        if (phaseRef.current === 'LIVENESS_CHALLENGES') {
           
           if (currentChallenge === 0) {
             // First challenge is ALWAYS face centered
@@ -1198,14 +1202,32 @@ export default function EnterpriseDemoPage() {
   };
 
   const clearEnrollment = async () => {
+    sessionGenerationRef.current += 1;
+    stopCamera();
     
+    try {
+      await livenessAPI.clearEnrolledFace();
+    } catch (e) { console.warn('Failed to clear enrolled face from backend', e); }
+
     setHasFaceEnrolled(false);
     localStorage.removeItem('enrolledEmbedding'); localStorage.removeItem('mv_enrolled_signature');
     setSimilarity(0); similarityHistoryRef.current = []; setConsecutiveValidFrames(0);
     setPhase('ENROLLMENT');
+    setEnrollmentProgress(null);
+    setCurrentChallenge(0); currentChallengeRef.current = 0;
+    setChallengePassed([]);
+    setApiResponse(null);
+    setIsFacePrepared(false);
+    centerTimerStartedRef.current = false;
+    enrollRequestInFlightRef.current = false;
+    setVerificationCount(0);
+    setSecurityEvents([]);
+    setUnauthorizedAttempts(0);
+    setIsMonitoring(false);
+    
     await refreshUser();
+    setTimeout(() => { startCamera(); }, 100);
   };
-
 
   type EnterpriseState = 'FACE_DETECTED' | 'FACE_ENROLLED' | 'IDENTITY_MATCHED' | 'CHALLENGES_COMPLETED' | 'AUTHENTICATED' | 'MONITORING';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

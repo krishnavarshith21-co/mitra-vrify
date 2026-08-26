@@ -193,6 +193,7 @@ export const livenessAPI = {
     api.post('/liveness/demo/log_event', { session_id: sessionId, event_type: eventType, api_type: apiType }),
   enrollFace: (image: string, subjectId?: string, sessionId?: string) => api.post('/identity/enroll', { image, subject_id: subjectId, session_id: sessionId }),
   getEnrolledFace: () => api.get('/identity/enrolled'),
+  clearEnrolledFace: () => api.delete('/identity/enrolled'),
 };
 
 // ── Analytics (Single Source of Truth) ────────────────────────────────────────

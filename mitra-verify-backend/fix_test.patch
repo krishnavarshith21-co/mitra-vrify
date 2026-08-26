@@ -1,0 +1,10 @@
+--- test_e2e_verification_flow.py
++++ test_e2e_verification_flow.py
+@@ -73,6 +73,7 @@
+ print("\n[3] Committing Enrollment")
+ res = requests.post(f"{BASE_URL}/identity/enroll", json={"image": FACE_B64, "session_id": session_id}, headers=headers)
+ assert res.status_code == 200
++print("Enroll response:", res.text)
+ print("Enrollment successful")
+ 
+ # 4. Confirm Enrollment

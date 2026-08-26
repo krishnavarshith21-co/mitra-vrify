@@ -1,0 +1,10 @@
+--- test_e2e_verification_flow.py
++++ test_e2e_verification_flow.py
+@@ -32,6 +32,7 @@
+ print("\n=== STARTING END-TO-END VERIFICATION FLOW TEST ===")
+ 
+ def process_frame(session_id, challenge_type=None, api_type="enterprise"):
++    print(f"process_frame called with api_type={api_type}")
+     return requests.post(
+         f"{BASE_URL}/liveness/demo/process",
+         json={

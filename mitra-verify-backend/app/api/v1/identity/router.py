@@ -308,8 +308,8 @@ async def identity_enroll(
         if data.session_id and data.session_id in SESSION_CACHE:
             session_data = SESSION_CACHE[data.session_id]
             cached_embeddings = session_data.get("enrollment_embeddings", [])
-            pose_coverage = session_data.get("pose_coverage", set())
-            expr_coverage = session_data.get("expression_coverage", set())
+            pose_coverage = set(session_data.get("pose_coverage", []))
+            expr_coverage = set(session_data.get("expression_coverage", []))
             
             # Enterprise strict coverage requirements
             required_poses = {"Front", "Left 15", "Right 15", "Up", "Down"}

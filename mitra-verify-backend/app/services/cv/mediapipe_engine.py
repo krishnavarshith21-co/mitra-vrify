@@ -2946,14 +2946,28 @@ def _process_demo_frame_inner(
             print(f"[CHALLENGE DIAG]\nActive={challenge_type}\nBaselineYaw={baseline_yaw:.1f}\nCurrentYaw={yaw:.1f}\nYawDisplacement={yaw_disp:.1f}\nExpectedDirection={expected_direction}\nActualDirection={actual_direction}\nThreshold={CHALLENGE_ANGLE_THRESHOLD}\nHysteresis={CHALLENGE_HYSTERESIS}\nInTargetZone={movement_detected}\nConsecutive={count}\nRequired={CHALLENGE_HOLD_FRAMES}\nPassed={challenge_passed}\n")
                 
         elif challenge_type == "HEAD_UP":
+            expected_direction = "POSITIVE"
+            actual_direction = "POSITIVE" if pitch_disp > 0 else "NEGATIVE"
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
             challenge_passed, count = _check_consecutive_with_count(recent_pitches, lambda p: p - baseline_pitch > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
             movement_detected = pitch_disp > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS
+            
+            print(f"[CHALLENGE DIAG]\nActive={challenge_type}\nBaselinePitch={baseline_pitch:.1f}\nCurrentPitch={pitch:.1f}\nPitchDisplacement={pitch_disp:.1f}\nExpectedDirection={expected_direction}\nActualDirection={actual_direction}\nThreshold={CHALLENGE_ANGLE_THRESHOLD}\nHysteresis={CHALLENGE_HYSTERESIS}\nInTargetZone={movement_detected}\nConsecutive={count}\nRequired={CHALLENGE_HOLD_FRAMES}\nPassed={challenge_passed}\n")
+            
+            if pitch_disp >= 32.0 and not challenge_passed:
+                print(f"[ASSERT FAIL] HEAD_UP pitch_disp={pitch_disp:.1f} >= 32.0, but failed. Recent pitches len={len(recent_pitches)}, count={count}, req={CHALLENGE_HOLD_FRAMES}")
                 
         elif challenge_type == "HEAD_DOWN":
+            expected_direction = "NEGATIVE"
+            actual_direction = "POSITIVE" if pitch_disp > 0 else "NEGATIVE"
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
             challenge_passed, count = _check_consecutive_with_count(recent_pitches, lambda p: p - baseline_pitch < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
             movement_detected = pitch_disp < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS
+
+            print(f"[CHALLENGE DIAG]\nActive={challenge_type}\nBaselinePitch={baseline_pitch:.1f}\nCurrentPitch={pitch:.1f}\nPitchDisplacement={pitch_disp:.1f}\nExpectedDirection={expected_direction}\nActualDirection={actual_direction}\nThreshold={CHALLENGE_ANGLE_THRESHOLD}\nHysteresis={CHALLENGE_HYSTERESIS}\nInTargetZone={movement_detected}\nConsecutive={count}\nRequired={CHALLENGE_HOLD_FRAMES}\nPassed={challenge_passed}\n")
+            
+            if pitch_disp <= -32.0 and not challenge_passed:
+                print(f"[ASSERT FAIL] HEAD_DOWN pitch_disp={pitch_disp:.1f} <= -32.0, but failed. Recent pitches len={len(recent_pitches)}, count={count}, req={CHALLENGE_HOLD_FRAMES}")
                 
         elif challenge_type == "NOD_HEAD":
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]

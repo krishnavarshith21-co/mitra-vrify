@@ -761,7 +761,7 @@ export default function EnterpriseDemoPage() {
         "CAMERA_FEED_FROZEN": "SESSION TERMINATED",
         "UNAUTHORIZED_PERSON": "UNAUTHORIZED PERSON",
         "IDENTITY_CHANGED": "UNAUTHORIZED PERSON",
-        "SPOOF_DETECTED": error ? "PROCESSING ERROR" : (backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"),
+        "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED",
         "FACE_LOST": "FACE LOST"
       };
 
@@ -936,8 +936,6 @@ export default function EnterpriseDemoPage() {
       }
     } catch (err: any) {
       console.warn('Frame processing failed', err);
-      setModelStatus("Failed");
-      setError(`Failed to connect to backend biometric services.`);
       handleFrameInvalid(null);
     } finally {
       setIsProcessing(false);
@@ -1064,10 +1062,12 @@ export default function EnterpriseDemoPage() {
         await videoRef.current.play();
         setStreaming(true);
       }
-    } catch {
-      setCameraStatus('Inactive'); setError('Camera access denied.');
-      if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
-      setModelStatus('Failed');
+    } catch (err) {
+      if (!streaming) {
+        setCameraStatus('Inactive'); setError('Camera access denied.');
+        if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
+        setModelStatus('Failed');
+      }
     }
   }
 

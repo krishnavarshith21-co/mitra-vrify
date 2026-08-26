@@ -903,6 +903,7 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
     cache.setdefault("yaw", []).append(yaw)
     cache.setdefault("pitch", []).append(pitch)
     cache.setdefault("roll", []).append(roll)
+    cache.setdefault("frame_times", []).append(time.time())
     
     # Eyebrow raise: Use arch landmarks vs upper eyelid for best accuracy
     left_brow_y = min(landmarks[63].y, landmarks[105].y, landmarks[66].y, landmarks[107].y)
@@ -932,6 +933,7 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
         if cache.get("roll"): cache["roll"].pop(0)
         if cache.get("eyebrow_ratios"): cache["eyebrow_ratios"].pop(0)
         if cache.get("smile_ratios"): cache["smile_ratios"].pop(0)
+        if cache.get("frame_times"): cache["frame_times"].pop(0)
         
     # Baseline distance calibration for the first 2 seconds (10 frames approx at slow fps, 60 at fast)
     # Baseline calibration: use median (more robust to outliers than mean)
@@ -2402,7 +2404,7 @@ def _process_demo_frame_inner(
             if time.time() - session["last_face_seen"] > 5.0:
                 status_code = "FACE_LOST"
                 reason_code = "no_face_detected"
-            elif time.time() - session.get("challenge_start_time", time.time()) > 30.0:
+            elif time.time() - session.get("challenge_start_time", time.time()) > 300.0:
                 status_code = "CHALLENGE_FAILED"
                 reason_code = "CHALLENGE_TIMEOUT"
                 
@@ -2750,8 +2752,8 @@ def _process_demo_frame_inner(
             return payload
 
     # Strict Yaw/Pitch validation for embedding comparison
-    # Skip this guard when the active challenge requires head movement (look_up, look_down, turn_left, turn_right)
-    pose_challenge_active = challenge_type in ("look_up", "look_down", "turn_left", "turn_right")
+    # Skip this guard when the active challenge requires head movement
+    pose_challenge_active = challenge_type in ("HEAD_UP", "HEAD_DOWN", "HEAD_LEFT", "HEAD_RIGHT", "NOD_HEAD", "HEAD_ROTATION")
     
 
     if api_type == "enterprise" and head_rotation and not pose_challenge_active:
@@ -2838,75 +2840,83 @@ def _process_demo_frame_inner(
             "enterprise_report": _build_empty_enterprise_report("DEEPFAKE_SUSPECTED")
         }
 
-    # 11. Challenge validation (Support 15 different facial challenges)
+    # 11. Challenge validation (Support the 9 strict physical challenges)
     challenge_passed = False
     face_confidence_check = _calculate_face_confidence(landmarks, w, h) if detected_faces > 0 else 0.0
     if challenge_type and history and detected_faces == 1 and face_confidence_check > 0:
-        if challenge_type == "face_centered":
+        
+        # Determine the start time of the current challenge.
+        # This prevents previous challenge frames (e.g. from HEAD_UP) from falsely completing the next challenge.
+        ch_start = history.get("challenge_start_time", 0)
+        frame_times = history.get("frame_times", [])
+        
+        # Extract only the history collected SINCE the challenge started
+        recent_indices = [i for i, t in enumerate(frame_times) if t >= ch_start]
+        
+        if challenge_type == "FACE_CENTERED":
             challenge_passed = abs(yaw) < 12.0 and abs(pitch) < 12.0 and 0.30 < (bbox["x"] + bbox["w"]/2) < 0.70
-        elif challenge_type == "blink_once" or challenge_type == "blink_twice":
-            # Blink detection must require EAR drops below threshold -> EAR returns above threshold -> within valid duration
-            target_blinks = 1 if challenge_type == "blink_once" else 2
-            ears = history["ear"]
-            blinks = 0
-            in_blink = False
-            blink_start = 0
-            for i, val in enumerate(ears):
-                if val < 0.25: # More natural blink threshold
-                    if not in_blink:
-                        in_blink = True
-                        blink_start = i
-                else:
-                    if in_blink:
-                        duration = i - blink_start
-                        if 1 <= duration <= 25:
-                            blinks += 1
-                        in_blink = False
-            challenge_passed = blinks >= target_blinks and not in_blink
-        elif challenge_type == "open_mouth":
-            mars = history["mar"]
+            
+        elif challenge_type == "OPEN_MOUTH":
+            recent_mars = [history["mar"][i] for i in recent_indices] if recent_indices else [mar]
             opened = False
             closed = False
-            for val in mars:
+            for val in recent_mars:
                 if val > 0.35: # Natural open mouth
                     opened = True
                 elif opened and val < 0.28:
                     closed = True
             challenge_passed = opened and closed
-        elif challenge_type == "smile":
-            # Uses lip corner movement, smoothed over last 3 frames
-            smiles = history.get("smile_score", [])
-            if len(smiles) >= 3:
-                smoothed_smile = float(np.mean(smiles[-3:]))
-                challenge_passed = smoothed_smile > 0.30 # Natural smile
-            else:
-                challenge_passed = smile_score > 0.35
-        elif challenge_type == "turn_left":
-            yaws = history["yaw"]
-            if len(yaws) >= 5 and yaw < -10.0: # Natural turn
+            
+        elif challenge_type == "HEAD_LEFT":
+            recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
+            if len(recent_yaws) >= 3 and yaw < -15.0:
                 challenge_passed = True
-        elif challenge_type == "turn_right":
-            yaws = history["yaw"]
-            if len(yaws) >= 5 and yaw > 10.0:
+                
+        elif challenge_type == "HEAD_RIGHT":
+            recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
+            if len(recent_yaws) >= 3 and yaw > 15.0:
                 challenge_passed = True
-        elif challenge_type == "look_up":
-            pitches = history.get("pitch", [])
-            if len(pitches) >= 3 and float(np.mean(pitches[-3:])) > 5.0: # Natural look up
+                
+        elif challenge_type == "HEAD_UP":
+            recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
+            if len(recent_pitches) >= 3 and float(np.mean(recent_pitches[-3:])) > 10.0:
                 challenge_passed = True
-        elif challenge_type == "look_down":
-            pitches = history.get("pitch", [])
-            if len(pitches) >= 3 and float(np.mean(pitches[-3:])) < -5.0:
+                
+        elif challenge_type == "HEAD_DOWN":
+            recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
+            if len(recent_pitches) >= 3 and float(np.mean(recent_pitches[-3:])) < -10.0:
                 challenge_passed = True
-        elif challenge_type == "hold_still":
-            yaws = history.get("yaw", [])
-            pitches = history.get("pitch", [])
-            rolls = history.get("roll", [])
-            if len(yaws) >= 15:
-                y_var = np.var(yaws[-15:])
-                p_var = np.var(pitches[-15:])
-                r_var = np.var(rolls[-15:])
-                if y_var < 8.0 and p_var < 8.0 and r_var < 8.0: # Allow slight natural jitter
+                
+        elif challenge_type == "NOD_HEAD":
+            recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
+            went_up = False
+            went_down = False
+            for p in recent_pitches:
+                if p > 8.0:
+                    went_up = True
+                if p < -8.0:
+                    went_down = True
+            challenge_passed = went_up and went_down
+            
+        elif challenge_type == "HEAD_ROTATION":
+            recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
+            recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
+            if len(recent_yaws) >= 10:
+                yaw_var = np.var(recent_yaws)
+                pitch_var = np.var(recent_pitches)
+                if yaw_var > 30.0 and pitch_var > 20.0:
                     challenge_passed = True
+                    
+        elif challenge_type == "EYEBROWS_UP":
+            # Rely on the eyebrow_raised calculated at step 6, but smoothed over recent frames
+            recent_ratios = [history["eyebrow_ratios"][i] for i in recent_indices] if recent_indices else [eyebrow_ratio]
+            if history.get("baseline_eyebrow_ratio") is not None:
+                baseline = history["baseline_eyebrow_ratio"]
+                if len(recent_ratios) >= 3:
+                    smoothed_ratio = float(np.mean(recent_ratios[-3:]))
+                    challenge_passed = smoothed_ratio > (baseline * 1.15)
+            else:
+                challenge_passed = eyebrow_ratio > 0.22
 
     # Calculate spoof score dynamically passing the challenge details
     t_spoof_start = time.perf_counter()

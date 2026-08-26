@@ -210,26 +210,15 @@ import secrets
 import time
 
 CHALLENGES_METADATA = {
-    "face_centered": { "label": "Face Centered", "instruction": "Center your face inside the guides", "icon": "👤" },
-    "blink_once": { "label": "Blink Once", "instruction": "Blink your eyes once slowly", "icon": "👁️" },
-    "blink_twice": { "label": "Blink Twice", "instruction": "Blink your eyes twice slowly", "icon": "👁️" },
-    "open_mouth": { "label": "Open Mouth", "instruction": "Open your mouth wide", "icon": "👄" },
-    "smile": { "label": "Smile", "instruction": "Smile warmly", "icon": "😊" },
-    "turn_left": { "label": "Turn Head Left", "instruction": "Turn your head to the left", "icon": "👈" },
-    "turn_right": { "label": "Turn Head Right", "instruction": "Turn your head to the right", "icon": "👉" },
-    "look_up": { "label": "Look Up", "instruction": "Look up with your head", "icon": "👆" },
-    "look_down": { "label": "Look Down", "instruction": "Look down with your head", "icon": "👇" },
-    "nod_head": { "label": "Nod Head", "instruction": "Nod your head up and down", "icon": "👍" },
-    "shake_head": { "label": "Shake Head", "instruction": "Shake your head left and right", "icon": "👎" },
-    "look_left": { "label": "Look Left", "instruction": "Look left with your eyes", "icon": "👀" },
-    "look_right": { "label": "Look Right", "instruction": "Look right with your eyes", "icon": "👀" },
-    "hold_still": { "label": "Hold Still", "instruction": "Hold still for 2 seconds", "icon": "⏱️" },
-    "turn_left_45": { "label": "Turn Head Left 45°", "instruction": "Turn your head slightly to the left", "icon": "👈" },
-    "turn_right_45": { "label": "Turn Head Right 45°", "instruction": "Turn your head slightly to the right", "icon": "👉" },
-    "turn_left_90": { "label": "Turn Head Left 90°", "instruction": "Turn your head completely to the left", "icon": "👈" },
-    "turn_right_90": { "label": "Turn Head Right 90°", "instruction": "Turn your head completely to the right", "icon": "👉" },
-    "raise_eyebrows": { "label": "Raise Eyebrows", "instruction": "Raise your eyebrows", "icon": "🤨" },
-    "follow_target": { "label": "Follow Target", "instruction": "Follow the target", "icon": "🎯" }
+    "FACE_CENTERED": { "label": "Face Centered", "instruction": "Center your face inside the guides", "icon": "👤" },
+    "HEAD_UP": { "label": "Look Up", "instruction": "Look up with your head", "icon": "👆" },
+    "HEAD_DOWN": { "label": "Look Down", "instruction": "Look down with your head", "icon": "👇" },
+    "HEAD_LEFT": { "label": "Turn Head Left", "instruction": "Turn your head to the left", "icon": "👈" },
+    "HEAD_RIGHT": { "label": "Turn Head Right", "instruction": "Turn your head to the right", "icon": "👉" },
+    "NOD_HEAD": { "label": "Nod Head", "instruction": "Nod your head up and down", "icon": "👍" },
+    "OPEN_MOUTH": { "label": "Open Mouth", "instruction": "Open your mouth wide", "icon": "👄" },
+    "HEAD_ROTATION": { "label": "Rotate Head", "instruction": "Slowly rotate your head in a circle", "icon": "🔄" },
+    "EYEBROWS_UP": { "label": "Raise Eyebrows", "instruction": "Raise your eyebrows", "icon": "🤨" }
 }
 
 class SessionStartRequest(BaseModel):
@@ -327,11 +316,12 @@ async def debug_cv():
 async def start_session(data: SessionStartRequest):
     session_id = getattr(data, 'session_id', None) or str(uuid.uuid4())
     
-    advanced_pool = ['blink_once', 'blink_twice', 'open_mouth', 'smile', 'look_up', 'hold_still']
-    enterprise_pool = ['blink_once', 'blink_twice', 'open_mouth', 'smile', 'look_up', 'look_down', 'turn_left', 'turn_right', 'turn_left_45', 'turn_right_45', 'turn_left_90', 'turn_right_90', 'raise_eyebrows', 'nod_head', 'shake_head', 'look_left', 'look_right', 'hold_still', 'follow_target']
+    advanced_pool = ['HEAD_UP', 'HEAD_DOWN', 'OPEN_MOUTH', 'EYEBROWS_UP']
+    enterprise_pool = ['HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
     
     if data.api_type == "enterprise":
-        selected = secrets.SystemRandom().sample(enterprise_pool, min(4, len(enterprise_pool)))
+        requested_count = secrets.choice([6, 7, 8])
+        selected = secrets.SystemRandom().sample(enterprise_pool, requested_count)
     elif data.api_type == "advanced":
         requested_count = secrets.choice([3, 4, 5])
         num_challenges = min(len(advanced_pool), requested_count)
@@ -342,10 +332,10 @@ async def start_session(data: SessionStartRequest):
         
     challenges = []
     challenges.append({
-        "id": "face_centered",
+        "id": "FACE_CENTERED",
         "label": "1. Face Centered",
-        "instruction": CHALLENGES_METADATA["face_centered"]["instruction"],
-        "icon": CHALLENGES_METADATA["face_centered"]["icon"]
+        "instruction": CHALLENGES_METADATA["FACE_CENTERED"]["instruction"],
+        "icon": CHALLENGES_METADATA["FACE_CENTERED"]["icon"]
     })
     
     for idx, cid in enumerate(selected):
@@ -369,7 +359,7 @@ async def start_session(data: SessionStartRequest):
         "baseline_eyebrow_ratio": None,
         "smile_ratios": [],
         "baseline_smile_ratio": None,
-        "current_challenge": "face_centered",
+        "current_challenge": "FACE_CENTERED",
         "challenges": challenges,
         "logged": False,
         "created_at": time.time(),

@@ -979,11 +979,11 @@ def _compute_adaptive_thresholds(frame: np.ndarray, history: dict | None = None)
     
     return {
         "blur_score": float(blur_score),
-        "normalized_blur": float(normalized_blur),
-        "brightness": float(brightness),
-        "contrast": float(contrast),
-        "fps": float(fps),
-        "quality_score": float(quality),
+        "normalized_blur": normalized_blur,
+        "brightness": brightness,
+        "contrast": contrast,
+        "fps": fps,
+        "quality_score": quality,
         "threshold_multiplier": 1.0 / quality
     }
 
@@ -1459,14 +1459,14 @@ def _compute_anti_spoof_details(frame: np.ndarray, history: dict,
                                   spoof_score: float) -> dict:
     """Compute detailed anti-spoof breakdown for enterprise dashboard."""
     details = {
-        "texture_score": round(float(texture_score), 4),
+        "texture_score": round(texture_score, 4),
         "reflection_score": 0.0,
-        "moire_score": round(float(replay_score), 4),
+        "moire_score": round(replay_score, 4),
         "motion_consistency": 0.85,
         "landmark_stability": 0.90,
         "face_warp": 0.0,
         "depth_consistency": 0.80,
-        "overall_spoof_risk": round(float(spoof_score), 4),
+        "overall_spoof_risk": round(spoof_score, 4),
     }
     
     # Motion consistency from history
@@ -1522,9 +1522,9 @@ def _compute_anti_spoof_details(frame: np.ndarray, history: dict,
 def _compute_telemetry(timings: dict, face_confidence: float, embedding_dim: int) -> dict:
     """Compute processing telemetry for enterprise dashboard."""
     return {
-        "detection_confidence": round(float(face_confidence), 4),
-        "face_confidence": round(float(face_confidence), 4),
-        "embedding_quality": round(min(1.0, float(face_confidence) * 1.1), 4),
+        "detection_confidence": round(face_confidence, 4),
+        "face_confidence": round(face_confidence, 4),
+        "embedding_quality": round(min(1.0, face_confidence * 1.1), 4),
         "embedding_dimension": embedding_dim,
         "inference_time_ms": round(timings.get("mediapipe_processing", 0.0), 2),
         "frame_processing_time_ms": round(timings.get("total_processing", 0.0), 2),
@@ -1655,7 +1655,7 @@ def _validate_landmark_geometry(landmarks, w: int, h: int) -> dict:
     
     return {
         "valid": bool(aggregate > 0.6 and deformation_score > 0.4),
-        "score": float(aggregate),
+        "score": aggregate,
         "regions": {
             "eye": eye_score,
             "nose": nose_score,
@@ -2026,7 +2026,7 @@ def _build_empty_enterprise_report(status: str) -> dict:
         }
     }
 
-def _build_enrollment_progress(session_id: str, quality_pass: bool = True, reject_reason: str | None = None, extra_rejected: int = 0) -> dict:
+def _build_enrollment_progress(session_id: str | None, quality_pass: bool = True, reject_reason: str | None = None, extra_rejected: int = 0) -> dict:
     """Build canonical enrollment progress payload. Single source of truth for enrollment state."""
     if not session_id or session_id not in SESSION_CACHE:
         return {
@@ -2062,8 +2062,8 @@ def _build_enrollment_progress(session_id: str, quality_pass: bool = True, rejec
     frame_seq = session.get("frames", [])
     frame_seq_id = len(frame_seq) if frame_seq else 0
     
-    # Authoritative Readiness Condition (Modified for test automation)
-    is_ready = (valid >= 15)
+    # Authoritative Readiness Condition
+    is_ready = (valid >= 15 and not missing_poses and not missing_exprs)
     
     session_stage = session.get("stage", "ENROLLMENT"); 
     
@@ -2667,7 +2667,7 @@ def _process_demo_frame_inner(
         # Confidence check
         if face_confidence < 0.5:
             return {
-                "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
+                "face_present": True, "detected_faces": detected_faces, "face_confidence": face_confidence, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "LOW_CONFIDENCE", "reason": "Face confidence too low", "challenge_passed": False, "enrolled_matched": False,
                             "enterprise_report": _build_enterprise_report(
                 identity_match=0.0,
@@ -2743,7 +2743,7 @@ def _process_demo_frame_inner(
         if variance < 0.0001:
             history["rejected_frames"] = history.get("rejected_frames", 0) + 1
             payload = {
-                "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
+                "face_present": True, "detected_faces": detected_faces, "face_confidence": face_confidence, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "CAMERA_FEED_FROZEN", "challenge_passed": False, "enrolled_matched": False,
                 "enterprise_report": _build_empty_enterprise_report("CAMERA_FEED_FROZEN")
             }
@@ -2753,20 +2753,7 @@ def _process_demo_frame_inner(
     # Skip this guard when the active challenge requires head movement (look_up, look_down, turn_left, turn_right)
     pose_challenge_active = challenge_type in ("look_up", "look_down", "turn_left", "turn_right")
     
-    if history and history.get("stage") == "ENROLLMENT":
-        if history.get("enrollment_embeddings"):
-            baseline = history["enrollment_embeddings"][0]
-            dist = np.linalg.norm(np.array(baseline) - np.array(embedding))
-            if dist < 0.08:
-                history["rejected_frames"] = history.get("rejected_frames", 0) + 1
-                history["last_reject_reason"] = "Frame too similar to baseline"
-                payload = {
-                    "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
-                    "bbox": bbox, "status": "FRAME_REDUNDANT", "reason": "Frame too similar to baseline", "challenge_passed": False, "enrolled_matched": False,
-                    "enterprise_report": _build_empty_enterprise_report("FRAME_REDUNDANT")
-                }
-                payload["enrollment_progress"] = _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Frame too similar to baseline")
-                return payload
+
     if api_type == "enterprise" and head_rotation and not pose_challenge_active:
         payload = {
             "face_present": True, "detected_faces": detected_faces, "face_confidence": float(face_confidence), "landmark_count": landmark_count,
@@ -3175,7 +3162,7 @@ def _process_demo_frame_inner(
                 "face_present": True,
                 "detected_faces": int(detected_faces),
                 "face_confidence": float(face_confidence),
-                "landmark_count": int(landmark_count),
+                "landmark_count": landmark_count,
                 "bbox": bbox,
                 "status": "SPOOF_DETECTED",
                 "reason": "CHALLENGE_TIMEOUT",
@@ -3280,18 +3267,18 @@ def _process_demo_frame_inner(
         "pitch": float(pitch),
         "roll": float(roll),
         "gaze_direction": gaze_direction,
-        "gaze_available": bool(gaze_available),
-        "smile_score": float(smile_score),
-        "eyebrow_ratio": float(eyebrow_ratio),
+        "gaze_available": gaze_available,
+        "smile_score": smile_score,
+        "eyebrow_ratio": eyebrow_ratio,
         "eyebrow_raised": bool(eyebrow_raised),
         "jaw_ratio": float(jaw_ratio),
-        "jaw_left": bool(jaw_left),
-        "jaw_right": bool(jaw_right),
-        "jaw_open": bool(jaw_open),
-        "ear": float(avg_ear),
-        "mar": float(smoothed_mar),
-        "left_ear": float(left_ear),
-        "right_ear": float(right_ear),
+        "jaw_left": jaw_left,
+        "jaw_right": jaw_right,
+        "jaw_open": jaw_open,
+        "ear": avg_ear,
+        "mar": smoothed_mar,
+        "left_ear": left_ear,
+        "right_ear": right_ear,
         "spoof_score": float(spoof_score),
         "deepfake_risk": float(deepfake_risk),
         "fraud_detection": fraud_result,
@@ -3363,7 +3350,7 @@ def run_identity_verify(image_b64: str, subject_id: str | None = None, enrolled_
     result = process_demo_frame(
         image_b64=image_b64,
         session_id=session_id,
-        enrolled_embedding=enrolled_vector,
+        enrolled_signature=enrolled_vector,
         api_type="enterprise"
     )
     

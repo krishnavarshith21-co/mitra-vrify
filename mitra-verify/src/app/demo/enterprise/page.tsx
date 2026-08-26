@@ -980,6 +980,7 @@ export default function EnterpriseDemoPage() {
 
   useEffect(() => {
     if (!streaming || overallResult || !hasFaceEnrolled || currentChallenge >= challenges.length) return;
+    setChallengeTimer(30);
     timerRef.current = setInterval(() => {
       setChallengeTimer(t => { if (t <= 1) return 30; return t - 1; });
     }, 1000);

@@ -11,6 +11,9 @@ MediaPipe-based computer vision engine for MITRA VERIFY.
 Implements face liveness detection, anti-spoof, and identity verification.
 """
 IDENTITY_MATCH_THRESHOLD = 0.88
+CHALLENGE_HOLD_FRAMES = 12
+CHALLENGE_ANGLE_THRESHOLD = 12.0
+CHALLENGE_HYSTERESIS = 3.0
 import base64
 import math
 import os
@@ -823,7 +826,7 @@ def _head_pose_3d(landmarks, w, h):
 # ─────────────────────────────────────────────────────────────
 from app.services.session_manager import SESSION_CACHE
 
-def update_session_history(session_id: str | None, landmarks: list, ear: float, mar: float, yaw: float, pitch: float, roll: float, challenge_type: str | None = None):
+def update_session_history(session_id: str | None, landmarks: list, ear: float, mar: float, yaw: float, pitch: float, roll: float, challenge_type: str | None = None, is_calibration_quality: bool = True):
     if not session_id:
         return None
     if session_id not in SESSION_CACHE:
@@ -838,6 +841,9 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
             "baseline_eyebrow_ratio": None,
             "smile_ratios": [],
             "baseline_smile_ratio": None,
+            "baseline_pitch": None,
+            "baseline_yaw": None,
+            "baseline_roll": None,
             "blink_state": "WAITING",  # WAITING, DROPPED, RECOVERED
             "blink_drop_frames": 0,
             "current_challenge": challenge_type,
@@ -935,15 +941,29 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
         if cache.get("smile_ratios"): cache["smile_ratios"].pop(0)
         if cache.get("frame_times"): cache["frame_times"].pop(0)
         
+    if is_calibration_quality:
+        cache.setdefault("calib_eyebrow_ratios", []).append(eyebrow_ratio)
+        if len(landmarks) > 291:
+            cache.setdefault("calib_smile_ratios", []).append(smile_ratio)
+        cache.setdefault("calib_yaw", []).append(yaw)
+        cache.setdefault("calib_pitch", []).append(pitch)
+        cache.setdefault("calib_roll", []).append(roll)
+        
     # Baseline distance calibration for the first 2 seconds (10 frames approx at slow fps, 60 at fast)
     # Baseline calibration: use median (more robust to outliers than mean)
-    if cache["baseline_eyebrow_ratio"] is None or cache["baseline_smile_ratio"] is None:
+    if cache["baseline_eyebrow_ratio"] is None or cache["baseline_smile_ratio"] is None or cache.get("baseline_pitch") is None:
         elapsed = time.time() - cache["created_at"]
         if elapsed >= 2.0:
             if cache["baseline_eyebrow_ratio"] is None:
-                cache["baseline_eyebrow_ratio"] = float(np.median(cache["eyebrow_ratios"])) if cache["eyebrow_ratios"] else 0.18
+                cache["baseline_eyebrow_ratio"] = float(np.median(cache["calib_eyebrow_ratios"])) if cache.get("calib_eyebrow_ratios") else 0.18
             if cache["baseline_smile_ratio"] is None:
-                cache["baseline_smile_ratio"] = float(np.median(cache["smile_ratios"])) if cache["smile_ratios"] else 0.32
+                cache["baseline_smile_ratio"] = float(np.median(cache["calib_smile_ratios"])) if cache.get("calib_smile_ratios") else 0.32
+            if cache.get("baseline_pitch") is None:
+                cache["baseline_pitch"] = float(np.median(cache["calib_pitch"])) if cache.get("calib_pitch") else 0.0
+            if cache.get("baseline_yaw") is None:
+                cache["baseline_yaw"] = float(np.median(cache["calib_yaw"])) if cache.get("calib_yaw") else 0.0
+            if cache.get("baseline_roll") is None:
+                cache["baseline_roll"] = float(np.median(cache["calib_roll"])) if cache.get("calib_roll") else 0.0
         
     # Periodic cleanup of stale sessions (> 3 minutes inactive)
     now = time.time()
@@ -2250,8 +2270,15 @@ def map_verification_result(cv_result: dict, api_type: str) -> str:
         
     return "FAILED"
 
-
-
+def _check_consecutive_with_count(values, condition_fn, required_count=3):
+    """Returns (is_passed, consecutive_count) evaluating from the most recent frames backwards."""
+    count = 0
+    for val in reversed(values):
+        if condition_fn(val):
+            count += 1
+        else:
+            break
+    return count >= required_count, count
 
 def _process_demo_frame_inner(
     image_b64: str,
@@ -2736,7 +2763,8 @@ def _process_demo_frame_inner(
     head_rotation = abs(yaw) > 35.0 or abs(pitch) > 35.0
     
     # 9. Session history (for anti-spoof landmark stability & challenge check tracking)
-    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type)
+    is_stable = detected_faces == 1 and face_confidence_check > 0.8
+    history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality=is_stable)
 
     # Camera feed frozen check
     if api_type == "enterprise" and history and len(history["landmarks"]) >= 5:
@@ -2853,8 +2881,29 @@ def _process_demo_frame_inner(
         # Extract only the history collected SINCE the challenge started
         recent_indices = [i for i, t in enumerate(frame_times) if t >= ch_start]
         
+        baseline_yaw = history.get("baseline_yaw", 0.0)
+        baseline_pitch = history.get("baseline_pitch", 0.0)
+        baseline_roll = history.get("baseline_roll", 0.0)
+
+        yaw_disp = yaw - baseline_yaw
+        pitch_disp = pitch - baseline_pitch
+        roll_disp = roll - baseline_roll
+
+        count = 0
+        movement_detected = False
+        threshold = CHALLENGE_ANGLE_THRESHOLD
+
         if challenge_type == "FACE_CENTERED":
-            challenge_passed = abs(yaw) < 12.0 and abs(pitch) < 12.0 and 0.30 < (bbox["x"] + bbox["w"]/2) < 0.70
+            recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
+            recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
+            valid_count = 0
+            for y_hist, p_hist in zip(reversed(recent_yaws), reversed(recent_pitches)):
+                if abs(y_hist - baseline_yaw) < CHALLENGE_ANGLE_THRESHOLD and abs(p_hist - baseline_pitch) < CHALLENGE_ANGLE_THRESHOLD:
+                    valid_count += 1
+                else:
+                    break
+            challenge_passed = valid_count >= CHALLENGE_HOLD_FRAMES
+            count = valid_count
             
         elif challenge_type == "OPEN_MOUTH":
             recent_mars = [history["mar"][i] for i in recent_indices] if recent_indices else [mar]
@@ -2866,57 +2915,62 @@ def _process_demo_frame_inner(
                 elif opened and val < 0.28:
                     closed = True
             challenge_passed = opened and closed
+            count = len(recent_mars) if challenge_passed else 0
             
         elif challenge_type == "HEAD_LEFT":
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
-            if len(recent_yaws) >= 3 and yaw < -15.0:
-                challenge_passed = True
+            challenge_passed, count = _check_consecutive_with_count(recent_yaws, lambda y: y - baseline_yaw < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
+            movement_detected = yaw_disp < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS
                 
         elif challenge_type == "HEAD_RIGHT":
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
-            if len(recent_yaws) >= 3 and yaw > 15.0:
-                challenge_passed = True
+            challenge_passed, count = _check_consecutive_with_count(recent_yaws, lambda y: y - baseline_yaw > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
+            movement_detected = yaw_disp > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS
                 
         elif challenge_type == "HEAD_UP":
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
-            if len(recent_pitches) >= 3 and float(np.mean(recent_pitches[-3:])) > 10.0:
-                challenge_passed = True
+            challenge_passed, count = _check_consecutive_with_count(recent_pitches, lambda p: p - baseline_pitch > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
+            movement_detected = pitch_disp > CHALLENGE_ANGLE_THRESHOLD - CHALLENGE_HYSTERESIS
                 
         elif challenge_type == "HEAD_DOWN":
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
-            if len(recent_pitches) >= 3 and float(np.mean(recent_pitches[-3:])) < -10.0:
-                challenge_passed = True
+            challenge_passed, count = _check_consecutive_with_count(recent_pitches, lambda p: p - baseline_pitch < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS, required_count=CHALLENGE_HOLD_FRAMES)
+            movement_detected = pitch_disp < -CHALLENGE_ANGLE_THRESHOLD + CHALLENGE_HYSTERESIS
                 
         elif challenge_type == "NOD_HEAD":
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
             went_up = False
             went_down = False
             for p in recent_pitches:
-                if p > 8.0:
+                if p - baseline_pitch > CHALLENGE_ANGLE_THRESHOLD:
                     went_up = True
-                if p < -8.0:
+                if p - baseline_pitch < -CHALLENGE_ANGLE_THRESHOLD:
                     went_down = True
             challenge_passed = went_up and went_down
+            movement_detected = went_up or went_down
+            count = len(recent_pitches) if challenge_passed else 0
             
         elif challenge_type == "HEAD_ROTATION":
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
-            if len(recent_yaws) >= 10:
-                yaw_var = np.var(recent_yaws)
-                pitch_var = np.var(recent_pitches)
-                if yaw_var > 30.0 and pitch_var > 20.0:
+            if len(recent_yaws) >= 15:
+                min_yaw, max_yaw = min(recent_yaws), max(recent_yaws)
+                if (max_yaw - min_yaw) > (CHALLENGE_ANGLE_THRESHOLD * 2):
                     challenge_passed = True
+            count = len(recent_yaws)
+            movement_detected = abs(yaw_disp) > CHALLENGE_ANGLE_THRESHOLD
                     
         elif challenge_type == "EYEBROWS_UP":
-            # Rely on the eyebrow_raised calculated at step 6, but smoothed over recent frames
             recent_ratios = [history["eyebrow_ratios"][i] for i in recent_indices] if recent_indices else [eyebrow_ratio]
             if history.get("baseline_eyebrow_ratio") is not None:
                 baseline = history["baseline_eyebrow_ratio"]
-                if len(recent_ratios) >= 3:
-                    smoothed_ratio = float(np.mean(recent_ratios[-3:]))
-                    challenge_passed = smoothed_ratio > (baseline * 1.15)
+                challenge_passed, count = _check_consecutive_with_count(recent_ratios, lambda r: r > (baseline * 1.15), required_count=CHALLENGE_HOLD_FRAMES)
+                movement_detected = eyebrow_ratio > (baseline * 1.15)
             else:
                 challenge_passed = eyebrow_ratio > 0.22
+                count = 1 if challenge_passed else 0
+
+        print(f"[DEBUG CHALLENGE] Active={challenge_type} | Baseline(Y/P/R)={baseline_yaw:.1f}/{baseline_pitch:.1f}/{baseline_roll:.1f} | Current(Y/P/R)={yaw:.1f}/{pitch:.1f}/{roll:.1f} | Disp(Y/P)={yaw_disp:.1f}/{pitch_disp:.1f} | Threshold={threshold} | MovementDetected={movement_detected} | Consecutive={count} | Required={CHALLENGE_HOLD_FRAMES} | Passed={challenge_passed}")
 
     # Calculate spoof score dynamically passing the challenge details
     t_spoof_start = time.perf_counter()

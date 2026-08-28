@@ -3046,9 +3046,9 @@ def _process_demo_frame_inner(
     if detected_faces != 1: 
         is_high_quality = False
         enrollment_failure_reason = "Multiple faces or no face"
-    elif float(face_confidence) < 0.85: 
+    elif float(face_confidence) < 0.70: 
         is_high_quality = False
-        enrollment_failure_reason = "Low face confidence"
+        enrollment_failure_reason = f"Low face confidence ({float(face_confidence):.2f})"
         
     # 2. Bounding Box constraints
     if bbox:
@@ -3103,6 +3103,9 @@ def _process_demo_frame_inner(
         frame_count = history.get("frame_count", 0)
         history["frame_count"] = frame_count + 1
         
+        # Diagnostics
+        print(f"[ENROLL DIAG] Frame={frame_count}, HighQuality={is_high_quality}, Reason='{enrollment_failure_reason}', Valid={len(history.get('enrollment_embeddings', []))}, Wait={(frame_count - history.get('enrollment_last_capture', 0))}")
+
         # Only capture if high quality and we haven't reached 30 yet
         if is_high_quality and len(history["enrollment_embeddings"]) < 30:
             if (frame_count - history["enrollment_last_capture"]) >= 3:

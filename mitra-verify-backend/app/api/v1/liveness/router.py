@@ -221,6 +221,18 @@ CHALLENGES_METADATA = {
     "EYEBROWS_UP": { "label": "Raise Eyebrows", "instruction": "Raise your eyebrows", "icon": "🤨" }
 }
 
+
+async def get_optional_user(request: Request, db: AsyncSession = Depends(get_db)) -> User | None:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.split(" ")[1]
+    try:
+        from app.api.v1.auth.router import get_current_user
+        return await get_current_user(token, db)
+    except Exception:
+        return None
+
 class SessionStartRequest(BaseModel):
     api_type: str = "advanced"
     session_id: str | None = None
@@ -313,7 +325,7 @@ async def debug_cv():
     return result
 
 @router.post("/session/start", tags=["Demo"])
-async def start_session(data: SessionStartRequest):
+async def start_session(data: SessionStartRequest, current_user: User | None = Depends(get_optional_user)):
     session_id = getattr(data, 'session_id', None) or str(uuid.uuid4())
     
     advanced_pool = ['HEAD_UP', 'HEAD_DOWN', 'OPEN_MOUTH', 'EYEBROWS_UP']
@@ -351,6 +363,7 @@ async def start_session(data: SessionStartRequest):
     SESSION_CACHE[session_id] = {
         "landmarks": [],
         "ear": [],
+        "stage": "ENROLLMENT",
         "mar": [],
         "yaw": [],
         "pitch": [],
@@ -376,7 +389,8 @@ async def start_session(data: SessionStartRequest):
         "face_lost_frames": 0,
         "spoof_frames": 0,
         "wrong_person_frames": 0,
-        "challenge_start_time": time.time()
+        "challenge_start_time": time.time(),
+        "user_id": current_user.id if current_user else None
     }
     
     return {
@@ -390,7 +404,14 @@ async def demo_process(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
+    from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
+    session = SESSION_CACHE.get(data.session_id)
     current_user = None
+    if session and session.get("user_id"):
+        from app.models.models import User
+        from sqlalchemy import select
+        res = await db.execute(select(User).where(User.id == session["user_id"]))
+        current_user = res.scalar_one_or_none()
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     
     cv_result = await run_in_threadpool(

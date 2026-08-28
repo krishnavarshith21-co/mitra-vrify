@@ -184,7 +184,7 @@ def b64_to_numpy(image_b64: str) -> np.ndarray | None:
     except Exception as e:
         import traceback
         print(f"[DIAGNOSTICS] b64_to_numpy FAILED: {e}\n{traceback.format_exc()}")
-        return None
+
 
 
 def _ear(landmarks, eye_indices, w, h):
@@ -827,10 +827,16 @@ def _head_pose_3d(landmarks, w, h):
 from app.services.session_manager import SESSION_CACHE
 
 def update_session_history(session_id: str | None, landmarks: list, ear: float, mar: float, yaw: float, pitch: float, roll: float, challenge_type: str | None = None, is_calibration_quality: bool = True):
-    if not session_id:
-        return None
-    if session_id not in SESSION_CACHE:
-        SESSION_CACHE[session_id] = {
+    if not session_id or session_id not in SESSION_CACHE:
+        return
+    
+    cache = SESSION_CACHE[session_id]
+    with cache.batch_update():
+        _update_session_history_internal(cache, landmarks, ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality)
+
+def _update_session_history_internal(cache, landmarks: list, ear: float, mar: float, yaw: float, pitch: float, roll: float, challenge_type: str | None = None, is_calibration_quality: bool = True):
+    if "current_challenge" not in cache:
+        cache.update({
             "landmarks": [],
             "ear": [],
             "mar": [],
@@ -863,9 +869,8 @@ def update_session_history(session_id: str | None, landmarks: list, ear: float, 
             "wrong_person_frames": 0,
             "challenge_start_time": time.time(),
             "face_stable_since": None
-        }
-    
-    cache = SESSION_CACHE[session_id]
+        })
+
     cache["last_active"] = time.time()
     
     if "current_challenge" not in cache or cache["current_challenge"] != challenge_type:
@@ -2430,8 +2435,13 @@ def _process_demo_frame_inner(
                 session["last_face_seen"] = session.get("created_at", time.time())
             
             if time.time() - session["last_face_seen"] > 5.0:
-                status_code = "FACE_LOST"
-                reason_code = "no_face_detected"
+                # BUG 7 supplement: only emit FACE_LOST during continuous monitoring to avoid killing enrollment
+                if session.get("stage") == "CONTINUOUS_MONITORING":
+                    status_code = "FACE_LOST"
+                    reason_code = "no_face_detected"
+                else:
+                    status_code = "searching_for_face"
+                    reason_code = "no_face_detected"
             elif time.time() - session.get("challenge_start_time", time.time()) > 300.0:
                 status_code = "CHALLENGE_FAILED"
                 reason_code = "CHALLENGE_TIMEOUT"
@@ -2633,6 +2643,7 @@ def _process_demo_frame_inner(
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "FACE_NOT_CENTERED", "reason": "Face not centered or partially visible", "challenge_passed": False, "enrolled_matched": False,
+                "enrollment_progress": _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Face not centered or partially visible"),
                             "enterprise_report": _build_enterprise_report(
                 identity_match=0.0,
                 confidence=0.0,
@@ -2653,6 +2664,7 @@ def _process_demo_frame_inner(
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "FACE_TOO_SMALL", "reason": "Face too small", "challenge_passed": False, "enrolled_matched": False,
+                "enrollment_progress": _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Face too small"),
                             "enterprise_report": _build_enterprise_report(
                 identity_match=0.0,
                 confidence=0.0,
@@ -2677,6 +2689,7 @@ def _process_demo_frame_inner(
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": 0.0, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "BLUR_DETECTED", "reason": "Blur detected", "challenge_passed": False, "enrolled_matched": False,
+                "enrollment_progress": _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Blur detected"),
                             "enterprise_report": _build_enterprise_report(
                 identity_match=0.0,
                 confidence=0.0,
@@ -2699,6 +2712,7 @@ def _process_demo_frame_inner(
             return {
                 "face_present": True, "detected_faces": detected_faces, "face_confidence": face_confidence, "landmark_count": landmark_count,
                 "bbox": bbox, "status": "LOW_CONFIDENCE", "reason": "Face confidence too low", "challenge_passed": False, "enrolled_matched": False,
+                "enrollment_progress": _build_enrollment_progress(session_id, quality_pass=False, reject_reason="Face confidence too low"),
                             "enterprise_report": _build_enterprise_report(
                 identity_match=0.0,
                 confidence=0.0,
@@ -3189,16 +3203,16 @@ def _process_demo_frame_inner(
             # State transitions
             if current_stage == "IDENTITY_VERIFYING":
                 if enrolled_matched:
-                    session["stage"] = "LIVENESS_CHALLENGES"
-                    session["challenge_start_time"] = time.time()
+                    session["stage"] = "IDENTITY_VERIFIED"
+                    session["identity_verified_time"] = time.time()
                 elif not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 30:
                     session["stage"] = "FAILED"
                     status = "UNAUTHORIZED_PERSON"
                     
             elif current_stage == "IDENTITY_VERIFIED":
-                # Immediately jump to LIVENESS_CHALLENGES to avoid getting stuck
-                session["stage"] = "LIVENESS_CHALLENGES"
-                session["challenge_start_time"] = time.time()
+                if time.time() - session.get("identity_verified_time", time.time()) > 0.5:
+                    session["stage"] = "LIVENESS_CHALLENGES"
+                    session["challenge_start_time"] = time.time()
                     
             elif current_stage == "LIVENESS_CHALLENGES":
                 # The frontend tracks challenge sequence. We only transition when the frontend requests monitoring.
@@ -3211,8 +3225,12 @@ def _process_demo_frame_inner(
                     session["stage"] = "LIVENESS_VERIFIED"
                     
                     # Check ALL security conditions for ACCESS_GRANTED
+                    id_history = session.get("identity_history", [])[-5:]
+                    recent_matches = sum(id_history) if id_history else 0
+                    is_identity_secure = recent_matches >= 3 or enrolled_matched
+
                     is_secure = (
-                        enrolled_matched and
+                        is_identity_secure and
                         detected_faces == 1 and
                         spoof_score < 0.4 and
                         is_high_quality and
@@ -3261,8 +3279,8 @@ def _process_demo_frame_inner(
                 "face_confidence": float(face_confidence),
                 "landmark_count": landmark_count,
                 "bbox": bbox,
-                "status": "SPOOF_DETECTED",
-                "reason": "CHALLENGE_TIMEOUT",
+                "status": "CHALLENGE_TIMEOUT",
+                "reason": "Challenge time expired",
                 "challenge_passed": False,
                 "enrolled_matched": False,
                 "similarity_score": 0.0,

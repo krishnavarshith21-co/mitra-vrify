@@ -91,26 +91,42 @@ class SessionProxy(dict):
         super().__init__(data)
         self.manager = manager
         self.session_id = session_id
+        self._batch_mode = False
         
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
-        latest_data = self.manager.get_session(self.session_id) or {}
-        latest_data[key] = value
-        self.manager.save_session(self.session_id, latest_data)
+        if not self._batch_mode:
+            latest_data = self.manager.get_session(self.session_id) or {}
+            latest_data[key] = value
+            self.manager.save_session(self.session_id, latest_data)
 
     def update(self, *args, **kwargs):
         super().update(*args, **kwargs)
-        latest_data = self.manager.get_session(self.session_id) or {}
-        latest_data.update(*args, **kwargs)
-        self.manager.save_session(self.session_id, latest_data)
+        if not self._batch_mode:
+            latest_data = self.manager.get_session(self.session_id) or {}
+            latest_data.update(*args, **kwargs)
+            self.manager.save_session(self.session_id, latest_data)
 
     def pop(self, key, default=None):
         res = super().pop(key, default)
-        latest_data = self.manager.get_session(self.session_id) or {}
-        if key in latest_data:
-            latest_data.pop(key)
-        self.manager.save_session(self.session_id, latest_data)
+        if not self._batch_mode:
+            latest_data = self.manager.get_session(self.session_id) or {}
+            if key in latest_data:
+                latest_data.pop(key)
+            self.manager.save_session(self.session_id, latest_data)
         return res
+        
+    import contextlib
+    @contextlib.contextmanager
+    def batch_update(self):
+        self._batch_mode = True
+        try:
+            yield
+        finally:
+            self._batch_mode = False
+            # Save the fully updated dictionary state to Redis once
+            self.manager.save_session(self.session_id, dict(self))
+
 
 class SessionCacheDict:
     def __init__(self, manager: SessionManager):

@@ -761,8 +761,7 @@ export default function EnterpriseDemoPage() {
         "CAMERA_FEED_FROZEN": "SESSION TERMINATED",
         "UNAUTHORIZED_PERSON": "UNAUTHORIZED PERSON",
         "IDENTITY_CHANGED": "UNAUTHORIZED PERSON",
-        "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED",
-        "FACE_LOST": "FACE LOST"
+        "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"
       };
 
       if (data.status && data.status in terminalStatuses) {
@@ -820,6 +819,9 @@ export default function EnterpriseDemoPage() {
             if (prev === 'ENROLLMENT' && backendState === 'IDENTITY_VERIFYING') {
               setSimilarity(0);
               setConfidence(0);
+            }
+            if (prev !== backendState && (backendState === 'LIVENESS_CHALLENGES' || backendState === 'CONTINUOUS_MONITORING')) {
+              similarityHistoryRef.current = [];
             }
             return backendState;
           });
@@ -1017,8 +1019,7 @@ export default function EnterpriseDemoPage() {
     setSessionTime(0); setOverallResult(null); setSessionTerminated(false); setTerminationReason('');
     setModelStatus('Loading'); faceDetectionHistoryRef.current = []; similarityHistoryRef.current = [];
     setMismatchCount(0); 
-    
-    setPhase('ENROLLMENT');
+
     
     setShowReport(false); setIsMonitoring(false); setMonitoringAudit([]);
     if (typeof window !== 'undefined') sessionStorage.removeItem('mv_mismatch_count');

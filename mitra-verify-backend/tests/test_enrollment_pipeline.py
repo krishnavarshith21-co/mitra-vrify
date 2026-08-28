@@ -351,6 +351,123 @@ class TestEnrollEndpoint:
 
         assert SESSION_CACHE[sid]["stage"] == "FAILED"
 
+    @pytest.mark.asyncio
+    async def test_13_valid_frames_increment_collection(self):
+        """Simulate capturing 15 valid frames and verify the collection count goes from 0 to 15."""
+        from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
+        
+        session_id = str(uuid.uuid4())
+        SESSION_CACHE[session_id] = {
+            "stage": "ENROLLMENT",
+            "enrollment_embeddings": [],
+            "enrollment_last_capture": -5,
+            "pose_coverage": set(),
+            "expression_coverage": set(),
+            "frame_count": 0,
+            "rejected_frames": 0,
+            "created_at": time.time(),
+            "last_active": time.time(),
+        }
+        
+        b64 = _blank_jpeg_b64()
+        
+        call_count = 0
+        def get_face_result(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            landmarks = _make_mock_landmarks()
+            # Add noise to prevent CAMERA_FEED_FROZEN (variance > 0.0001)
+            landmarks[0].x += call_count * 0.015
+            landmarks[0].y += call_count * 0.015
+            face_result = MagicMock()
+            face_result.multi_face_landmarks = [MagicMock(landmark=landmarks)]
+            return face_result
+            
+        frame = np.random.randint(0, 256, (240, 320, 3), dtype=np.uint8)
+        
+        with patch("app.services.cv.mediapipe_engine.global_face_mesh.process", side_effect=get_face_result), \
+             patch("app.services.cv.mediapipe_engine.b64_to_numpy", return_value=frame), \
+             patch("app.services.cv.mediapipe_engine._calculate_face_embedding", return_value=_make_fake_embedding()), \
+             patch("app.services.cv.mediapipe_engine._validate_enrollment_quality", return_value={"checks": {"good_lighting": True}, "quality_score": 90.0}), \
+             patch("app.services.cv.mediapipe_engine._calculate_face_confidence", return_value=0.99), \
+             patch("app.services.cv.mediapipe_engine._head_pose_3d", return_value=(0.0, 0.0, 0.0)), \
+             patch("numpy.var", return_value=np.array(1.0)):
+            
+            # Simulate 15 valid captures
+            # We simulate frames passing every 3 frames to bypass `(frame_count - last_capture) >= 3`
+            for expected_count in range(1, 16):
+                # Send 3 frames to trigger one capture
+                for _ in range(3):
+                    res = process_demo_frame(
+                        image_b64=b64,
+                        session_id=session_id,
+                        challenge_type=None,
+                        enrolled_signature=None,
+                        api_type="enterprise"
+                    )
+                
+                # Check that progress actually increments
+                print(f"DEBUG_RES: {res}")
+                assert "enrollment_progress" in res
+                prog = res["enrollment_progress"]
+                print(f"[TEST DEBUG] expected={expected_count} prog={prog}")
+                assert prog["valid_frames"] == expected_count, f"Expected {expected_count} valid frames, got {prog['valid_frames']}"
+                
+            # After 15, we must still supply the missing poses/expressions to hit READY
+            SESSION_CACHE[session_id]["pose_coverage"] = {"Front", "Left 15", "Right 15", "Up", "Down"}
+            SESSION_CACHE[session_id]["expression_coverage"] = {"Neutral", "Smile"}
+            
+            res = process_demo_frame(b64, session_id=session_id, api_type="enterprise")
+            assert res["enrollment_progress"]["state"] == "READY"
+            assert res["enrollment_progress"]["valid_frames"] == 16
+
+    @pytest.mark.asyncio
+    async def test_14_rejected_frames_do_not_increment(self):
+        """Test that rejected frames do not increase the collection count."""
+        from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
+    
+        session_id = str(uuid.uuid4())
+        SESSION_CACHE[session_id] = {
+            "stage": "ENROLLMENT",
+            "enrollment_embeddings": [],
+            "enrollment_last_capture": -5,
+            "pose_coverage": set(),
+            "expression_coverage": set(),
+            "frame_count": 0,
+            "rejected_frames": 0,
+            "created_at": time.time(),
+            "last_active": time.time(),
+        }
+    
+        b64 = _blank_jpeg_b64()
+    
+        call_count = 0
+        def get_face_result(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            landmarks = _make_mock_landmarks()
+            landmarks[0].x += call_count * 0.015
+            landmarks[0].y += call_count * 0.015
+            face_result = MagicMock()
+            face_result.multi_face_landmarks = [MagicMock(landmark=landmarks)]
+            return face_result
+    
+        frame = np.random.randint(0, 256, (240, 320, 3), dtype=np.uint8)
+    
+        with patch("app.services.cv.mediapipe_engine.global_face_mesh.process", side_effect=get_face_result), \
+             patch("app.services.cv.mediapipe_engine.b64_to_numpy", return_value=frame), \
+             patch("app.services.cv.mediapipe_engine._head_pose_3d", return_value=(0.0, 0.0, 0.0)), \
+             patch("app.services.cv.mediapipe_engine._validate_enrollment_quality", return_value={"checks": {"good_lighting": True}, "quality_score": 90.0}), \
+             patch("app.services.cv.mediapipe_engine._calculate_face_confidence", return_value=0.5): # Low confidence!
+    
+            # Send 5 frames, none should be captured
+            for _ in range(5):
+                res = process_demo_frame(b64, session_id=session_id, api_type="enterprise")
+    
+            prog = res.get("enrollment_progress", {})
+            assert prog.get("valid_frames", 0) == 0
+            assert prog.get("state", "IDLE") in ["IDLE", "COLLECTING"]
+
     # ── TEST 12 ──────────────────────────────────────────────────────────────
     def test_12_consecutive_identity_matches_advance_to_verified(self):
         """3 consecutive identity matches → stage advances to IDENTITY_VERIFIED."""

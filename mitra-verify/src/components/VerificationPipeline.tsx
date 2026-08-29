@@ -18,7 +18,7 @@ export default function VerificationPipeline() {
         <div className="text-center mb-20">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 tracking-tight">Deterministic Verification Pipeline</h2>
           <p className="text-slate-400 text-[16px] max-w-[600px] mx-auto">
-            Our proprietary pipeline ensures sub-second processing from initial capture to final cryptographic decision.
+            Our proprietary pipeline ensures sub-second processing from initial capture to final authoritative decision.
           </p>
         </div>
         

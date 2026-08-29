@@ -406,6 +406,9 @@ async def demo_process(
 ):
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     session = SESSION_CACHE.get(data.session_id)
+    
+    print(f"[ENROLL API INPUT]\nsession_id={data.session_id}\nphase={session.get('stage') if session else 'UNKNOWN'}\nhas_frame={bool(data.image)}\nframe_size={len(data.image) if data.image else 0}\ncontent_type=base64\nchallenge_type={data.challenge_type}")
+
     current_user = None
     if session and session.get("user_id"):
         from app.models.models import User

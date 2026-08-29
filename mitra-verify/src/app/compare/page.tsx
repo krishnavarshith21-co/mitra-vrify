@@ -238,7 +238,7 @@ function VerificationFlow() {
                 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-sm"><span className="text-slate-500">Speed</span><span className="text-emerald-400 font-medium">Thorough</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-500">Accuracy</span><span className="text-white">99.9%</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-slate-500">Accuracy</span><span className="text-white">Robust</span></div>
                   <div className="flex justify-between text-sm"><span className="text-slate-500">Processing</span><span className="text-white">3.8s</span></div>
                   <div className="flex justify-between text-sm"><span className="text-slate-500">Endpoint</span><code className="text-xs text-emerald-400 font-mono">/v1/identity</code></div>
                 </div>
@@ -268,7 +268,7 @@ function VerificationFlow() {
               </div>
               <PerfChartRow label="Speed" basic={{pct: 95, val: 'Fastest'}} advanced={{pct: 60, val: 'Balanced'}} enterprise={{pct: 40, val: 'Thorough'}} />
               <PerfChartRow label="Security" basic={{pct: 40, val: 'Standard'}} advanced={{pct: 85, val: 'High'}} enterprise={{pct: 100, val: 'Maximum'}} />
-              <PerfChartRow label="Accuracy" basic={{pct: 92, val: '92%'}} advanced={{pct: 98, val: '98.5%'}} enterprise={{pct: 100, val: '99.9%'}} />
+              <PerfChartRow label="Accuracy" basic={{pct: 92, val: 'High'}} advanced={{pct: 98, val: 'Very High'}} enterprise={{pct: 100, val: 'Robust'}} />
               <PerfChartRow label="Identity Match" basic={{pct: 5, val: 'None'}} advanced={{pct: 5, val: 'None'}} enterprise={{pct: 100, val: 'Included'}} />
               <PerfChartRow label="Anti-Spoof" basic={{pct: 30, val: 'Basic'}} advanced={{pct: 90, val: 'Advanced'}} enterprise={{pct: 100, val: 'Deep'}} />
               <PerfChartRow label="Deepfake Det." basic={{pct: 10, val: 'Low'}} advanced={{pct: 80, val: 'High'}} enterprise={{pct: 100, val: 'Maximum'}} />
@@ -372,7 +372,7 @@ function VerificationFlow() {
                 {[
                   { name: "Fast Liveness", subtitle: "Passive Detection", textClass: "text-cyan-400", borderClass: "border-cyan-500/30", hoverClass: "hover:bg-cyan-500/10", feats: "Passive Detection", time: "< 1.2s", acc: "92.0%", use: "Basic Auth", ind: "Social, Forums", tier: "Basic" },
                   { name: "Adv. Anti-Spoof", subtitle: "Active Challenge, Replay Det.", textClass: "text-violet-400", borderClass: "border-violet-500/30", hoverClass: "hover:bg-violet-500/10", feats: "Active Challenge, Replay Det.", time: "2.5s", acc: "98.5%", use: "Financial KYC", ind: "FinTech, Crypto", tier: "Premium" },
-                  { name: "Enterprise", subtitle: "Identity Match, Gaze Track", textClass: "text-emerald-400", borderClass: "border-emerald-500/30", hoverClass: "hover:bg-emerald-500/10", feats: "Identity Match, Gaze Track", time: "3.8s", acc: "99.9%", use: "High-Risk Auth", ind: "Gov, Healthcare", tier: "Enterprise" }
+                  { name: "Enterprise", subtitle: "Identity Match, Gaze Track", textClass: "text-emerald-400", borderClass: "border-emerald-500/30", hoverClass: "hover:bg-emerald-500/10", feats: "Identity Match, Gaze Track", time: "3.8s", acc: "Robust", use: "High-Risk Auth", ind: "Gov, Healthcare", tier: "Enterprise" }
                 ].map((api, i) => (
                   <motion.div variants={fadeInUp} key={i} whileHover={{ y: -4 }} className="bg-[#0a101d] rounded-2xl border border-white/5 hover:border-white/20 transition-all p-6 flex flex-col">
                     <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">

@@ -718,8 +718,21 @@ export default function EnterpriseDemoPage() {
       const activeChallengeId = phaseRef.current === 'CONTINUOUS_MONITORING' ? 'monitoring' : 
                                 (currentChallenge >= challenges.length && challenges.length > 0) ? 'liveness_verified' : 
                                 (phaseRef.current === 'LIVENESS_CHALLENGES' ? challenges[currentChallenge]?.id : undefined);
+                                
+      if (phaseRef.current === 'ENROLLMENT') {
+        console.log(`[ENROLL FRONTEND]\nphase=${phaseRef.current}\nframeNumber=${fpsCounterRef.current}\nrequestStarted=${Date.now()}\nrequestCompleted=pending\nresponseReceived=pending\nresponseState=pending\nprogress=pending`);
+      }
+      
+      const reqStart = Date.now();
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise');
+      const reqEnd = Date.now();
+      
       const data = res?.data;
+      
+      if (phaseRef.current === 'ENROLLMENT' && data) {
+        console.log(`[ENROLL FRONTEND]\nphase=${phaseRef.current}\nframeNumber=${fpsCounterRef.current}\nrequestStarted=${reqStart}\nrequestCompleted=${reqEnd}\nresponseReceived=True\nresponseState=${data.enrollment_progress?.state}\nprogress=${data.enrollment_progress?.valid_frames}/${data.enrollment_progress?.required_frames}`);
+      }
+      
       if (currentGeneration !== sessionGenerationRef.current) { setIsProcessing(false); return; }
       setApiResponse(data);
       if (!data) { setIsProcessing(false); return; }
@@ -758,7 +771,9 @@ export default function EnterpriseDemoPage() {
         "MULTIPLE_FACES_DETECTED": "MULTIPLE FACES DETECTED",
         "REPLAY_ATTACK_DETECTED": "REPLAY ATTACK DETECTED",
         "DEEPFAKE_SUSPECTED": "DEEPFAKE SUSPECTED",
-        "CAMERA_FEED_FROZEN": "SESSION TERMINATED",
+        // CAMERA_FEED_FROZEN removed: too many false positives with real webcams.
+        // The backend now requires 10+ consecutive frozen frames with a stricter threshold.
+        // If it still fires, we treat it as a non-fatal warning rather than killing the session.
         "UNAUTHORIZED_PERSON": "UNAUTHORIZED PERSON",
         "IDENTITY_CHANGED": "UNAUTHORIZED PERSON",
         "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"
@@ -766,6 +781,12 @@ export default function EnterpriseDemoPage() {
 
       if (data.status && data.status in terminalStatuses) {
         triggerSessionTermination(terminalStatuses[data.status]);
+        return;
+      }
+      // Non-fatal: skip frozen frames silently
+      if (data.status === "CAMERA_FEED_FROZEN") {
+        console.warn('[MITRA] Skipping CAMERA_FEED_FROZEN frame (non-fatal)');
+        setIsProcessing(false);
         return;
       }
       
@@ -1036,11 +1057,17 @@ export default function EnterpriseDemoPage() {
     setLandmarkGeometry(null); setPassiveLiveness(null); setFraudDetection(null); setPoseValidation(null);
 
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    // Use a flag ref to avoid stale closure over modelStatus/streaming state
+    const loadingCancelledRef = { cancelled: false };
     loadingTimeoutRef.current = setTimeout(() => {
-      if (modelStatus === 'Loading' || !streaming) {
-        setModelStatus('Failed'); setError('Biometric services failed to respond within 5 seconds.'); stopCamera();
+      if (loadingCancelledRef.cancelled) return;
+      // Check current DOM state directly to avoid stale closure
+      const videoEl = videoRef.current;
+      const hasStream = videoEl?.srcObject && (videoEl.srcObject as MediaStream).active;
+      if (!hasStream) {
+        setModelStatus('Failed'); setError('Biometric services failed to respond within 8 seconds. Check that the backend is running.'); stopCamera();
       }
-    }, 5000);
+    }, 8000);
 
     try {
       const sessionRes = await livenessAPI.startSession('enterprise');
@@ -1063,9 +1090,20 @@ export default function EnterpriseDemoPage() {
         await videoRef.current.play();
         setStreaming(true);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (!streaming) {
-        setCameraStatus('Inactive'); setError('Camera access denied.');
+        const camErr = err as { name?: string; message?: string };
+        let errorMsg = 'Camera access denied.';
+        if (camErr.name === 'NotAllowedError') {
+          errorMsg = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+        } else if (camErr.name === 'NotFoundError') {
+          errorMsg = 'No camera found. Please connect a camera and try again.';
+        } else if (camErr.name === 'NotReadableError' || camErr.name === 'AbortError') {
+          errorMsg = 'Camera is in use by another application. Please close it and try again.';
+        } else if (camErr.message) {
+          errorMsg = `Camera error: ${camErr.message}`;
+        }
+        setCameraStatus('Inactive'); setError(errorMsg);
         if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
         setModelStatus('Failed');
       }
@@ -1309,7 +1347,7 @@ export default function EnterpriseDemoPage() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}>99.9%</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}>Robust</div>
               <div style={{ fontSize: 11, color: '#475569' }}>Enterprise Accuracy</div>
             </div>
           </div>
@@ -1408,6 +1446,37 @@ export default function EnterpriseDemoPage() {
                 />
               )}
 
+              {/* Compact Verification Status Overlay */}
+              {streaming && !overallResult && (
+                <div style={{
+                  position: 'absolute', bottom: 12, left: 12, zIndex: 20,
+                  display: 'flex', flexDirection: 'column', gap: 3,
+                  background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+                  padding: '8px 12px', borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  pointerEvents: 'none'
+                }}>
+                  {[
+                    { label: 'CAMERA', active: cameraStatus === 'Active', pass: cameraStatus === 'Active' },
+                    { label: 'FACE DETECTED', active: detectedFaces > 0, pass: confidence > 0.5 && detectedFaces === 1 },
+                    { label: 'LIVENESS', active: phase === 'LIVENESS_CHALLENGES' || phase === 'LIVENESS_VERIFIED' || phase === 'CONTINUOUS_MONITORING', pass: phase === 'LIVENESS_VERIFIED' || phase === 'CONTINUOUS_MONITORING' || phase === 'ACCESS_GRANTED' },
+                    { label: 'IDENTITY', active: hasFaceEnrolled && similarity > 0, pass: similarity >= 0.75 },
+                    { label: 'CONTINUOUS', active: isMonitoring, pass: isMonitoring && faceTrackingState === 'FACE_PRESENT' },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: item.pass ? '#00ff88' : item.active ? '#ffb800' : '#334155',
+                        boxShadow: item.pass ? '0 0 6px #00ff88' : item.active ? '0 0 4px #ffb800' : 'none'
+                      }} />
+                      <span style={{ color: item.pass ? '#00ff88' : item.active ? '#ffb800' : '#475569' }}>
+                        {item.label}{item.pass ? ' ✓' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Gaze crosshair */}
               {streaming && !overallResult && gazeAvailable && gazeDirection && (
                 <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 12 }}>
@@ -1423,8 +1492,13 @@ export default function EnterpriseDemoPage() {
                     <Fingerprint size={64} color="#00ff88" strokeWidth={1} />
                   </motion.div>
                   <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', maxWidth: 260 }}>Enterprise Advanced Identity Verification Engine</p>
-                  <button onClick={startCamera} style={{ padding: '12px 28px', borderRadius: 10, background: 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Camera size={16} /> Initialize Biometric Scan
+                  {error && (
+                    <div style={{ padding: '10px 16px', borderRadius: 8, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff6b8a', fontSize: 12, textAlign: 'center', maxWidth: 320 }}>
+                      {error}
+                    </div>
+                  )}
+                  <button onClick={startCamera} style={{ padding: '14px 32px', borderRadius: 12, background: 'linear-gradient(135deg, #00ff88, #00cc66)', color: '#000', fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, letterSpacing: '0.03em', boxShadow: '0 0 30px rgba(0,255,136,0.2)' }}>
+                    <Camera size={18} /> START VERIFICATION
                   </button>
                 </div>
               )}
@@ -1576,13 +1650,41 @@ export default function EnterpriseDemoPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={clearEnrollment} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                      Clear Enrollment
-                    </button>
-                    <button onClick={stopCamera} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(100,100,100,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                      Stop Camera
-                    </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Simulate Threat button for pitch demo during continuous monitoring */}
+                    {isMonitoring && phase === 'CONTINUOUS_MONITORING' && (
+                      <button 
+                        onClick={() => {
+                          triggerSessionTermination('IDENTITY MISMATCH — UNAUTHORIZED PERSON DETECTED');
+                          setSecurityEvents(prev => [
+                            { time: new Date().toLocaleTimeString(), event: 'THREAT: Identity Mismatch', status: 'critical' as const },
+                            { time: new Date().toLocaleTimeString(), event: 'SESSION TERMINATED', status: 'critical' as const },
+                            { time: new Date().toLocaleTimeString(), event: 'ACCESS REVOKED', status: 'critical' as const },
+                            ...prev
+                          ].slice(0, 50));
+                          setUnauthorizedAttempts(prev => prev + 1);
+                        }}
+                        style={{ 
+                          padding: '10px 0', borderRadius: 10, 
+                          background: 'rgba(255,51,102,0.15)', 
+                          border: '1px solid rgba(255,51,102,0.4)', 
+                          color: '#ff3366', fontWeight: 700, fontSize: 12, 
+                          cursor: 'pointer', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          letterSpacing: '0.04em'
+                        }}
+                      >
+                        <AlertTriangle size={14} /> SIMULATE THREAT (DEMO)
+                      </button>
+                    )}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button onClick={clearEnrollment} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                        Clear Enrollment
+                      </button>
+                      <button onClick={stopCamera} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(100,100,100,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                        Stop Camera
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

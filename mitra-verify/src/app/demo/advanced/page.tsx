@@ -20,11 +20,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import { useDiagnosticLogger } from '@/components/developer/useDiagnosticLogger';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const CHALLENGE_POOL = [
-  { id: 'face_centered', label: 'Face Centered', instruction: 'Center your face inside the guides', icon: '👤' },
-  { id: 'blink_once', label: 'Blink Once', instruction: 'Blink your eyes once slowly', icon: '👁️' },
-  { id: 'open_mouth', label: 'Open Mouth', instruction: 'Open your mouth wide', icon: '👄' }
-];
+const CHALLENGE_POOL: any[] = [];
 
 const SpoofGauge = ({ value, label, color }: { value: number; label: string; color: string }) => (
   <div style={{ marginBottom: 16 }}>
@@ -430,65 +426,36 @@ export default function AdvancedDemoPage() {
         
         setFaceInsideGuide(!!inside);
 
-        // State Machine progression logic based on data:
-        if (currentChallenge === 0) {
-          // Face Centered Challenge
-          if (data.face_confidence >= 0.90 && inside && data.detected_faces === 1) {
-            if (!centerTimerStartedRef.current) {
-              centerTimerStartedRef.current = true;
-              centerTimerStartTimeRef.current = Date.now();
-            } else {
-              const centeredDur = (Date.now() - centerTimerStartTimeRef.current) / 1000;
-              setFaceVisibleDuration(centeredDur);
-              if (centeredDur >= 2.0) {
-                setIsFacePrepared(true);
-                setChallengePassed(prev => {
-                  const next = [...prev];
-                  next[0] = true;
-                  return next;
-                });
-                setCurrentChallenge(1);
-              }
-            }
-          } else {
-            centerTimerStartedRef.current = false;
-            setFaceVisibleDuration(0);
-          }
-        } else {
-          const activeChallenge = challenges[currentChallenge];
-          if (activeChallenge) {
-            if (data.challenge_passed) {
-              
-              if (activeChallenge.id === 'blink_twice') setHasBlinked(true);
-              if (activeChallenge.id === 'open_mouth') setHasMovedMouth(true);
-              if (activeChallenge.id === 'turn_left' || activeChallenge.id === 'turn_right') setHasRotatedHead(true);
-              if (activeChallenge.id === 'raise_eyebrows') setHasRaisedEyebrows(true);
-              
-              setChallengePassed(prev => {
-                const next = [...prev];
-                next[currentChallenge] = true;
-                return next;
-              });
-              
-              const nextStep = currentChallenge + 1;
-              setCurrentChallenge(nextStep);
-              stepStartTimeRef.current = Date.now();
-              
-              if (nextStep >= challenges.length) {
-                
-                // All challenges passed — show PASS screen and stop processing
-                setOverallResult('pass');
-                if (videoRef.current?.srcObject) {
-                  (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-                  videoRef.current.srcObject = null;
+        if (data.current_challenge_index !== undefined && data.current_challenge_index > currentChallenge) {
+            // A challenge was just passed. Find which one it was.
+            for (let i = currentChallenge; i < data.current_challenge_index; i++) {
+                const passedCh = challenges[i];
+                if (passedCh) {
+                    if (passedCh.id === 'BLINK_ONCE' || passedCh.id === 'BLINK_TWICE') setHasBlinked(true);
+                    if (passedCh.id === 'OPEN_MOUTH') setHasMovedMouth(true);
+                    if (passedCh.id === 'HEAD_LEFT' || passedCh.id === 'HEAD_RIGHT') setHasRotatedHead(true);
+                    if (passedCh.id === 'EYEBROWS_UP') setHasRaisedEyebrows(true);
                 }
-                setStreaming(false);
-                setCameraStatus('Inactive');
-              }
             }
-          }
+            setCurrentChallenge(data.current_challenge_index);
+            setChallengePassed(prev => {
+                const next = [...prev];
+                for (let i = 0; i < data.current_challenge_index; i++) {
+                    next[i] = true;
+                }
+                return next;
+            });
         }
-
+        
+        if (data.sequence_complete) {
+            setOverallResult('pass');
+            if (videoRef.current?.srcObject) {
+              (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+              videoRef.current.srcObject = null;
+            }
+            setStreaming(false);
+            setCameraStatus('Inactive');
+        }
       } else {
         // Face missing
         if (searchingForFaceStartRef.current === null) {

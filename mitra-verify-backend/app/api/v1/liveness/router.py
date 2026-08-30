@@ -375,6 +375,7 @@ async def start_session(data: SessionStartRequest, current_user: User | None = D
         "smile_ratios": [],
         "baseline_smile_ratio": None,
         "current_challenge": "FACE_CENTERED",
+        "current_challenge_index": 0,
         "challenges": challenges,
         "logged": False,
         "created_at": time.time(),
@@ -419,15 +420,38 @@ async def demo_process(
         current_user = res.scalar_one_or_none()
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     
+    # ── BACKEND AUTHORITATIVE CHALLENGE INJECTION ──
+    # Ignore the frontend's requested challenge. Use the server-side state.
+    server_challenge = None
+    if session and "challenges" in session and "current_challenge_index" in session:
+        idx = session["current_challenge_index"]
+        if idx < len(session["challenges"]):
+            server_challenge = session["challenges"][idx]["id"]
+    
     cv_result = await run_in_threadpool(
         process_demo_frame,
         image_b64=data.image,
         frame_id=data.frame_id,
         session_id=data.session_id,
-        challenge_type=data.challenge_type,
+        challenge_type=server_challenge,
         enrolled_signature=data.enrolled_signature,
         api_type=data.api_type
     )
+    
+    # ── ADVANCE SEQUENCE ON SUCCESS ──
+    if session and cv_result.get("challenge_passed") is True:
+        session["current_challenge_index"] += 1
+        cv_result["sequence_advanced"] = True
+        
+    if session and "challenges" in session and "current_challenge_index" in session:
+        idx = session["current_challenge_index"]
+        if idx < len(session["challenges"]):
+            cv_result["active_challenge"] = session["challenges"][idx]
+            cv_result["current_challenge_index"] = idx
+        else:
+            cv_result["active_challenge"] = None
+            cv_result["sequence_complete"] = True
+            cv_result["current_challenge_index"] = idx
     
     # Save verification logs if user is authenticated and session is terminal
     if current_user and data.session_id:

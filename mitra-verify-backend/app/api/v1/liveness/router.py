@@ -273,7 +273,8 @@ async def debug_cv():
     except ImportError:
         INSIGHTFACE_INIT_ERROR = None
     
-    result = {
+    from typing import Any
+    result: dict[str, Any] = {
         "python_version": sys.version,
         "platform": platform.platform(),
         "architecture": platform.machine(),
@@ -305,7 +306,7 @@ async def debug_cv():
         try:
             test_img = np.zeros((240, 320, 3), dtype=np.uint8)
             test_result = global_face_mesh.process(test_img)
-            faces = test_result.multi_face_landmarks if test_result.multi_face_landmarks else []
+            faces = getattr(test_result, 'multi_face_landmarks', None) or []
             result["facemesh_live_test"] = {
                 "status": "OK",
                 "faces_detected": len(faces),
@@ -408,14 +409,13 @@ async def demo_process(
     db: AsyncSession = Depends(get_db)
 ):
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
-    session = SESSION_CACHE.get(data.session_id)
+    session = SESSION_CACHE.get(data.session_id) if data.session_id else None
     
     print(f"[ENROLL API INPUT]\nsession_id={data.session_id}\nphase={session.get('stage') if session else 'UNKNOWN'}\nhas_frame={bool(data.image)}\nframe_size={len(data.image) if data.image else 0}\ncontent_type=base64\nchallenge_type={data.challenge_type}")
 
     current_user = None
     if session and session.get("user_id"):
         from app.models.models import User
-        from sqlalchemy import select
         res = await db.execute(select(User).where(User.id == session["user_id"]))
         current_user = res.scalar_one_or_none()
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame

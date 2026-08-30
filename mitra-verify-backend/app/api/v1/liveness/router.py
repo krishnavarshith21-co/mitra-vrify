@@ -330,7 +330,7 @@ async def debug_cv():
 async def start_session(data: SessionStartRequest, current_user: User | None = Depends(get_optional_user)):
     session_id = getattr(data, 'session_id', None) or str(uuid.uuid4())
     
-    advanced_pool = ['HEAD_UP', 'HEAD_DOWN', 'OPEN_MOUTH', 'EYEBROWS_UP']
+    advanced_pool = ['BLINK_ONCE', 'BLINK_TWICE', 'HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
     enterprise_pool = ['HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
     
     if data.api_type == "enterprise":

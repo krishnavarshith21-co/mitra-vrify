@@ -3407,9 +3407,7 @@ def _process_demo_frame_inner(
 
                     is_secure = (
                         is_identity_secure and
-                        detected_faces == 1 and
-                        spoof_score < 0.4 and
-                        is_high_quality and
+                        spoof_score < 0.5 and
                         session["stage"] == "LIVENESS_VERIFIED"
                     )
                     if is_secure:

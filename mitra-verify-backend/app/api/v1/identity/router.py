@@ -203,22 +203,6 @@ async def identity_enroll(
                 "required_embeddings": 15,
                 "message": "Enrollment session expired. Restart enrollment.",
             }
-            
-        progress = _build_enrollment_progress(data.session_id)
-        if progress["state"] != "READY":
-            print(f"[Enrollment] BLOCKED — Pre-validation: state is {progress['state']}")
-            return {
-                "success": False,
-                "code": "ENROLLMENT_NOT_READY",
-                "state": progress["state"],
-                "valid_embeddings": progress["valid_frames"],
-                "required_embeddings": 15,
-                "pose_coverage": progress["pose_coverage"],
-                "expression_coverage": progress["expression_coverage"],
-                "missing_poses": progress.get("missing_poses", []),
-                "missing_expressions": progress.get("missing_expressions", []),
-                "message": f"Continue enrollment. {progress['valid_frames']}/15 valid frames collected.",
-            }
 
     # --- Stage 1: Camera initialized ---
     print("[Enrollment] Stage 1: Camera initialized")

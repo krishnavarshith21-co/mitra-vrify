@@ -175,6 +175,7 @@ export default function BasicDemoPage() {
   const [noFaceTimeoutError, setNoFaceTimeoutError] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<'ONLINE' | 'OFFLINE' | 'ERROR' | 'TIMEOUT' | null>(null);
   const [faceMissingCountdown, setFaceMissingCountdown] = useState<number>(5.0);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   // New Performance & Reliability Refs
   const frameCountRef = useRef<number>(0);
@@ -379,6 +380,7 @@ export default function BasicDemoPage() {
           activeStepTimeElapsedRef.current = 0;
           lastFrameTimestampRef.current = 0;
           setFaceMissingCountdown(0.0);
+          setTimeRemaining(null);
           return;
         } else {
           setFaceMissingCountdown(Math.max(0, 5.0 - missingTime / 1000));
@@ -499,6 +501,7 @@ export default function BasicDemoPage() {
       const data = res?.data;
       setApiResponse(data);
       if (data?.challenge_diag) setChallengeDiag(data.challenge_diag);
+      if (data?.time_remaining !== undefined) setTimeRemaining(data.time_remaining);
 
       if (!data) return;
       
@@ -1145,7 +1148,8 @@ Result: ${data.result || 'pending'}
                     noFaceTimeoutError ? 'FACE NOT DETECTED' :
                     (backendStatus === 'ERROR' ? 'PROCESSING ERROR' :
                     (backendStatus === 'OFFLINE' || backendStatus === 'TIMEOUT' ? 'VERIFICATION UNAVAILABLE' :
-                    (apiResponse?.reason?.replace(/_/g, ' ') || apiResponse?.status?.replace(/_/g, ' ') || 'SPOOF DETECTED')))
+                    (apiResponse?.reason?.includes("within 30 seconds") ? 'CHALLENGE TIMEOUT' :
+                    (apiResponse?.reason?.replace(/_/g, ' ') || apiResponse?.status?.replace(/_/g, ' ') || 'SPOOF DETECTED'))))
                   }
                   confidence={confidence}
                   processingTime={processingTime}
@@ -1222,6 +1226,11 @@ Result: ${data.result || 'pending'}
                     !faceInsideGuide ? 'ALIGN FACE INSIDE OVAL' :
                     faceVisibleDuration < 2.0 ? `STABILIZING ${Math.min(100, Math.round(faceVisibleDuration * 50))}%` :
                     `FAST SCAN: STEP ${currentStep + 1}/4`
+                  }
+                  timeRemaining={
+                    (detectedFaces <= 1 && landmarkCount > 0 && confidence >= 0.90 && faceInsideGuide && faceVisibleDuration >= 2.0)
+                      ? timeRemaining
+                      : null
                   }
                   themeColor="#00d4ff"
                 />

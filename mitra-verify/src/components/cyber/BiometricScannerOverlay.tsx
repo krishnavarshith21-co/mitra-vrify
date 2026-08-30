@@ -11,6 +11,7 @@ interface BiometricScannerOverlayProps {
   ear?: number;
   mar?: number;
   challengeLabel?: string;
+  timeRemaining?: number | null;
   themeColor?: string;
 }
 
@@ -22,6 +23,7 @@ export default function BiometricScannerOverlay({
   ear = 0,
   mar = 0,
   challengeLabel = 'SCANNING PIPELINE',
+  timeRemaining = null,
   themeColor = '#00d4ff'
 }: BiometricScannerOverlayProps) {
   const activeColor = detectedFaces > 1 ? '#ff3366' : faceInside ? '#00ff88' : themeColor;
@@ -189,7 +191,23 @@ export default function BiometricScannerOverlay({
         fontWeight: 600,
         boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px ${activeColor}10`
       }}>
-        {challengeLabel}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>{challengeLabel}</span>
+          {timeRemaining !== null && (
+            <motion.span
+              animate={timeRemaining <= 5 ? { opacity: [1, 0.3, 1], scale: [1, 1.1, 1] } : {}}
+              transition={{ duration: 1, repeat: Infinity }}
+              style={{
+                color: timeRemaining <= 5 ? '#ff3366' : activeColor,
+                fontWeight: 900,
+                fontSize: 14,
+                textShadow: timeRemaining <= 5 ? '0 0 10px rgba(255,51,102,0.8)' : 'none',
+              }}
+            >
+              {timeRemaining}s
+            </motion.span>
+          )}
+        </div>
       </div>
     </div>
   );

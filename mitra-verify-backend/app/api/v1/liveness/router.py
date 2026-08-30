@@ -373,6 +373,7 @@ async def start_session(data: SessionStartRequest, current_user: User | None = D
         "roll": [],
         "eyebrow_ratios": [],
         "baseline_eyebrow_ratio": None,
+        "challenge_started_at": time.time(),
         "smile_ratios": [],
         "baseline_smile_ratio": None,
         "current_challenge": "FACE_CENTERED",
@@ -414,19 +415,41 @@ async def demo_process(
     print(f"[ENROLL API INPUT]\nsession_id={data.session_id}\nphase={session.get('stage') if session else 'UNKNOWN'}\nhas_frame={bool(data.image)}\nframe_size={len(data.image) if data.image else 0}\ncontent_type=base64\nchallenge_type={data.challenge_type}")
 
     current_user = None
+    enrolled_signature_db = None
     if session and session.get("user_id"):
-        from app.models.models import User
+        from app.models.models import User, FaceProfile
         res = await db.execute(select(User).where(User.id == session["user_id"]))
         current_user = res.scalar_one_or_none()
+        if current_user and data.api_type == "enterprise":
+            from app.core.security import decrypt_template
+            f_res = await db.execute(select(FaceProfile).where(FaceProfile.user_id == current_user.id))
+            enrolled_prof = f_res.scalar_one_or_none()
+            if enrolled_prof:
+                vec = getattr(enrolled_prof, "embedding_vector", None)
+                if getattr(enrolled_prof, "is_encrypted", False) and isinstance(vec, dict) and "encrypted_data" in vec:
+                    vec = decrypt_template(vec["encrypted_data"])
+                enrolled_signature_db = vec
+
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     
     # ── BACKEND AUTHORITATIVE CHALLENGE INJECTION ──
     # Ignore the frontend's requested challenge. Use the server-side state.
     server_challenge = None
+    challenge_timeout_reached = False
+    time_remaining = 30
+    
     if session and "challenges" in session and "current_challenge_index" in session:
         idx = session["current_challenge_index"]
         if idx < len(session["challenges"]):
             server_challenge = session["challenges"][idx]["id"]
+        else:
+            server_challenge = "liveness_verified"
+            
+        if "challenge_started_at" in session:
+            elapsed = time.time() - session["challenge_started_at"]
+            time_remaining = max(0, 30 - int(elapsed))
+            if elapsed > 30:
+                challenge_timeout_reached = True
     
     cv_result = await run_in_threadpool(
         process_demo_frame,
@@ -434,14 +457,25 @@ async def demo_process(
         frame_id=data.frame_id,
         session_id=data.session_id,
         challenge_type=server_challenge,
-        enrolled_signature=data.enrolled_signature,
+        enrolled_signature=enrolled_signature_db or data.enrolled_signature,
         api_type=data.api_type
     )
     
     # ── ADVANCE SEQUENCE ON SUCCESS ──
     if session and cv_result.get("challenge_passed") is True:
         session["current_challenge_index"] += 1
+        session["challenge_started_at"] = time.time()  # Reset timer for next challenge
         cv_result["sequence_advanced"] = True
+    elif session and challenge_timeout_reached and not cv_result.get("challenge_passed"):
+        # ── FORCE TIMEOUT FAILURE ──
+        cv_result["status"] = "SPOOF_DETECTED"
+        cv_result["challenge_passed"] = False
+        cv_result["reason"] = "Challenge was not completed within 30 seconds."
+        cv_result["spoof_score"] = 1.0
+        cv_result["result"] = "fail"
+        time_remaining = 0
+        
+    cv_result["time_remaining"] = time_remaining
         
     if session and "challenges" in session and "current_challenge_index" in session:
         idx = session["current_challenge_index"]

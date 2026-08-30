@@ -57,7 +57,7 @@ export default function AdvancedDemoPage() {
   const [currentChallenge, setCurrentChallenge] = useState(0); // 0: Face Centered, 1: Blink, 2: Mouth, 3: Head, 4: Complete
   const [challengePassed, setChallengePassed] = useState<boolean[]>([false, false, false, false]);
   const [challengeProgress, setChallengeProgress] = useState(0);
-  const [overallResult, setOverallResult] = useState<'pass' | 'fail' | 'spoof' | null>(null);
+  const [overallResult, setOverallResult] = useState<'pass' | 'fail' | 'spoof' | 'timeout' | null>(null);
   
   // Telemetry indicators
   const [confidence, setConfidence] = useState(0);
@@ -101,6 +101,7 @@ export default function AdvancedDemoPage() {
   const [lastFaceSeenTimestamp, setLastFaceSeenTimestamp] = useState<number | null>(null);
   const lastFaceSeenTimestampRef = useRef<number | null>(null);
   const [noFaceTimeoutError, setNoFaceTimeoutError] = useState<boolean>(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [faceMissingCountdown, setFaceMissingCountdown] = useState<number>(5.0);
 
   // Flow control
@@ -301,12 +302,19 @@ export default function AdvancedDemoPage() {
         setOverallResult('pass');
         setStreaming(false);
       } else if (data.result === 'fail') {
-        if (data.status === 'SPOOF_DETECTED') setOverallResult('spoof');
+        if (data.status === 'SPOOF_DETECTED') {
+          if (data.reason?.includes("within 30 seconds")) {
+            setOverallResult('timeout');
+          } else {
+            setOverallResult('spoof');
+          }
+        }
         else setOverallResult('fail');
         setStreaming(false);
-        
-        if (data.status === 'SPOOF_DETECTED' || data.status === 'MULTIPLE_FACES_DETECTED') {
-        }
+      }
+      
+      if (data.time_remaining !== undefined) {
+        setTimeRemaining(data.time_remaining);
       }
 
       // Check backend face-loss timeout failure
@@ -344,6 +352,7 @@ export default function AdvancedDemoPage() {
         lastFaceSeenTimestampRef.current = null;
         setLastFaceSeenTimestamp(null);
         setFaceMissingCountdown(0.0);
+        setTimeRemaining(null);
         return;
       }
 
@@ -752,6 +761,11 @@ export default function AdvancedDemoPage() {
                     faceVisibleDuration < 2.0 ? `PREPARING FACE (${Math.min(100, Math.round(faceVisibleDuration * 50))}%)` :
                     `CHALLENGE STEP: ${challenges[currentChallenge]?.label || 'RUNNING'}`
                   }
+                  timeRemaining={
+                    (detectedFaces <= 1 && landmarkCount > 0 && confidence >= 0.90 && faceInsideGuide && faceVisibleDuration >= 2.0) 
+                      ? timeRemaining 
+                      : null
+                  }
                   themeColor="#7c3aed"
                 />
               )}
@@ -982,13 +996,13 @@ export default function AdvancedDemoPage() {
                       Verification failed due to high-risk spoof signatures.
                     </div>
                   </div>
-                ) : overallResult === 'fail' ? (
+                ) : (overallResult === 'fail' || overallResult === 'timeout') ? (
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 700, color: '#ff3366', marginBottom: 4 }}>
-                      VERIFICATION FAILED
+                      {overallResult === 'timeout' ? 'CHALLENGE TIMEOUT' : 'VERIFICATION FAILED'}
                     </div>
                     <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                      The verification challenge sequence timed out.
+                      {overallResult === 'timeout' ? 'The verification challenge sequence timed out.' : 'The verification challenge sequence failed.'}
                     </div>
                   </div>
                 ) : (

@@ -11,7 +11,7 @@ MediaPipe-based computer vision engine for MITRA VERIFY.
 Implements face liveness detection, anti-spoof, and identity verification.
 """
 IDENTITY_MATCH_THRESHOLD = 0.88
-CHALLENGE_HOLD_FRAMES = 12
+CHALLENGE_HOLD_FRAMES = 5
 CHALLENGE_ANGLE_THRESHOLD = 12.0
 CHALLENGE_HYSTERESIS = 3.0
 import base64
@@ -2902,6 +2902,29 @@ def _process_demo_frame_inner(
     # 11. Challenge validation (Support the 9 strict physical challenges)
     challenge_passed = False
     face_confidence_check = _calculate_face_confidence(landmarks, w, h) if detected_faces > 0 else 0.0
+    
+    # ── Normalize challenge type to UPPERCASE ──────────────────────
+    # The frontend may send lowercase (legacy) or uppercase challenge types.
+    # We normalize to uppercase and map legacy names to the canonical names.
+    _CHALLENGE_TYPE_MAP = {
+        "face_centered": "FACE_CENTERED",
+        "blink_once": "BLINK_ONCE",
+        "blink_twice": "BLINK_TWICE",
+        "open_mouth": "OPEN_MOUTH",
+        "turn_left": "HEAD_LEFT",
+        "turn_right": "HEAD_RIGHT",
+        "look_up": "HEAD_UP",
+        "look_down": "HEAD_DOWN",
+        "nod_head": "NOD_HEAD",
+        "shake_head": "HEAD_ROTATION",
+        "raise_eyebrows": "EYEBROWS_UP",
+        "head_rotation": "HEAD_ROTATION",
+    }
+    if challenge_type:
+        normalized = challenge_type.upper()
+        challenge_type = _CHALLENGE_TYPE_MAP.get(challenge_type, _CHALLENGE_TYPE_MAP.get(normalized, normalized))
+    
+    challenge_diag = None  # Will be populated if face is detected and a challenge is active
     if challenge_type and history and detected_faces == 1 and face_confidence_check > 0:
         
         # Determine the start time of the current challenge.
@@ -2924,6 +2947,37 @@ def _process_demo_frame_inner(
         movement_detected = False
         threshold = CHALLENGE_ANGLE_THRESHOLD
 
+        # ── Challenge diagnostics (dev-only) ──────────────────────────
+        challenge_diag = {
+            "challenge_type": challenge_type,
+            "face_present": True,
+            "yaw": round(float(yaw), 2),
+            "pitch": round(float(pitch), 2),
+            "roll": round(float(roll), 2),
+            "baseline_yaw": round(float(baseline_yaw), 2),
+            "baseline_pitch": round(float(baseline_pitch), 2),
+            "yaw_disp": round(float(yaw_disp), 2),
+            "pitch_disp": round(float(pitch_disp), 2),
+            "ear": round(float(avg_ear), 4),
+            "mar": round(float(smoothed_mar), 4),
+            "eyebrow_ratio": round(float(eyebrow_ratio), 4) if eyebrow_ratio else 0.0,
+            "threshold": float(threshold),
+            "hold_frames_required": CHALLENGE_HOLD_FRAMES,
+        }
+
+        print(f"[CHALLENGE INPUT]")
+        print(f"challenge_type: {challenge_type}")
+        print(f"face_present: True")
+        print(f"pitch: {pitch:.2f}")
+        print(f"yaw: {yaw:.2f}")
+        print(f"roll: {roll:.2f}")
+        print(f"ear: {avg_ear:.4f}")
+        print(f"mar: {smoothed_mar:.4f}")
+        print(f"eyebrow_ratio: {eyebrow_ratio:.4f}" if eyebrow_ratio else "eyebrow_ratio: N/A")
+        print(f"baseline_yaw: {baseline_yaw:.2f}")
+        print(f"baseline_pitch: {baseline_pitch:.2f}")
+        print(f"yaw_disp: {yaw_disp:.2f}")
+        print(f"pitch_disp: {pitch_disp:.2f}")
         if challenge_type == "FACE_CENTERED":
             recent_yaws = [history["yaw"][i] for i in recent_indices] if recent_indices else [yaw]
             recent_pitches = [history["pitch"][i] for i in recent_indices] if recent_indices else [pitch]
@@ -2935,15 +2989,41 @@ def _process_demo_frame_inner(
                     break
             challenge_passed = valid_count >= CHALLENGE_HOLD_FRAMES
             count = valid_count
+        
+        elif challenge_type in ("BLINK_ONCE", "BLINK_TWICE"):
+            # Blink detection using EAR (Eye Aspect Ratio) state machine: WAITING → DROPPED → RECOVERED
+            recent_ears = [history["ear"][i] for i in recent_indices] if recent_indices else [avg_ear]
+            blink_state = history.get("blink_state", "WAITING")
+            blink_drop_frames = history.get("blink_drop_frames", 0)
+            
+            for ear_val in recent_ears:
+                if ear_val < 0.22:
+                    if blink_state == "WAITING":
+                        blink_state = "DROPPED"
+                        blink_drop_frames = 1
+                    elif blink_state == "DROPPED":
+                        blink_drop_frames += 1
+                elif ear_val > 0.25:
+                    if blink_state == "DROPPED" and 1 <= blink_drop_frames <= 20:
+                        blink_state = "RECOVERED"
+                    elif blink_state == "DROPPED":
+                        blink_state = "WAITING"
+                        blink_drop_frames = 0
+            
+            history["blink_state"] = blink_state
+            history["blink_drop_frames"] = blink_drop_frames
+            challenge_passed = blink_state == "RECOVERED"
+            count = blink_drop_frames if challenge_passed else 0
+            movement_detected = blink_state == "DROPPED"
             
         elif challenge_type == "OPEN_MOUTH":
             recent_mars = [history["mar"][i] for i in recent_indices] if recent_indices else [mar]
             opened = False
             closed = False
             for val in recent_mars:
-                if val > 0.35: # Natural open mouth
+                if val > 0.25: # Natural open mouth (lowered from 0.35 for webcam reliability)
                     opened = True
-                elif opened and val < 0.28:
+                elif opened and val < 0.20:
                     closed = True
             challenge_passed = opened and closed
             count = len(recent_mars) if challenge_passed else 0
@@ -3033,7 +3113,76 @@ def _process_demo_frame_inner(
                 challenge_passed = eyebrow_ratio > 0.22
                 count = 1 if challenge_passed else 0
 
-        print(f"[DEBUG CHALLENGE] Active={challenge_type} | Baseline(Y/P/R)={baseline_yaw:.1f}/{baseline_pitch:.1f}/{baseline_roll:.1f} | Current(Y/P/R)={yaw:.1f}/{pitch:.1f}/{roll:.1f} | Disp(Y/P)={yaw_disp:.1f}/{pitch_disp:.1f} | Threshold={threshold} | MovementDetected={movement_detected} | Consecutive={count} | Required={CHALLENGE_HOLD_FRAMES} | Passed={challenge_passed}")
+        # ── Build challenge result diagnostics ────────────────────────
+        # Determine detected_action and reason per challenge type
+        if challenge_type == "FACE_CENTERED":
+            _detected = f"centered ({count}/{CHALLENGE_HOLD_FRAMES} consecutive)"
+            _reason = "Centered for required frames" if challenge_passed else f"Only {count}/{CHALLENGE_HOLD_FRAMES} consecutive centered frames"
+            _actual_value = f"yaw_disp={yaw_disp:.2f}, pitch_disp={pitch_disp:.2f}"
+            _threshold_desc = f"abs(yaw_disp)<{threshold}, abs(pitch_disp)<{threshold} for {CHALLENGE_HOLD_FRAMES} frames"
+        elif challenge_type in ("BLINK_ONCE", "BLINK_TWICE"):
+            blink_st = history.get("blink_state", "WAITING") if history else "WAITING"
+            _detected = f"blink_state={blink_st}"
+            _reason = "EAR dropped below 0.22 then recovered above 0.25" if challenge_passed else f"Blink state: {blink_st} (need RECOVERED)"
+            _actual_value = f"ear={avg_ear:.4f}, blink_state={blink_st}, drop_frames={history.get('blink_drop_frames', 0) if history else 0}"
+            _threshold_desc = "EAR<0.22 (drop) then EAR>0.25 (recover), 1-20 drop frames"
+        elif challenge_type == "OPEN_MOUTH":
+            _detected = f"mouth open/close cycle"
+            _reason = "Mouth opened wide then closed" if challenge_passed else "Waiting for open>0.25 then close<0.20"
+            _actual_value = f"mar={smoothed_mar:.4f}"
+            _threshold_desc = "MAR>0.25 (open) then MAR<0.20 (close)"
+        elif challenge_type in ("HEAD_LEFT", "HEAD_RIGHT"):
+            _dir = "LEFT(yaw+)" if challenge_type == "HEAD_LEFT" else "RIGHT(yaw-)"
+            _detected = f"yaw_disp={yaw_disp:.2f} ({count}/{CHALLENGE_HOLD_FRAMES})"
+            _reason = f"Turned {_dir} for {count} consecutive frames" if challenge_passed else f"Need {CHALLENGE_HOLD_FRAMES} consecutive frames past threshold"
+            _actual_value = f"yaw_disp={yaw_disp:.2f}"
+            _threshold_desc = f"{'yaw_disp>' if challenge_type=='HEAD_LEFT' else 'yaw_disp<-'}{threshold-CHALLENGE_HYSTERESIS:.1f} for {CHALLENGE_HOLD_FRAMES} frames"
+        elif challenge_type in ("HEAD_UP", "HEAD_DOWN"):
+            _dir = "UP(pitch+)" if challenge_type == "HEAD_UP" else "DOWN(pitch-)"
+            _detected = f"pitch_disp={pitch_disp:.2f} ({count}/{CHALLENGE_HOLD_FRAMES})"
+            _reason = f"Moved {_dir} for {count} consecutive frames" if challenge_passed else f"Need {CHALLENGE_HOLD_FRAMES} consecutive frames past threshold"
+            _actual_value = f"pitch_disp={pitch_disp:.2f}"
+            _threshold_desc = f"{'pitch_disp>' if challenge_type=='HEAD_UP' else 'pitch_disp<-'}{threshold-CHALLENGE_HYSTERESIS:.1f} for {CHALLENGE_HOLD_FRAMES} frames"
+        elif challenge_type == "NOD_HEAD":
+            _detected = f"went_up={went_up}, went_down={went_down}" if 'went_up' in dir() else "N/A"
+            _reason = "Nodded up and down" if challenge_passed else "Need both up and down pitch displacement"
+            _actual_value = f"pitch_disp={pitch_disp:.2f}"
+            _threshold_desc = f"pitch_disp>{threshold} AND pitch_disp<-{threshold} (both in history)"
+        elif challenge_type == "HEAD_ROTATION":
+            _detected = f"yaw_range observed over {count} frames"
+            _reason = "Sufficient yaw range detected" if challenge_passed else f"Need 15+ frames with yaw range > {threshold*2}"
+            _actual_value = f"yaw_disp={yaw_disp:.2f}, frames={count}"
+            _threshold_desc = f"yaw_range>{threshold*2:.1f} over 15+ frames"
+        elif challenge_type == "EYEBROWS_UP":
+            _baseline_eb = history.get("baseline_eyebrow_ratio", None) if history else None
+            _detected = f"eyebrow_ratio={eyebrow_ratio:.4f}" if eyebrow_ratio else "N/A"
+            _reason = f"Eyebrows raised above baseline*1.15" if challenge_passed else f"Need eyebrow_ratio > baseline*1.15 for {CHALLENGE_HOLD_FRAMES} frames"
+            _actual_value = f"eyebrow_ratio={eyebrow_ratio:.4f}, baseline={_baseline_eb:.4f}" if _baseline_eb else f"eyebrow_ratio={eyebrow_ratio:.4f}, baseline=N/A"
+            _threshold_desc = f"eyebrow_ratio > baseline*1.15 for {CHALLENGE_HOLD_FRAMES} frames (or >0.22 if no baseline)"
+        else:
+            _detected = "unknown"
+            _reason = "Unknown challenge type"
+            _actual_value = "N/A"
+            _threshold_desc = "N/A"
+
+        challenge_diag.update({
+            "detected_action": _detected,
+            "threshold_desc": _threshold_desc,
+            "actual_value": _actual_value,
+            "consecutive_count": count,
+            "movement_detected": movement_detected,
+            "passed": bool(challenge_passed),
+            "reason": _reason,
+        })
+
+        print(f"[CHALLENGE RESULT]")
+        print(f"challenge_type: {challenge_type}")
+        print(f"detected_action: {_detected}")
+        print(f"threshold: {_threshold_desc}")
+        print(f"actual_value: {_actual_value}")
+        print(f"consecutive: {count}/{CHALLENGE_HOLD_FRAMES}")
+        print(f"passed: {challenge_passed}")
+        print(f"reason: {_reason}")
 
     # Calculate spoof score dynamically passing the challenge details
     t_spoof_start = time.perf_counter()
@@ -3434,7 +3583,8 @@ def _process_demo_frame_inner(
         "enrollment_signature": current_signature,
         "status": status,
         "reason": reason if reason else match_reason,
-        "timings": timings
+        "timings": timings,
+        "challenge_diag": challenge_diag
     }
 
     if api_type == "enterprise" and enterprise_report:

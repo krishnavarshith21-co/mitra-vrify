@@ -211,6 +211,8 @@ import time
 
 CHALLENGES_METADATA = {
     "FACE_CENTERED": { "label": "Face Centered", "instruction": "Center your face inside the guides", "icon": "👤" },
+    "BLINK_ONCE": { "label": "Blink Once", "instruction": "Blink your eyes once slowly", "icon": "👁️" },
+    "BLINK_TWICE": { "label": "Blink Twice", "instruction": "Blink your eyes twice", "icon": "👁️" },
     "HEAD_UP": { "label": "Look Up", "instruction": "Look up with your head", "icon": "👆" },
     "HEAD_DOWN": { "label": "Look Down", "instruction": "Look down with your head", "icon": "👇" },
     "HEAD_LEFT": { "label": "Turn Head Left", "instruction": "Turn your head to the left", "icon": "👈" },
@@ -340,7 +342,7 @@ async def start_session(data: SessionStartRequest, current_user: User | None = D
         selected = secrets.SystemRandom().sample(advanced_pool, num_challenges)
     else:
         # basic
-        selected = ['blink_once', 'open_mouth', 'turn_left']
+        selected = ['BLINK_ONCE', 'OPEN_MOUTH', 'HEAD_LEFT']
         
     challenges = []
     challenges.append({

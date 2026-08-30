@@ -117,6 +117,7 @@ export default function BasicDemoPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [sessionChallenges, setSessionChallenges] = useState<{ id: string; label: string; instruction: string; icon: string }[]>([]);
   const [currentApiBase, setCurrentApiBase] = useState<string>('');
   
   // Developer Ecosystem Hooks
@@ -169,6 +170,8 @@ export default function BasicDemoPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [apiResponse, setApiResponse] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [challengeDiag, setChallengeDiag] = useState<any>(null);
   const [noFaceTimeoutError, setNoFaceTimeoutError] = useState<boolean>(false);
   const [backendStatus, setBackendStatus] = useState<'ONLINE' | 'OFFLINE' | 'ERROR' | 'TIMEOUT' | null>(null);
   const [faceMissingCountdown, setFaceMissingCountdown] = useState<number>(5.0);
@@ -479,15 +482,23 @@ export default function BasicDemoPage() {
       console.log("FRAME_RECEIVED: Captured frame for processing");
       console.log("FACE_DETECTION_STARTED");
       
+      // Use session-returned challenge IDs (UPPERCASE, canonical) for backend communication
       let challengeType: string | undefined = undefined;
-      if (currentStep === 0) challengeType = "face_centered";
-      else if (currentStep === 1) challengeType = "blink_once";
-      else if (currentStep === 2) challengeType = "open_mouth";
-      else if (currentStep === 3) challengeType = "turn_left";
+      if (sessionChallenges.length > 0) {
+        // Session challenges include FACE_CENTERED at index 0, then the rest
+        challengeType = sessionChallenges[currentStep]?.id;
+      } else {
+        // Fallback if session didn't return challenges
+        if (currentStep === 0) challengeType = "FACE_CENTERED";
+        else if (currentStep === 1) challengeType = "BLINK_ONCE";
+        else if (currentStep === 2) challengeType = "OPEN_MOUTH";
+        else if (currentStep === 3) challengeType = "HEAD_LEFT";
+      }
 
       const res = await livenessAPI.processDemoFrame(base64Image, sessionId, challengeType, 'basic', currentFrameId.toString());
       const data = res?.data;
       setApiResponse(data);
+      if (data?.challenge_diag) setChallengeDiag(data.challenge_diag);
 
       if (!data) return;
       
@@ -996,6 +1007,9 @@ Result: ${data.result || 'pending'}
     try {
       const sessionRes = await livenessAPI.startSession('basic');
       setSessionId(sessionRes.data.session_id);
+      if (sessionRes.data.challenges) {
+        setSessionChallenges(sessionRes.data.challenges);
+      }
     } catch (e) {
       console.error("Failed to start session on backend", e);
       setError('Failed to initialize verification session. Please try again.');
@@ -1559,6 +1573,37 @@ Result: ${data.result || 'pending'}
                     <div>Threshold: <span style={{ color: '#f8fafc' }}>12°</span></div>
                     <div>Challenge Status: <span style={{ color: rotationStatus === 'PASS' ? '#00ff88' : '#00d4ff' }}>{rotationStatus}</span></div>
                     <div>Status: <span style={{ color: rotationStatus === 'PASS' ? '#00ff88' : '#00d4ff' }}>{rotationStatus}</span></div>
+
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
+                    <div style={{ color: '#ff6b35', fontWeight: 'bold', fontSize: 11 }}>🔬 CHALLENGE DIAGNOSTICS (DEV ONLY):</div>
+                    {challengeDiag ? (
+                      <>
+                        <div style={{ color: '#ff6b35', marginTop: 4 }}>[CHALLENGE INPUT]</div>
+                        <div>challenge_type: <span style={{ color: '#f8fafc' }}>{challengeDiag.challenge_type}</span></div>
+                        <div>frontend_sent: <span style={{ color: '#f8fafc' }}>{sessionChallenges[currentStep]?.id || 'N/A'}</span></div>
+                        <div>match: <span style={{ color: challengeDiag.challenge_type === (sessionChallenges[currentStep]?.id) ? '#00ff88' : '#ff4444' }}>{challengeDiag.challenge_type === (sessionChallenges[currentStep]?.id) ? '✅ MATCH' : '❌ MISMATCH'}</span></div>
+                        <div>face_present: <span style={{ color: challengeDiag.face_present ? '#00ff88' : '#ff4444' }}>{String(challengeDiag.face_present)}</span></div>
+                        <div>pitch: <span style={{ color: '#f8fafc' }}>{challengeDiag.pitch}</span></div>
+                        <div>yaw: <span style={{ color: '#f8fafc' }}>{challengeDiag.yaw}</span></div>
+                        <div>roll: <span style={{ color: '#f8fafc' }}>{challengeDiag.roll}</span></div>
+                        <div>ear: <span style={{ color: '#f8fafc' }}>{challengeDiag.ear}</span></div>
+                        <div>mar: <span style={{ color: '#f8fafc' }}>{challengeDiag.mar}</span></div>
+                        <div>baseline_yaw: <span style={{ color: '#f8fafc' }}>{challengeDiag.baseline_yaw}</span></div>
+                        <div>baseline_pitch: <span style={{ color: '#f8fafc' }}>{challengeDiag.baseline_pitch}</span></div>
+                        <div>yaw_disp: <span style={{ color: '#f8fafc' }}>{challengeDiag.yaw_disp}</span></div>
+                        <div>pitch_disp: <span style={{ color: '#f8fafc' }}>{challengeDiag.pitch_disp}</span></div>
+
+                        <div style={{ color: '#ff6b35', marginTop: 4 }}>[CHALLENGE RESULT]</div>
+                        <div>detected_action: <span style={{ color: '#f8fafc' }}>{challengeDiag.detected_action}</span></div>
+                        <div>threshold: <span style={{ color: '#f8fafc' }}>{challengeDiag.threshold_desc}</span></div>
+                        <div>actual_value: <span style={{ color: '#f8fafc' }}>{challengeDiag.actual_value}</span></div>
+                        <div>consecutive: <span style={{ color: '#f8fafc' }}>{challengeDiag.consecutive_count}/{challengeDiag.hold_frames_required}</span></div>
+                        <div>passed: <span style={{ color: challengeDiag.passed ? '#00ff88' : '#ff4444', fontWeight: 'bold' }}>{String(challengeDiag.passed)}</span></div>
+                        <div>reason: <span style={{ color: '#f8fafc' }}>{challengeDiag.reason}</span></div>
+                      </>
+                    ) : (
+                      <div style={{ color: '#475569' }}>Waiting for challenge evaluation...</div>
+                    )}
                   </div>
                 </motion.div>
               )}

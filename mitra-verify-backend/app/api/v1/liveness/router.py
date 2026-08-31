@@ -328,7 +328,11 @@ async def debug_cv():
     return result
 
 @router.post("/session/start", tags=["Demo"])
-async def start_session(data: SessionStartRequest, current_user: User | None = Depends(get_optional_user)):
+async def start_session(
+    data: SessionStartRequest,
+    current_user: User | None = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db)
+):
     session_id = getattr(data, 'session_id', None) or str(uuid.uuid4())
     
     advanced_pool = ['BLINK_ONCE', 'BLINK_TWICE', 'HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
@@ -362,11 +366,26 @@ async def start_session(data: SessionStartRequest, current_user: User | None = D
             "icon": meta["icon"]
         })
         
+    is_enrolled = False
+    enrolled_signature = None
+    if current_user and data.api_type == "enterprise":
+        from app.models.models import FaceProfile
+        from app.core.security import decrypt_template
+        f_res = await db.execute(select(FaceProfile).where(FaceProfile.user_id == current_user.id))
+        enrolled_prof = f_res.scalar_one_or_none()
+        if enrolled_prof:
+            is_enrolled = True
+            vec = getattr(enrolled_prof, "embedding_vector", None)
+            if getattr(enrolled_prof, "is_encrypted", False) and isinstance(vec, dict) and "encrypted_data" in vec:
+                vec = decrypt_template(vec["encrypted_data"])
+            enrolled_signature = vec
+            
     from app.services.cv.mediapipe_engine import SESSION_CACHE
     SESSION_CACHE[session_id] = {
         "landmarks": [],
         "ear": [],
-        "stage": "ENROLLMENT",
+        "stage": "IDENTITY_VERIFYING" if is_enrolled else "ENROLLMENT",
+        "enrolled_signature": enrolled_signature,
         "mar": [],
         "yaw": [],
         "pitch": [],

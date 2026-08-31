@@ -480,11 +480,99 @@ async def demo_process(
         api_type=data.api_type
     )
     
+    # ── CONTINUOUS LIVENESS VALIDATION ──
+    # These statuses indicate a liveness violation that MUST block challenge advancement.
+    LIVENESS_VIOLATION_STATUSES = {
+        "NO_FACE_DETECTED", "FACE_LOST", "MULTIPLE_FACES_DETECTED",
+        "FACE_NOT_CENTERED", "FACE_TOO_SMALL", "FACE_TOO_LARGE",
+        "FACE_PARTIALLY_VISIBLE", "BLUR_DETECTED", "LOW_CONFIDENCE",
+        "POSE_INVALID", "IDENTITY_LOST", "UNAUTHORIZED_PERSON",
+        "SPOOF_DETECTED", "CAMERA_FEED_FROZEN", "DEEPFAKE_SUSPECTED",
+        "REPLAY_ATTACK_DETECTED", "SECURITY_CHECK_FAILED",
+        "searching_for_face",
+    }
+    
+    # Human-readable warning messages for each violation
+    LIVENESS_WARNING_MESSAGES = {
+        "NO_FACE_DETECTED": "No face detected. Please look at the camera.",
+        "FACE_LOST": "Face lost. Please look at the camera.",
+        "searching_for_face": "Searching for face. Please look at the camera.",
+        "MULTIPLE_FACES_DETECTED": "Multiple faces detected. Only one person should be visible.",
+        "FACE_NOT_CENTERED": "Face not centered. Move your face to the center of the frame.",
+        "FACE_TOO_SMALL": "Face too small. Move closer to the camera.",
+        "FACE_TOO_LARGE": "Face too large. Move further from the camera.",
+        "FACE_PARTIALLY_VISIBLE": "Face partially visible. Ensure your full face is in frame.",
+        "BLUR_DETECTED": "Image is blurry. Please hold still.",
+        "LOW_CONFIDENCE": "Low detection confidence. Improve lighting conditions.",
+        "POSE_INVALID": "Head turned too far. Return to a neutral position.",
+        "IDENTITY_LOST": "Identity verification lost. Please face the camera directly.",
+        "UNAUTHORIZED_PERSON": "Face mismatch detected. Unauthorized person.",
+        "SPOOF_DETECTED": "Spoof attempt detected.",
+        "CAMERA_FEED_FROZEN": "Camera feed appears frozen.",
+        "DEEPFAKE_SUSPECTED": "Deepfake suspected.",
+        "REPLAY_ATTACK_DETECTED": "Replay attack detected.",
+        "SECURITY_CHECK_FAILED": "Security check failed.",
+    }
+    
+    cv_status = cv_result.get("status", "")
+    has_liveness_violation = cv_status in LIVENESS_VIOLATION_STATUSES
+    face_present = cv_result.get("face_present", False)
+    
+    # Track continuous face presence during challenges
+    if session and data.api_type == "enterprise":
+        if not face_present or cv_status in ("NO_FACE_DETECTED", "FACE_LOST", "searching_for_face"):
+            session["challenge_face_lost_frames"] = session.get("challenge_face_lost_frames", 0) + 1
+        else:
+            session["challenge_face_lost_frames"] = 0
+            
+        if cv_status == "MULTIPLE_FACES_DETECTED":
+            session["challenge_multi_face_frames"] = session.get("challenge_multi_face_frames", 0) + 1
+        else:
+            session["challenge_multi_face_frames"] = 0
+    
+    # Determine liveness_status for the frontend
+    if has_liveness_violation:
+        cv_result["liveness_status"] = cv_status.lower()
+        cv_result["liveness_warning"] = LIVENESS_WARNING_MESSAGES.get(cv_status, f"Liveness check issue: {cv_status}")
+    else:
+        cv_result["liveness_status"] = "ok"
+        cv_result["liveness_warning"] = None
+    
+    # ── CHECK FOR TERMINAL LIVENESS FAILURES DURING CHALLENGES ──
+    if session and data.api_type == "enterprise":
+        # Too many consecutive frames with no face → terminate
+        if session.get("challenge_face_lost_frames", 0) >= 50:
+            cv_result["status"] = "NO_FACE_DETECTED"
+            cv_result["challenge_passed"] = False
+            cv_result["result"] = "fail"
+            cv_result["reason"] = "Face was lost for too long during verification."
+            cv_result["liveness_status"] = "face_lost"
+            cv_result["liveness_warning"] = "Face lost for too long. Session terminated."
+            has_liveness_violation = True
+            
+        # Too many consecutive frames with multiple faces → terminate
+        if session.get("challenge_multi_face_frames", 0) >= 10:
+            cv_result["status"] = "MULTIPLE_FACES_DETECTED"
+            cv_result["challenge_passed"] = False
+            cv_result["result"] = "fail"
+            cv_result["reason"] = "Multiple faces detected during verification."
+            cv_result["liveness_status"] = "multiple_faces"
+            cv_result["liveness_warning"] = "Multiple faces detected. Session terminated."
+            has_liveness_violation = True
+    
     # ── ADVANCE SEQUENCE ON SUCCESS ──
-    if session and cv_result.get("challenge_passed") is True:
+    # CRITICAL: Only advance if challenge passed AND no liveness violation
+    if session and cv_result.get("challenge_passed") is True and not has_liveness_violation:
         session["current_challenge_index"] += 1
         session["challenge_started_at"] = time.time()  # Reset timer for next challenge
+        session["challenge_face_lost_frames"] = 0  # Reset on advancement
+        session["challenge_multi_face_frames"] = 0
         cv_result["sequence_advanced"] = True
+    elif session and cv_result.get("challenge_passed") is True and has_liveness_violation:
+        # Challenge would have passed but liveness violation blocks it
+        cv_result["challenge_passed"] = False
+        cv_result["sequence_advanced"] = False
+        print(f"[LIVENESS GATE] Challenge blocked due to liveness violation: {cv_status}")
     elif session and challenge_timeout_reached and not cv_result.get("challenge_passed"):
         # ── FORCE TIMEOUT FAILURE ──
         # BUG 9 FIX: Was SPOOF_DETECTED with spoof_score=1.0, which incorrectly

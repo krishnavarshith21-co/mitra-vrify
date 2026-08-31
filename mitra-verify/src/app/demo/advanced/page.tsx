@@ -110,6 +110,7 @@ export default function AdvancedDemoPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showDebug, setShowDebug] = useState(false);
   const [challengeTimer, setChallengeTimer] = useState(30); // 30 seconds per challenge
+  const [challengeError, setChallengeError] = useState<string | null>(null);
   
   const fpsCountRef = useRef(0);
   const lastFpsTime = useRef(0);
@@ -311,6 +312,15 @@ export default function AdvancedDemoPage() {
         }
         else setOverallResult('fail');
         setStreaming(false);
+      }
+      
+      if (data.status === "CHALLENGE_FAILED") {
+        setChallengeError("Challenge timeout. Please try again.");
+        setChallengeTimer(30);
+      } else if (data.liveness_warning && data.liveness_status !== "ok") {
+        setChallengeError(data.liveness_warning);
+      } else {
+        setChallengeError(null);
       }
       
       if (data.time_remaining !== undefined) {

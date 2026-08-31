@@ -191,6 +191,15 @@ interface BiometricResponse {
     ready: boolean;
     quality_pass: boolean;
   };
+  // Continuous liveness verification fields
+  liveness_status?: string;
+  liveness_warning?: string | null;
+  result?: string;
+  sequence_advanced?: boolean;
+  current_challenge_index?: number;
+  sequence_complete?: boolean;
+  time_remaining?: number;
+  active_challenge?: { id: string; label: string; instruction: string; icon: string } | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -755,6 +764,10 @@ export default function EnterpriseDemoPage() {
         // Reset challenge timer for another attempt
         setChallengeTimer(30);
         return;
+      } else if (data.liveness_warning && data.liveness_status !== "ok") {
+        // Show continuous liveness warnings during challenges
+        // These are non-terminal but block challenge advancement
+        setChallengeError(data.liveness_warning);
       } else {
         setChallengeError(null);
       }
@@ -774,6 +787,8 @@ export default function EnterpriseDemoPage() {
         "MULTIPLE_FACES_DETECTED": "MULTIPLE FACES DETECTED",
         "REPLAY_ATTACK_DETECTED": "REPLAY ATTACK DETECTED",
         "DEEPFAKE_SUSPECTED": "DEEPFAKE SUSPECTED",
+        "NO_FACE_DETECTED": "FACE LOST — NO FACE DETECTED",
+        "FACE_LOST": "FACE LOST",
         // CAMERA_FEED_FROZEN removed: too many false positives with real webcams.
         // The backend now requires 10+ consecutive frozen frames with a stricter threshold.
         // If it still fires, we treat it as a non-fatal warning rather than killing the session.
@@ -811,6 +826,12 @@ export default function EnterpriseDemoPage() {
       if (data.status === 'IDENTITY_LOST') {
         setFaceTrackingState('FACE_RECOVERY');
         // The backend handles pausing challenge progression by returning challenge_passed = False
+      } else if (data.liveness_status && data.liveness_status !== 'ok' && data.face_present) {
+        // Non-terminal liveness issues with face still visible (blur, pose, not centered, etc.)
+        // Update tracking state to show there's an issue but don't terminate
+        if (['face_not_centered', 'face_too_small', 'face_too_large', 'pose_invalid'].includes(data.liveness_status)) {
+          setFaceTrackingState('FACE_RECOVERY');
+        }
       }
 
 
@@ -1904,9 +1925,23 @@ export default function EnterpriseDemoPage() {
                 
                 <div style={{ flexShrink: 0 }}>
                   {challengeError && (
-                    <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,51,102,0.15)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontSize: 11, fontWeight: 600 }}>
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{
+                        marginTop: 8, padding: '10px 12px', borderRadius: 8,
+                        background: challengeError.toLowerCase().includes('spoof') || challengeError.toLowerCase().includes('unauthorized') || challengeError.toLowerCase().includes('mismatch') || challengeError.toLowerCase().includes('terminated')
+                          ? 'rgba(255,51,102,0.15)' : 'rgba(255,184,0,0.15)',
+                        border: `1px solid ${challengeError.toLowerCase().includes('spoof') || challengeError.toLowerCase().includes('unauthorized') || challengeError.toLowerCase().includes('mismatch') || challengeError.toLowerCase().includes('terminated')
+                          ? 'rgba(255,51,102,0.4)' : 'rgba(255,184,0,0.4)'}`,
+                        color: challengeError.toLowerCase().includes('spoof') || challengeError.toLowerCase().includes('unauthorized') || challengeError.toLowerCase().includes('mismatch') || challengeError.toLowerCase().includes('terminated')
+                          ? '#ff3366' : '#ffb800',
+                        fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                    >
+                      <AlertTriangle size={14} style={{ flexShrink: 0 }} />
                       {challengeError}
-                    </div>
+                    </motion.div>
                   )}
                   {/* Show instructions explicitly */}
                   {challenges[currentChallenge] && (

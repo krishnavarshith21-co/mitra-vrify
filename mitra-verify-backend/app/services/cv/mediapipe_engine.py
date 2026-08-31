@@ -2444,9 +2444,13 @@ def _process_demo_frame_inner(
             if "last_face_seen" not in session:
                 session["last_face_seen"] = session.get("created_at", time.time())
             
+            # Track face_lost_frames for continuous liveness during challenges
+            current_stage = session.get("stage", "ENROLLMENT")
+            session["face_lost_frames"] = session.get("face_lost_frames", 0) + 1
+            
             if time.time() - session["last_face_seen"] > 5.0:
-                # BUG 7 supplement: only emit FACE_LOST during continuous monitoring to avoid killing enrollment
-                if session.get("stage") == "CONTINUOUS_MONITORING":
+                # Emit FACE_LOST during CONTINUOUS_MONITORING and LIVENESS_CHALLENGES
+                if current_stage in ("CONTINUOUS_MONITORING", "LIVENESS_CHALLENGES", "IDENTITY_VERIFYING", "IDENTITY_VERIFIED"):
                     status_code = "FACE_LOST"
                     reason_code = "no_face_detected"
                 else:
@@ -2521,6 +2525,7 @@ def _process_demo_frame_inner(
         
     if session_proxy:
         session_proxy["last_face_seen"] = time.time()
+        session_proxy["face_lost_frames"] = 0  # Reset face-lost counter when face is detected
         # If face wasn't already marked as stable, start the timer now
         if session_proxy.get("face_stable_since") is None:
             session_proxy["face_stable_since"] = time.time()

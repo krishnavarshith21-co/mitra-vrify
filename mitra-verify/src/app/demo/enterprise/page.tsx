@@ -767,18 +767,8 @@ export default function EnterpriseDemoPage() {
         if (isMonitoring && (fpsCountRef.current % 5 === 0)) {
            setMonitoringAudit(prev => [{ time: new Date().toLocaleTimeString(), event: 'Identity Verified', status: 'secure' }, ...prev].slice(0, 50));
         }
-      } else if (data.result === 'fail') {
-        // BUG 12 FIX: Only terminate on fail if it's from a terminal status.
-        // Non-terminal fails (e.g. transient quality issues, single bad frame)
-        // should not kill the entire session.
-        if (data.status && data.status in terminalStatuses) {
-          triggerSessionTermination(terminalStatuses[data.status]);
-          return;
-        }
-        // Non-terminal fail — ignore (transient quality/pose issue)
-        console.warn('[MITRA] Non-terminal fail from backend, status:', data.status);
       }
-
+      
       // Enterprise terminal alerts exclusively from backend
       const terminalStatuses: Record<string, string> = {
         "MULTIPLE_FACES_DETECTED": "MULTIPLE FACES DETECTED",
@@ -792,6 +782,20 @@ export default function EnterpriseDemoPage() {
         "SECURITY_CHECK_FAILED": "SECURITY CHECK FAILED",
         "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"
       };
+
+      if (data.result === 'fail') {
+        // BUG 12 FIX: Only terminate on fail if it's from a terminal status.
+        // Non-terminal fails (e.g. transient quality issues, single bad frame)
+        // should not kill the entire session.
+        if (data.status && data.status in terminalStatuses) {
+          triggerSessionTermination(terminalStatuses[data.status]);
+          return;
+        }
+        // Non-terminal fail — ignore (transient quality/pose issue)
+        console.warn('[MITRA] Non-terminal fail from backend, status:', data.status);
+      }
+
+
 
       if (data.status && data.status in terminalStatuses) {
         triggerSessionTermination(terminalStatuses[data.status]);

@@ -692,8 +692,14 @@ export default function EnterpriseDemoPage() {
 
     const handleFrameInvalid = (data: BiometricResponse | null) => {
       if (!data || !data.face_present || data.detected_faces === 0 || data.landmark_count === 0) {
-        setFaceTrackingState('FACE_LOST');
-        prevTrackingStateRef.current = 'FACE_LOST';
+        // BUG 7 FIX: Only set FACE_LOST tracking state if past enrollment phase.
+        // During enrollment, brief face drops (blinks, head movement) are normal
+        // and shouldn't trigger the alarming FACE_LOST UI state.
+        const isPostEnrollment = ['LIVENESS_CHALLENGES', 'CONTINUOUS_MONITORING', 'ACCESS_GRANTED', 'ACCESS_REVOKED'].includes(phaseRef.current);
+        if (isPostEnrollment) {
+          setFaceTrackingState('FACE_LOST');
+          prevTrackingStateRef.current = 'FACE_LOST';
+        }
         setDetectedFaces(0); setLandmarkCount(0); setConfidence(0);
         setRawLandmarks([]); // FIX: Clear raw landmarks to fix rendering desync
         setGazeDirection(null); setGazeAvailable(false); setFaceInsideGuide(false);
@@ -762,8 +768,15 @@ export default function EnterpriseDemoPage() {
            setMonitoringAudit(prev => [{ time: new Date().toLocaleTimeString(), event: 'Identity Verified', status: 'secure' }, ...prev].slice(0, 50));
         }
       } else if (data.result === 'fail') {
-        triggerSessionTermination(data.status || 'VERIFICATION FAILED');
-        return;
+        // BUG 12 FIX: Only terminate on fail if it's from a terminal status.
+        // Non-terminal fails (e.g. transient quality issues, single bad frame)
+        // should not kill the entire session.
+        if (data.status && data.status in terminalStatuses) {
+          triggerSessionTermination(terminalStatuses[data.status]);
+          return;
+        }
+        // Non-terminal fail — ignore (transient quality/pose issue)
+        console.warn('[MITRA] Non-terminal fail from backend, status:', data.status);
       }
 
       // Enterprise terminal alerts exclusively from backend
@@ -776,6 +789,7 @@ export default function EnterpriseDemoPage() {
         // If it still fires, we treat it as a non-fatal warning rather than killing the session.
         "UNAUTHORIZED_PERSON": "UNAUTHORIZED PERSON",
         "IDENTITY_CHANGED": "UNAUTHORIZED PERSON",
+        "SECURITY_CHECK_FAILED": "SECURITY CHECK FAILED",
         "SPOOF_DETECTED": backendHealthy === false ? "VERIFICATION UNAVAILABLE" : "SPOOF DETECTED"
       };
 
@@ -944,15 +958,24 @@ export default function EnterpriseDemoPage() {
               }
             } else { centerTimerStartedRef.current = false; setFaceVisibleDuration(0); }
           } else {
-            // Processing dynamic backend challenges
-            const activeChallenge = challenges[currentChallenge];
-            if (activeChallenge && data.challenge_passed) {
-              setChallengePassed(prev => { const next = [...prev]; next[currentChallenge] = true; return next; });
-              const nextStep = currentChallenge + 1;
-              currentChallengeRef.current = nextStep; setCurrentChallenge(nextStep);
-              stepStartTimeRef.current = Date.now();
-              // Do NOT force setPhase here. The backend must remain authoritative.
-              // We just advance the sequence index, and the payload will start sending 'liveness_verified'.
+            // BUG 4 FIX: Sync challenge index from backend instead of advancing locally.
+            // The backend advances current_challenge_index in the liveness router (line 466)
+            // and returns sequence_advanced=true. The frontend was ALSO advancing,
+            // causing challenges to be double-advanced (skipping one).
+            if (data.current_challenge_index !== undefined) {
+              const backendIdx = data.current_challenge_index as number;
+              if (backendIdx !== currentChallenge) {
+                currentChallengeRef.current = backendIdx;
+                setCurrentChallenge(backendIdx);
+                stepStartTimeRef.current = Date.now();
+              }
+            }
+            // Mark challenges as passed based on sequence_advanced flag from backend
+            if (data.sequence_advanced && data.challenge_passed) {
+              const passedIdx = ((data.current_challenge_index as number) ?? 1) - 1;
+              if (passedIdx >= 0) {
+                setChallengePassed(prev => { const next = [...prev]; next[passedIdx] = true; return next; });
+              }
             }
           }
         } // End if phase === CHALLENGES

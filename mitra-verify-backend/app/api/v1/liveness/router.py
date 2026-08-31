@@ -468,11 +468,12 @@ async def demo_process(
         cv_result["sequence_advanced"] = True
     elif session and challenge_timeout_reached and not cv_result.get("challenge_passed"):
         # ── FORCE TIMEOUT FAILURE ──
-        cv_result["status"] = "SPOOF_DETECTED"
+        # BUG 9 FIX: Was SPOOF_DETECTED with spoof_score=1.0, which incorrectly
+        # triggered security termination. A timeout is NOT a spoof attempt.
+        cv_result["status"] = "CHALLENGE_FAILED"
         cv_result["challenge_passed"] = False
         cv_result["reason"] = "Challenge was not completed within 30 seconds."
-        cv_result["spoof_score"] = 1.0
-        cv_result["result"] = "fail"
+        cv_result["result"] = "timeout"
         time_remaining = 0
         
     cv_result["time_remaining"] = time_remaining

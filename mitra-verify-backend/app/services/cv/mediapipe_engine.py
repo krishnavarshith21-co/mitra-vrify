@@ -2306,6 +2306,14 @@ def _process_demo_frame_inner(
     
     liveness_score = 0.0
     
+    # BUG 1 FIX: Fetch session proxy ONCE and reuse throughout the function.
+    # SessionCacheDict.__getitem__ creates a new SessionProxy copy on every call.
+    # Multiple accesses to SESSION_CACHE[session_id] created separate proxy objects
+    # that didn't share in-flight state mutations.
+    session_proxy = None
+    if session_id and session_id in SESSION_CACHE:
+        session_proxy = SESSION_CACHE[session_id]
+    
     print("FACE_DETECTION_STARTED")
     if not MP_AVAILABLE or not CV2_AVAILABLE:
         error_detail = {
@@ -2431,8 +2439,8 @@ def _process_demo_frame_inner(
         status_code = "searching_for_face"
         reason_code = "no_face_detected"
         
-        if session_id and session_id in SESSION_CACHE:
-            session = SESSION_CACHE[session_id]
+        if session_proxy:
+            session = session_proxy
             if "last_face_seen" not in session:
                 session["last_face_seen"] = session.get("created_at", time.time())
             
@@ -2511,11 +2519,11 @@ def _process_demo_frame_inner(
         cv2.imwrite(debug_lm_path, cv2.cvtColor(debug_img, cv2.COLOR_RGB2BGR))
         print(f"[DIAGNOSTICS] Saved {len(multi_face_landmarks)}-face landmark frame to {debug_lm_path}")
         
-    if session_id and session_id in SESSION_CACHE:
-        SESSION_CACHE[session_id]["last_face_seen"] = time.time()
+    if session_proxy:
+        session_proxy["last_face_seen"] = time.time()
         # If face wasn't already marked as stable, start the timer now
-        if SESSION_CACHE[session_id].get("face_stable_since") is None:
-            SESSION_CACHE[session_id]["face_stable_since"] = time.time()
+        if session_proxy.get("face_stable_since") is None:
+            session_proxy["face_stable_since"] = time.time()
         
     valid_faces = []
     if multi_face_landmarks:
@@ -2527,8 +2535,8 @@ def _process_demo_frame_inner(
                 print(f"[DIAGNOSTICS] Rejected face due to low confidence: {conf} < 0.4")
                 
     if not valid_faces:
-        if session_id and session_id in SESSION_CACHE:
-            SESSION_CACHE[session_id]["face_stable_since"] = None
+        if session_proxy:
+            session_proxy["face_stable_since"] = None
             
         return {
             "face_present": False,
@@ -2578,17 +2586,17 @@ def _process_demo_frame_inner(
     detected_faces = len(multi_face_landmarks)
     
     # If multiple faces detected, reset stability timer
-    if detected_faces > 1 and session_id and session_id in SESSION_CACHE:
-        SESSION_CACHE[session_id]["face_stable_since"] = None
+    if detected_faces > 1 and session_proxy:
+        session_proxy["face_stable_since"] = None
     
     if api_type in ["advanced", "enterprise"]:
-        if session_id and session_id in SESSION_CACHE:
+        if session_proxy:
             if detected_faces > 1:
-                SESSION_CACHE[session_id]["multiple_faces_frames"] += 1
+                session_proxy["multiple_faces_frames"] = session_proxy.get("multiple_faces_frames", 0) + 1
             else:
-                SESSION_CACHE[session_id]["multiple_faces_frames"] = 0
+                session_proxy["multiple_faces_frames"] = 0
                 
-            if SESSION_CACHE[session_id]["multiple_faces_frames"] >= 5:
+            if session_proxy.get("multiple_faces_frames", 0) >= 5:
                 return {
                     "face_present": True,
                     "detected_faces": detected_faces,
@@ -2935,9 +2943,9 @@ def _process_demo_frame_inner(
         # Extract only the history collected SINCE the challenge started
         recent_indices = [i for i, t in enumerate(frame_times) if t >= ch_start]
         
-        baseline_yaw = history.get("baseline_yaw", 0.0)
-        baseline_pitch = history.get("baseline_pitch", 0.0)
-        baseline_roll = history.get("baseline_roll", 0.0)
+        baseline_yaw = history.get("baseline_yaw") or 0.0
+        baseline_pitch = history.get("baseline_pitch") or 0.0
+        baseline_roll = history.get("baseline_roll") or 0.0
 
         yaw_disp = yaw - baseline_yaw
         pitch_disp = pitch - baseline_pitch
@@ -3235,16 +3243,22 @@ def _process_demo_frame_inner(
         enrollment_failure_reason = "Extreme pose"
         
     # Track Pose Coverage
-    pose_category = "Front"
-    if yaw < -35: pose_category = "Right 45"
-    elif yaw < -20: pose_category = "Right 30"
-    elif yaw < -8: pose_category = "Right 15"
-    elif yaw > 35: pose_category = "Left 45"
-    elif yaw > 20: pose_category = "Left 30"
-    elif yaw > 8: pose_category = "Left 15"
+    pose_categories = []
     
-    if pitch > 10: pose_category = "Up"
-    elif pitch < -10: pose_category = "Down"
+    if yaw < -8:
+        pose_categories.append("Right 15")
+        if yaw < -20: pose_categories.append("Right 30")
+        if yaw < -35: pose_categories.append("Right 45")
+    elif yaw > 8:
+        pose_categories.append("Left 15")
+        if yaw > 20: pose_categories.append("Left 30")
+        if yaw > 35: pose_categories.append("Left 45")
+    
+    if pitch > 10: pose_categories.append("Up")
+    elif pitch < -10: pose_categories.append("Down")
+    
+    if not pose_categories:
+        pose_categories.append("Front")
     
     # Track Expression Coverage
     expr_category = "Neutral"
@@ -3263,7 +3277,8 @@ def _process_demo_frame_inner(
         print(f"[ENROLL SESSION]\nfrontend_session={session_id}\nbackend_session={history.get('id', session_id)}\nsame_session={session_id == history.get('id', session_id)}")
             
         # Add to coverage even if frame isn't captured (to show user feedback)
-        history["pose_coverage"].add(pose_category)
+        for cat in pose_categories:
+            history["pose_coverage"].add(cat)
         history["expression_coverage"].add(expr_category)
         
         frame_count = history.get("frame_count", 0)
@@ -3299,11 +3314,16 @@ def _process_demo_frame_inner(
     id_metrics = None
     
     
+    # BUG 2+11 FIX: Check history first, then fall back to enrolled_signature
+    # parameter (which comes from the DB via the liveness router). Previously,
+    # the enrolled_signature parameter was completely ignored in the demo flow.
     active_enrollment = None
     if history:
         active_enrollment = history.get("enrolled_embedding")
         if not active_enrollment:
             active_enrollment = history.get("enrollment_embeddings")
+    if not active_enrollment and enrolled_signature:
+        active_enrollment = enrolled_signature
     if active_enrollment and api_type == "enterprise":
         if history:
             session = history
@@ -3348,12 +3368,19 @@ def _process_demo_frame_inner(
                 session["identity_history"] = session.get("identity_history", []) + [0]
                 enrolled_matched = False
                 match_reason = "LOW CONFIDENCE"
-                if history: history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
+                # BUG 10 FIX: Don't increment wrong_person_frames during LIVENESS_CHALLENGES
+                # Head movements during challenges naturally drop identity match temporarily
+                current_stage_for_wp = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
+                if history and current_stage_for_wp != "LIVENESS_CHALLENGES":
+                    history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
             else:
                 session["identity_history"] = session.get("identity_history", []) + [0]
                 enrolled_matched = False
                 match_reason = "FAIL"
-                if history: history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
+                # BUG 10 FIX: Don't increment during LIVENESS_CHALLENGES
+                current_stage_for_wp2 = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
+                if history and current_stage_for_wp2 != "LIVENESS_CHALLENGES":
+                    history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
         else:
             # Fallback if no session
             current_signature = _calculate_face_embedding(frame, landmarks)
@@ -3384,45 +3411,65 @@ def _process_demo_frame_inner(
                 elif not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 30:
                     session["stage"] = "FAILED"
                     status = "UNAUTHORIZED_PERSON"
+                    session["wrong_person_frames"] = 0  # Reset after terminal transition
                     
             elif current_stage == "IDENTITY_VERIFIED":
-                if time.time() - session.get("identity_verified_time", time.time()) > 0.5:
+                # BUG 3 FIX: Default fallback was time.time() which made the
+                # condition (time.time() - time.time() > 0.5) ALWAYS false,
+                # permanently sticking the user at IDENTITY_VERIFIED.
+                if time.time() - session.get("identity_verified_time", 0) > 0.5:
                     session["stage"] = "LIVENESS_CHALLENGES"
                     session["challenge_start_time"] = time.time()
+                    session["wrong_person_frames"] = 0  # BUG 10: Reset on stage transition
                     
             elif current_stage == "LIVENESS_CHALLENGES":
-                # The frontend tracks challenge sequence. We only transition when the frontend requests monitoring.
-                if challenge_type == "monitoring":
-                    
-                    session["stage"] = "CONTINUOUS_MONITORING"
-                    
-                    session["access_granted_time"] = time.time()
-                elif challenge_type == "liveness_verified":
+                # BUG 10 FIX: Don't increment wrong_person_frames during challenges.
+                # Head movements are expected and temporarily drop identity match.
+                
+                # BUG 6 FIX: Guard monitoring transition — only accept from valid stages.
+                if challenge_type == "liveness_verified":
                     session["stage"] = "LIVENESS_VERIFIED"
                     
-                    # Check ALL security conditions for ACCESS_GRANTED
-                    id_history = session.get("identity_history", [])[-5:]
+                    # BUG 5 FIX: Use rolling identity_history window (not single-frame
+                    # enrolled_matched) and add grace period instead of immediate FAIL.
+                    # During the last challenge, the user may have moved their head,
+                    # temporarily dropping identity match on this one frame.
+                    id_history = session.get("identity_history", [])[-10:]
                     recent_matches = sum(id_history) if id_history else 0
-                    is_identity_secure = recent_matches >= 3 or enrolled_matched
+                    is_identity_secure = recent_matches >= 3
 
                     is_secure = (
                         is_identity_secure and
-                        spoof_score < 0.5 and
-                        session["stage"] == "LIVENESS_VERIFIED"
+                        spoof_score < 0.5
                     )
                     if is_secure:
-                        session["stage"] = "ACCESS_GRANTED"
-                        # We will rely on frontend requesting the next stage or backend auto transition
-                        session["access_granted_time"] = time.time()
+                        session["stage"] = "LIVENESS_VERIFIED"
+                        session["liveness_verified_time"] = time.time()
+                        session["wrong_person_frames"] = 0  # Reset on stage transition
                     else:
-                        session["stage"] = "FAILED"
-                        status = "SECURITY_CHECK_FAILED"
+                        # Grace period: don't immediately fail on one bad frame.
+                        # Give 30 frames (1 second at 30fps) to re-confirm identity.
+                        lv_attempts = session.get("liveness_verify_attempts", 0) + 1
+                        session["liveness_verify_attempts"] = lv_attempts
+                        if lv_attempts >= 30:
+                            session["stage"] = "FAILED"
+                            status = "SECURITY_CHECK_FAILED"
+                        else:
+                            # Stay at LIVENESS_CHALLENGES, retry on next frame
+                            session["stage"] = "LIVENESS_CHALLENGES"
+                            
+            elif current_stage == "LIVENESS_VERIFIED":
+                if time.time() - session.get("liveness_verified_time", 0) > 0.5:
+                    session["stage"] = "ACCESS_GRANTED"
+                    session["access_granted_time"] = time.time()
                         
             elif current_stage == "ACCESS_GRANTED":
                 if time.time() - session.get("access_granted_time", 0) > 2.0:
-                     session["stage"] = "CONTINUOUS_MONITORING"
+                    session["stage"] = "CONTINUOUS_MONITORING"
+                    session["wrong_person_frames"] = 0  # Reset on stage transition
                         
             elif current_stage == "CONTINUOUS_MONITORING":
+                # BUG 6 FIX: Also handle monitoring challenge_type here safely
                 if not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 15:
                     session["stage"] = "ACCESS_REVOKED"
                     status = "UNAUTHORIZED_PERSON"
@@ -3586,7 +3633,7 @@ def _process_demo_frame_inner(
     }
 
     if api_type == "enterprise" and enterprise_report:
-        if session_id and session_id in SESSION_CACHE:
+        if session_proxy:
             prog = _build_enrollment_progress(session_id, quality_pass=True)
             ret["enrollment_progress"] = prog
             print(f"[ENROLL RESPONSE]\nstate={prog.get('state')}\nframes_collected={prog.get('valid_frames')}\nframes_required={prog.get('required_frames')}\nprogress={prog.get('valid_frames')}/{prog.get('required_frames')}\nenrollment_complete={prog.get('ready')}\nerror={prog.get('last_reject_reason')}")

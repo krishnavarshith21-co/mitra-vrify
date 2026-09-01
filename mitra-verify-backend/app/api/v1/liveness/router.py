@@ -607,117 +607,114 @@ async def demo_process(
             cv_result["sequence_complete"] = True
             cv_result["current_challenge_index"] = idx
     
+    # Handle terminal statuses regardless of whether they have been logged yet
+    terminal_statuses = [
+        "MULTIPLE_FACES_DETECTED",
+        "REPLAY_ATTACK_DETECTED",
+        "DEEPFAKE_SUSPECTED",
+        "SPOOF_DETECTED",
+        "CAMERA_FEED_FROZEN",
+        "UNAUTHORIZED_PERSON",
+        "IDENTITY_CHANGED",
+        "FACE_TOO_SMALL",
+        "FACE_TOO_LARGE",
+        "FACE_PARTIALLY_VISIBLE",
+        "NO_FACE_DETECTED",
+        "FACE_LOST",
+        "FACE_LOST_TIMEOUT",
+    ]
+    
+    status = cv_result.get("status")
+    reason = cv_result.get("reason")
+    is_terminal = False
+    
+    if status in terminal_statuses or status == "failed" and reason == "no_face_detected":
+        is_terminal = True
+        cv_result["result"] = "fail"
+        
+    session = SESSION_CACHE.get(data.session_id) if current_user and data.session_id else None
+    
+    if session:
+        challenges = session.get("challenges", [])
+        if challenges and data.challenge_type == challenges[-1]["id"] and cv_result.get("challenge_passed"):
+            is_terminal = True
+            if status not in terminal_statuses:
+                spoof_val = cv_result.get("spoof_score", 0.0)
+                is_spoof = spoof_val > 0.45
+                
+                print(f"[MITRA VERIFY] Challenge Sequence Complete. Score: {cv_result.get('similarity_score')}, Confidence: {cv_result.get('face_confidence')}, Enrolled Matched: {cv_result.get('enrolled_matched')}")
+                
+                if is_spoof:
+                    cv_result["result"] = "fail"
+                    cv_result["status"] = "SPOOF_DETECTED"
+                else:
+                    cv_result["result"] = "pass"
+
     # Save verification logs if user is authenticated and session is terminal
-    if current_user and data.session_id:
-        session = SESSION_CACHE.get(data.session_id)
-        if session and not session.get("logged"):
-            is_terminal = False
-            result_status = "FAILED"
-            
-            terminal_statuses = [
-                "MULTIPLE_FACES_DETECTED",
-                "REPLAY_ATTACK_DETECTED",
-                "DEEPFAKE_SUSPECTED",
-                "SPOOF_DETECTED",
-                "CAMERA_FEED_FROZEN",
-                "UNAUTHORIZED_PERSON",
-                "IDENTITY_CHANGED",
-                "FACE_TOO_SMALL",
-                "FACE_TOO_LARGE",
-                "FACE_PARTIALLY_VISIBLE",
-                "NO_FACE_DETECTED",
-                "FACE_LOST",
-            ]
-            
-            status = cv_result.get("status")
-            reason = cv_result.get("reason")
-            
-            if status in terminal_statuses or status == "failed" and reason == "no_face_detected":
-                is_terminal = True
-                cv_result["result"] = "fail"
-            
-            challenges = session.get("challenges", [])
-            if challenges and data.challenge_type == challenges[-1]["id"] and cv_result.get("challenge_passed"):
-                is_terminal = True
-                if status not in terminal_statuses:
-                    spoof_val = cv_result.get("spoof_score", 0.0)
-                    is_spoof = spoof_val > 0.45
-                    
-                    # Log the exact face-match score, confidence, and challenge state at the end of the sequence
-                    print(f"[MITRA VERIFY] Challenge Sequence Complete. Score: {cv_result.get('similarity_score')}, Confidence: {cv_result.get('face_confidence')}, Enrolled Matched: {cv_result.get('enrolled_matched')}")
-                    
-                    if is_spoof:
-                        cv_result["result"] = "fail"
-                        cv_result["status"] = "SPOOF_DETECTED"
-                    else:
-                        # For enterprise, the continuous monitoring state machine (mediapipe_engine.py) 
-                        # is responsible for determining identity mismatches over time using wrong_person_frames.
-                        # Do not override the status based on a single frame dip at the end of the challenge.
-                        cv_result["result"] = "pass"
+    if current_user and session and not session.get("logged"):
+        if is_terminal:
+            result_status = map_verification_result(cv_result, data.api_type or "basic")
+            print(f"verification_result: status={cv_result.get('status')} result={cv_result.get('result')}")
+            print(f"analytics_result: mapped_result={result_status}")
+            print(f"dashboard_result: logged_as={result_status}")
                 
-            if is_terminal:
-                result_status = map_verification_result(cv_result, data.api_type or "basic")
-                print(f"verification_result: status={cv_result.get('status')} result={cv_result.get('result')}")
-                print(f"analytics_result: mapped_result={result_status}")
-                print(f"dashboard_result: logged_as={result_status}")
-                
-                stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
-                res = await db.execute(stmt)
-                api_key = res.scalars().first()
-                if not api_key:
-                    api_key = ApiKey(
-                        id=str(uuid.uuid4()),
-                        user_id=current_user.id,
-                        name="Default Key",
-                        key_prefix="mv_",
-                        key_hash=str(uuid.uuid4()),
-                        api_type="enterprise",
-                        is_active=True
-                    )
-                    db.add(api_key)
-                    try:
-                        await db.commit()
-                        await db.refresh(api_key)
-                    except Exception:
-                        await db.rollback()
-                        raise
-                
-                # Check for float fields
-                spoof_val = cv_result.get("spoof_score")
-                if spoof_val is None:
-                    spoof_val = 0.0
-                deepfake_val = cv_result.get("deepfake_risk")
-                if deepfake_val is None:
-                    deepfake_val = 0.0
-                
-                log = VerificationLog(
+            stmt = select(ApiKey).where(ApiKey.user_id == current_user.id)
+            res = await db.execute(stmt)
+            api_key = res.scalars().first()
+            if not api_key:
+                api_key = ApiKey(
                     id=str(uuid.uuid4()),
-                    api_key_id=api_key.id,
-                    session_id=data.session_id,
-                    api_type=data.api_type or "basic",
-                    result=result_status,
-                    confidence=float(cv_result.get("face_confidence") or 0.0),
-                    processing_time=float(cv_result.get("processing_time") or 0.0),
-                    checks_performed=cv_result,
-                    spoof_score=float(spoof_val),
-                    deepfake_risk=float(deepfake_val),
-                    ip_address=request.client.host if request.client else "127.0.0.1",
-                    created_at=datetime.now(timezone.utc)
+                    user_id=current_user.id,
+                    name="Default Key",
+                    key_prefix="mv_",
+                    key_hash=str(uuid.uuid4()),
+                    api_type="enterprise",
+                    is_active=True
                 )
-                db.add(log)
+                db.add(api_key)
                 try:
                     await db.commit()
-                    await db.refresh(log)
-                    print(f"[VERIFICATION LOG] verification_id: {log.session_id}")
-                    print(f"[VERIFICATION LOG] api_type: {log.api_type}")
-                    print("[VERIFICATION LOG] database INSERT success: True")
-                    print(f"[VERIFICATION LOG] row ID: {log.id}")
-                    print(f"[VERIFICATION LOG] timestamp: {log.created_at}")
-                    session["logged"] = True
+                    await db.refresh(api_key)
                 except Exception:
                     await db.rollback()
-                    print("[VERIFICATION LOG ERROR] database INSERT success: False")
                     raise
+            
+            # Check for float fields
+            spoof_val = cv_result.get("spoof_score")
+            if spoof_val is None:
+                spoof_val = 0.0
+            deepfake_val = cv_result.get("deepfake_risk")
+            if deepfake_val is None:
+                deepfake_val = 0.0
+            
+            log = VerificationLog(
+                id=str(uuid.uuid4()),
+                api_key_id=api_key.id,
+                session_id=data.session_id,
+                api_type=data.api_type or "basic",
+                result=result_status,
+                confidence=float(cv_result.get("face_confidence") or 0.0),
+                processing_time=float(cv_result.get("processing_time") or 0.0),
+                checks_performed=cv_result,
+                spoof_score=float(spoof_val),
+                deepfake_risk=float(deepfake_val),
+                ip_address=request.client.host if request.client else "127.0.0.1",
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(log)
+            try:
+                await db.commit()
+                await db.refresh(log)
+                print(f"[VERIFICATION LOG] verification_id: {log.session_id}")
+                print(f"[VERIFICATION LOG] api_type: {log.api_type}")
+                print("[VERIFICATION LOG] database INSERT success: True")
+                print(f"[VERIFICATION LOG] row ID: {log.id}")
+                print(f"[VERIFICATION LOG] timestamp: {log.created_at}")
+                session["logged"] = True
+            except Exception:
+                await db.rollback()
+                print("[VERIFICATION LOG ERROR] database INSERT success: False")
+                raise
                     
     return cv_result
 

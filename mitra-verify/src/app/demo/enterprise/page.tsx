@@ -741,16 +741,9 @@ timestamp: ${new Date().toISOString()}`);
         setGazeDirection(null); setGazeAvailable(false); setFaceInsideGuide(false);
         faceVisibleStartRef.current = null; setFaceVisibleDuration(0); setSimilarity(0);
         setConsecutiveValidFrames(0); noseHistoryRef.current = []; setDetectionStability(0.0);
-        
-        const faceLostDuration = faceLostStartRef.current ? (Date.now() - faceLostStartRef.current) / 1000 : 0;
-        if (faceLostStartRef.current === null) faceLostStartRef.current = Date.now();
-        if (isMonitoring && faceLostDuration > 10.0) {
-          triggerSessionTermination('Session Timeout (Face Lost)');
-        }
       } else {
         setFaceTrackingState('FACE_PRESENT');
         prevTrackingStateRef.current = 'FACE_PRESENT';
-        faceLostStartRef.current = null;
       }
     };
 
@@ -816,6 +809,7 @@ timestamp: ${new Date().toISOString()}`);
         "DEEPFAKE_SUSPECTED": "DEEPFAKE SUSPECTED",
         "NO_FACE_DETECTED": "FACE LOST — NO FACE DETECTED",
         "FACE_LOST": "FACE LOST",
+        "FACE_LOST_TIMEOUT": "FACE LOST TIMEOUT",
         // CAMERA_FEED_FROZEN removed: too many false positives with real webcams.
         // The backend now requires 10+ consecutive frozen frames with a stricter threshold.
         // If it still fires, we treat it as a non-fatal warning rather than killing the session.
@@ -851,7 +845,7 @@ timestamp: ${new Date().toISOString()}`);
         return;
       }
       
-      if (data.status === 'IDENTITY_LOST') {
+      if (data.status === 'FACE_LOST_WARNING' || data.status === 'IDENTITY_LOST') {
         setFaceTrackingState('FACE_RECOVERY');
         // The backend handles pausing challenge progression by returning challenge_passed = False
       } else if (data.liveness_status && data.liveness_status !== 'ok' && data.face_present) {

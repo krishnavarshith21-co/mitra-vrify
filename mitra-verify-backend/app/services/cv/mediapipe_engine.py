@@ -2448,11 +2448,15 @@ def _process_demo_frame_inner(
             current_stage = session.get("stage", "ENROLLMENT")
             session["face_lost_frames"] = session.get("face_lost_frames", 0) + 1
             
-            if time.time() - session["last_face_seen"] > 5.0:
-                # Emit FACE_LOST during CONTINUOUS_MONITORING and LIVENESS_CHALLENGES
-                if current_stage in ("CONTINUOUS_MONITORING", "LIVENESS_CHALLENGES", "IDENTITY_VERIFYING", "IDENTITY_VERIFIED"):
-                    status_code = "FACE_LOST"
+            if current_stage in ("CONTINUOUS_MONITORING", "LIVENESS_CHALLENGES", "IDENTITY_VERIFYING", "IDENTITY_VERIFIED"):
+                time_missing = time.time() - session["last_face_seen"]
+                if time_missing > 3.0:
+                    status_code = "FACE_LOST_TIMEOUT"
                     reason_code = "no_face_detected"
+                    session["stage"] = "SESSION_TERMINATED"
+                elif time_missing > 0.3:  # Only emit warning if missing for more than 300ms to avoid flicker
+                    status_code = "FACE_LOST_WARNING"
+                    reason_code = "searching_for_face"
                 else:
                     status_code = "searching_for_face"
                     reason_code = "no_face_detected"
@@ -3380,7 +3384,7 @@ def _process_demo_frame_inner(
                 # BUG 10 FIX: Don't increment wrong_person_frames during LIVENESS_CHALLENGES or transition stages
                 # Head movements during challenges naturally drop identity match temporarily
                 current_stage_for_wp = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-                if history and current_stage_for_wp not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"]:
+                if history and current_stage_for_wp not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"] and is_high_quality:
                     history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
             else:
                 session["identity_history"] = session.get("identity_history", []) + [0]
@@ -3388,7 +3392,7 @@ def _process_demo_frame_inner(
                 match_reason = "FAIL"
                 # BUG 10 FIX: Don't increment during LIVENESS_CHALLENGES or transition stages
                 current_stage_for_wp2 = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-                if history and current_stage_for_wp2 not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"]:
+                if history and current_stage_for_wp2 not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"] and is_high_quality:
                     history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
         else:
             # Fallback if no session

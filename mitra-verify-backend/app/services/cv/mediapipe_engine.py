@@ -3433,8 +3433,12 @@ def _process_demo_frame_inner(
                 # BUG 10 FIX: Don't increment wrong_person_frames during challenges.
                 # Head movements are expected and temporarily drop identity match.
                 
+                # Face lost during challenges → terminate after ~1.5s (45 frames at 30fps)
+                if history and history.get("face_lost_frames", 0) >= 45:
+                    session["stage"] = "FAILED"
+                    status = "FACE_LOST"
                 # BUG 6 FIX: Guard monitoring transition — only accept from valid stages.
-                if challenge_type == "liveness_verified":
+                elif challenge_type == "liveness_verified":
                     session["stage"] = "LIVENESS_VERIFIED"
                     
                     # BUG 5 FIX: Use rolling identity_history window (not single-frame
@@ -3486,9 +3490,16 @@ def _process_demo_frame_inner(
                 elif spoof_score > 0.5:
                     session["stage"] = "ACCESS_REVOKED"
                     status = "SPOOF_DETECTED"
+                # Face lost during monitoring → revoke access after ~1s (30 frames at 30fps)
+                elif history and history.get("face_lost_frames", 0) >= 30:
+                    session["stage"] = "ACCESS_REVOKED"
+                    status = "FACE_LOST"
 
     # Default fallback for old unauthorized person block
-    elif enrolled_matched == False and history and history.get("wrong_person_frames", 0) >= 15:
+    # Skip during LIVENESS_CHALLENGES — head movements naturally drop identity match temporarily
+    elif (enrolled_matched == False and history
+          and history.get("wrong_person_frames", 0) >= 15
+          and history.get("stage", "") != "LIVENESS_CHALLENGES"):
         status = "UNAUTHORIZED_PERSON"
         if api_type != "enterprise":
             ret_early = {

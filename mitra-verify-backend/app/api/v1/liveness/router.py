@@ -613,7 +613,8 @@ async def demo_process(
                 "FACE_TOO_SMALL",
                 "FACE_TOO_LARGE",
                 "FACE_PARTIALLY_VISIBLE",
-                "NO_FACE_DETECTED"
+                "NO_FACE_DETECTED",
+                "FACE_LOST",
             ]
             
             status = cv_result.get("status")

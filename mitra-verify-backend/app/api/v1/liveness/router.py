@@ -567,6 +567,7 @@ async def demo_process(
         session["challenge_started_at"] = time.time()  # Reset timer for next challenge
         session["challenge_face_lost_frames"] = 0  # Reset on advancement
         session["challenge_multi_face_frames"] = 0
+        session["challenge_timeout_attempts"] = 0  # Reset timeout counter on advancement
         cv_result["sequence_advanced"] = True
     elif session and cv_result.get("challenge_passed") is True and has_liveness_violation:
         # Challenge would have passed but liveness violation blocks it
@@ -575,13 +576,24 @@ async def demo_process(
         print(f"[LIVENESS GATE] Challenge blocked due to liveness violation: {cv_status}")
     elif session and challenge_timeout_reached and not cv_result.get("challenge_passed"):
         # ── FORCE TIMEOUT FAILURE ──
-        # BUG 9 FIX: Was SPOOF_DETECTED with spoof_score=1.0, which incorrectly
-        # triggered security termination. A timeout is NOT a spoof attempt.
-        cv_result["status"] = "CHALLENGE_FAILED"
-        cv_result["challenge_passed"] = False
-        cv_result["reason"] = "Challenge was not completed within 30 seconds."
-        cv_result["result"] = "timeout"
-        time_remaining = 0
+        timeout_attempts = session.get("challenge_timeout_attempts", 0) + 1
+        session["challenge_timeout_attempts"] = timeout_attempts
+        
+        if timeout_attempts >= 2:
+            # Second timeout on same challenge → terminate session
+            cv_result["status"] = "CHALLENGE_TIMEOUT_TERMINATED"
+            cv_result["challenge_passed"] = False
+            cv_result["reason"] = "Challenge failed after multiple timeout attempts."
+            cv_result["result"] = "fail"
+            time_remaining = 0
+        else:
+            # First timeout → reset timer and allow retry
+            cv_result["status"] = "CHALLENGE_FAILED"
+            cv_result["challenge_passed"] = False
+            cv_result["reason"] = "Challenge was not completed within 30 seconds."
+            cv_result["result"] = "timeout"
+            session["challenge_started_at"] = time.time()  # Reset timer for retry
+            time_remaining = 30
         
     cv_result["time_remaining"] = time_remaining
         

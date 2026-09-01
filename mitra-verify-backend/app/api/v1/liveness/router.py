@@ -643,18 +643,16 @@ async def demo_process(
                     spoof_val = cv_result.get("spoof_score", 0.0)
                     is_spoof = spoof_val > 0.45
                     
-                    # For enterprise, check if identity matched (if there is an enrolled identity)
-                    is_unauthorized = False
-                    if data.api_type == "enterprise" and not cv_result.get("enrolled_matched", True):
-                        is_unauthorized = True
-                        
+                    # Log the exact face-match score, confidence, and challenge state at the end of the sequence
+                    print(f"[MITRA VERIFY] Challenge Sequence Complete. Score: {cv_result.get('similarity_score')}, Confidence: {cv_result.get('face_confidence')}, Enrolled Matched: {cv_result.get('enrolled_matched')}")
+                    
                     if is_spoof:
                         cv_result["result"] = "fail"
                         cv_result["status"] = "SPOOF_DETECTED"
-                    elif is_unauthorized:
-                        cv_result["result"] = "fail"
-                        cv_result["status"] = "UNAUTHORIZED_PERSON"
                     else:
+                        # For enterprise, the continuous monitoring state machine (mediapipe_engine.py) 
+                        # is responsible for determining identity mismatches over time using wrong_person_frames.
+                        # Do not override the status based on a single frame dip at the end of the challenge.
                         cv_result["result"] = "pass"
                 
             if is_terminal:

@@ -3413,6 +3413,8 @@ def _process_demo_frame_inner(
             
             
             # State transitions
+            prev_stage = current_stage
+            
             if current_stage == "IDENTITY_VERIFYING":
                 if enrolled_matched:
                     session["stage"] = "IDENTITY_VERIFIED"
@@ -3496,6 +3498,14 @@ def _process_demo_frame_inner(
                 elif history and history.get("face_lost_frames", 0) >= 30:
                     session["stage"] = "ACCESS_REVOKED"
                     status = "FACE_LOST"
+
+            if prev_stage != session.get("stage"):
+                print(f"[MITRA STATE TRANSITION] {prev_stage} → {session.get('stage')} | score={similarity_score:.3f} conf={face_confidence:.3f} event={status} ts={time.time()}")
+            
+            # Log exact details for every frame if in continuous monitoring or challenge
+            if session.get("stage") in ["LIVENESS_CHALLENGES", "CONTINUOUS_MONITORING"]:
+                if history.get("frame_sequence_id", 0) % 10 == 0:  # Log every 10 frames to avoid spam
+                    print(f"[MITRA VERIFICATION] stage={session.get('stage')} score={similarity_score:.3f} conf={face_confidence:.3f} enrolled_matched={enrolled_matched} wp_frames={history.get('wrong_person_frames')} event={status}")
 
     # Default fallback for old unauthorized person block
     # Skip during LIVENESS_CHALLENGES and transition states — head movements naturally drop identity match temporarily

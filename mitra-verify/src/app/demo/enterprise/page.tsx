@@ -470,6 +470,13 @@ export default function EnterpriseDemoPage() {
   const phaseRef = useRef<Phase>('IDLE');
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   const sessionGenerationRef = useRef<number>(0);
+
+  // Authoritative Session State
+  type SessionAuthState = 'SESSION_IDLE' | 'SESSION_STARTING' | 'CHALLENGE_RUNNING' | 'CHALLENGE_COMPLETED' | 'INITIAL_IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'CONTINUOUS_MONITORING' | 'FACE_NOT_DETECTED' | 'VERIFYING' | 'UNAUTHORIZED_PERSON' | 'SPOOF_DETECTED' | 'SESSION_TERMINATED';
+  const [sessionAuthState, setSessionAuthState] = useState<SessionAuthState>('SESSION_IDLE');
+  const authStateRef = useRef<SessionAuthState>('SESSION_IDLE');
+  useEffect(() => { authStateRef.current = sessionAuthState; }, [sessionAuthState]);
+
   const [enrolling, setEnrolling] = useState(false);
   
         const enrollRequestInFlightRef = useRef<boolean>(false);
@@ -618,9 +625,8 @@ export default function EnterpriseDemoPage() {
   useEffect(() => { const t = setTimeout(() => setIsMounted(true), 0); return () => clearTimeout(t); }, []);
 
   const triggerSessionTermination = useCallback((reason: string) => {
-    setSessionTerminated(true);
-    setTerminationReason(reason);
-    setOverallResult('fail');
+    // CRITICAL RULE: Do not allow generic fallbacks to terminate during challenges
+    const isChallengeRunning = authStateRef.current === 'CHALLENGE_RUNNING';
     
     let eventType = 'SESSION_TERMINATED';
     let isSecurityEvent = false;
@@ -643,6 +649,27 @@ export default function EnterpriseDemoPage() {
     } else if (normReason.includes('frozen') || normReason.includes('camera lost') || normReason.includes('camera feed frozen')) {
       eventType = 'CAMERA_LOST';
     }
+    
+    if (isChallengeRunning && eventType === 'IDENTITY_MISMATCH') {
+      console.warn(`[MITRA SECURITY EVENT] BLOCKED Termination: ${reason} ignored because CHALLENGE_RUNNING is active.`);
+      return; // Do not terminate for identity mismatch while moving during challenges
+    }
+    
+    console.log(`[MITRA SECURITY EVENT]
+sessionId: ${sessionId}
+event: ${eventType}
+reason: ${reason}
+phase: ${phaseRef.current}
+authState: ${authStateRef.current}
+timestamp: ${new Date().toISOString()}`);
+
+    if (eventType === 'SPOOF_DETECTED') setSessionAuthState('SPOOF_DETECTED');
+    else if (eventType === 'IDENTITY_MISMATCH') setSessionAuthState('UNAUTHORIZED_PERSON');
+    else setSessionAuthState('SESSION_TERMINATED');
+
+    setSessionTerminated(true);
+    setTerminationReason(reason);
+    setOverallResult('fail');
     
     livenessAPI.logEvent(sessionId, eventType, 'enterprise').catch(console.error);
 
@@ -885,6 +912,16 @@ export default function EnterpriseDemoPage() {
               similarityHistoryRef.current = [];
             }
             return backendState;
+          });
+          
+          setSessionAuthState(prev => {
+             if (prev === 'SESSION_TERMINATED' || prev === 'UNAUTHORIZED_PERSON' || prev === 'SPOOF_DETECTED') return prev;
+             if (backendState === 'IDENTITY_VERIFYING') return 'INITIAL_IDENTITY_VERIFYING';
+             if (backendState === 'IDENTITY_VERIFIED') return 'IDENTITY_VERIFIED';
+             if (backendState === 'LIVENESS_CHALLENGES') return 'CHALLENGE_RUNNING';
+             if (backendState === 'LIVENESS_VERIFIED' || backendState === 'ACCESS_GRANTED') return 'CHALLENGE_COMPLETED';
+             if (backendState === 'CONTINUOUS_MONITORING') return 'CONTINUOUS_MONITORING';
+             return prev;
           });
           console.log(`[STATE SYNC] backend_state=${backendState} in_flight=${enrollRequestInFlightRef.current}`);
         }
@@ -1337,7 +1374,7 @@ export default function EnterpriseDemoPage() {
     return 'CHALLENGES_COMPLETED';
   }, [streaming, sessionTerminated, confidence, detectedFaces, faceInsideGuide, hasFaceEnrolled, similarity, challengePassed, spoofScore, deepfakeRisk, isMonitoring]);
 
-  const isVerified = overallResult === 'pass';
+  const isVerified = sessionAuthState === 'CONTINUOUS_MONITORING' || sessionAuthState === 'IDENTITY_VERIFIED';
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -1964,7 +2001,12 @@ export default function EnterpriseDemoPage() {
                 identityMatch={similarity * 100}
                 embeddingQuality={telemetryData?.embedding_quality ?? 0}
                 lastVerifiedTime={lastMatchTime}
-                status={similarity >= 0.80 ? 'VERIFIED' : similarity >= 0.65 ? 'UNCERTAIN' : hasFaceEnrolled ? 'UNAUTHORIZED' : 'PENDING'}
+                status={
+                  (sessionAuthState === 'CONTINUOUS_MONITORING' || sessionAuthState === 'IDENTITY_VERIFIED') ? 'VERIFIED' :
+                  sessionAuthState === 'UNAUTHORIZED_PERSON' ? 'UNAUTHORIZED' :
+                  (sessionAuthState === 'CHALLENGE_RUNNING' || sessionAuthState === 'INITIAL_IDENTITY_VERIFYING') ? 'UNCERTAIN' :
+                  'PENDING'
+                }
                 verificationCount={verificationCount}
                 unauthorizedAttempts={unauthorizedAttempts}
               />
@@ -2008,7 +2050,14 @@ export default function EnterpriseDemoPage() {
                 <div className="glass" style={{ padding: 14, borderRadius: 14, textAlign: 'center' }}>
                   <SessionShield authenticated={isVerified} invalidated={sessionTerminated} color={accentColor} />
                   <div style={{ fontSize: 10, color: accentColor, fontWeight: 600, marginTop: 4 }}>
-                    {sessionTerminated ? 'SESSION INVALIDATED' : isVerified ? 'AUTHENTICATED' : streaming ? 'VERIFYING' : 'STANDBY'}
+                    {sessionAuthState === 'UNAUTHORIZED_PERSON' ? 'UNAUTHORIZED PERSON' :
+                     sessionAuthState === 'SPOOF_DETECTED' ? 'SPOOF DETECTED' :
+                     sessionAuthState === 'CONTINUOUS_MONITORING' ? 'SESSION PROTECTED' :
+                     sessionAuthState === 'IDENTITY_VERIFIED' ? 'IDENTITY VERIFIED' :
+                     sessionAuthState === 'INITIAL_IDENTITY_VERIFYING' ? 'IDENTITY VERIFYING' :
+                     sessionAuthState === 'CHALLENGE_RUNNING' ? 'CHALLENGE IN PROGRESS' :
+                     sessionTerminated ? terminationReason.toUpperCase() :
+                     streaming ? 'VERIFYING' : 'STANDBY'}
                   </div>
                   <div style={{ fontSize: 10, color: '#475569', fontFamily: 'monospace', marginTop: 4 }}>
                     {formatTime(sessionTime)}

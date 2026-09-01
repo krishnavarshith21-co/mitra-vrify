@@ -2796,9 +2796,11 @@ def _process_demo_frame_inner(
     is_stable = detected_faces == 1 and face_confidence > 0.8
     history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality=is_stable)
 
-    # Camera feed frozen check — skip during enrollment (user is instructed to hold still)
+    # Camera feed frozen check — skip during enrollment and active liveness challenges
+    # During challenges, users naturally hold still between movements, causing false positives
     current_stage = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-    if api_type == "enterprise" and history and len(history["landmarks"]) >= 10 and current_stage != "ENROLLMENT":
+    is_active_challenge = challenge_type in ("HEAD_UP", "HEAD_DOWN", "HEAD_LEFT", "HEAD_RIGHT", "NOD_HEAD", "HEAD_ROTATION", "BLINK_ONCE", "BLINK_TWICE", "OPEN_MOUTH", "EYEBROWS_UP", "FACE_CENTERED", "SMILE")
+    if api_type == "enterprise" and history and len(history["landmarks"]) >= 10 and current_stage != "ENROLLMENT" and not is_active_challenge:
         # Use last 10 frames for more robust detection
         recent_lms = history["landmarks"][-10:]
         lms_np = np.array(recent_lms)
@@ -3511,7 +3513,7 @@ def _process_demo_frame_inner(
     # Default status logic
     if status == "ready" and history:
         current_stage_timeout = history.get("stage", "ENROLLMENT")
-        if current_stage_timeout == "LIVENESS_CHALLENGES" and challenge_type != "monitoring" and time.time() - history.get("challenge_start_time", time.time()) > 30.0:
+        if current_stage_timeout == "LIVENESS_CHALLENGES" and challenge_type != "monitoring" and time.time() - history.get("challenge_start_time", time.time()) > 300.0:
             return {
                 "face_present": True,
                 "detected_faces": detected_faces,

@@ -3377,18 +3377,18 @@ def _process_demo_frame_inner(
                 session["identity_history"] = session.get("identity_history", []) + [0]
                 enrolled_matched = False
                 match_reason = "LOW CONFIDENCE"
-                # BUG 10 FIX: Don't increment wrong_person_frames during LIVENESS_CHALLENGES
+                # BUG 10 FIX: Don't increment wrong_person_frames during LIVENESS_CHALLENGES or transition stages
                 # Head movements during challenges naturally drop identity match temporarily
                 current_stage_for_wp = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-                if history and current_stage_for_wp != "LIVENESS_CHALLENGES":
+                if history and current_stage_for_wp not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"]:
                     history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
             else:
                 session["identity_history"] = session.get("identity_history", []) + [0]
                 enrolled_matched = False
                 match_reason = "FAIL"
-                # BUG 10 FIX: Don't increment during LIVENESS_CHALLENGES
+                # BUG 10 FIX: Don't increment during LIVENESS_CHALLENGES or transition stages
                 current_stage_for_wp2 = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-                if history and current_stage_for_wp2 != "LIVENESS_CHALLENGES":
+                if history and current_stage_for_wp2 not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"]:
                     history["wrong_person_frames"] = history.get("wrong_person_frames", 0) + 1
         else:
             # Fallback if no session
@@ -3498,10 +3498,10 @@ def _process_demo_frame_inner(
                     status = "FACE_LOST"
 
     # Default fallback for old unauthorized person block
-    # Skip during LIVENESS_CHALLENGES — head movements naturally drop identity match temporarily
+    # Skip during LIVENESS_CHALLENGES and transition states — head movements naturally drop identity match temporarily
     elif (enrolled_matched == False and history
           and history.get("wrong_person_frames", 0) >= 15
-          and history.get("stage", "") != "LIVENESS_CHALLENGES"):
+          and history.get("stage", "") not in ["LIVENESS_CHALLENGES", "LIVENESS_VERIFIED", "ACCESS_GRANTED"]):
         status = "UNAUTHORIZED_PERSON"
         if api_type != "enterprise":
             ret_early = {

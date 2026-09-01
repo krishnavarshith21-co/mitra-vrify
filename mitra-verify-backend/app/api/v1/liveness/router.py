@@ -476,7 +476,7 @@ async def demo_process(
         frame_id=data.frame_id,
         session_id=data.session_id,
         challenge_type=server_challenge,
-        enrolled_signature=enrolled_signature_db or data.enrolled_signature,
+        enrolled_signature=list(enrolled_signature_db) if enrolled_signature_db else data.enrolled_signature,
         api_type=data.api_type
     )
     

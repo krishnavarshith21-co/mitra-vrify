@@ -394,7 +394,7 @@ async def start_session(
         "roll": [],
         "eyebrow_ratios": [],
         "baseline_eyebrow_ratio": None,
-        "challenge_started_at": time.time(),
+        "challenge_start_time": time.time(),
         "smile_ratios": [],
         "baseline_smile_ratio": None,
         "current_challenge": "FACE_CENTERED",
@@ -470,8 +470,8 @@ async def demo_process(
         else:
             server_challenge = "liveness_verified"
             
-        if "challenge_started_at" in session:
-            elapsed = time.time() - session["challenge_started_at"]
+        if "challenge_start_time" in session:
+            elapsed = time.time() - session["challenge_start_time"]
             time_remaining = max(0, 30 - int(elapsed))
             if elapsed > 30:
                 challenge_timeout_reached = True
@@ -576,7 +576,7 @@ async def demo_process(
     # CRITICAL: Only advance if challenge passed AND no liveness violation
     if session and cv_result.get("challenge_passed") is True and not has_liveness_violation:
         session["current_challenge_index"] += 1
-        session["challenge_started_at"] = time.time()  # Reset timer for next challenge
+        session["challenge_start_time"] = time.time()  # Reset timer for next challenge
         session["challenge_face_lost_frames"] = 0  # Reset on advancement
         session["challenge_multi_face_frames"] = 0
         session["challenge_timeout_attempts"] = 0  # Reset timeout counter on advancement

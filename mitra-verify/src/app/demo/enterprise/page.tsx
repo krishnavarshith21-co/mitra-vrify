@@ -704,6 +704,13 @@ timestamp: ${new Date().toISOString()}`);
     loadEnrolled();
   }, []);
 
+  // Sync hasFaceEnrolled with phase transitions
+  useEffect(() => {
+    if (['FACE_IDENTITY', 'CHALLENGE_RUNNING', 'CHALLENGE_COMPLETE', 'SESSION_PROTECTED', 'CONTINUOUS_VERIFICATION'].includes(phase)) {
+      setHasFaceEnrolled(true);
+    }
+  }, [phase]);
+
   const isMonitoringRef = useRef(false);
   useEffect(() => { isMonitoringRef.current = isMonitoring; }, [isMonitoring]);
   // Frame processor
@@ -1625,7 +1632,7 @@ timestamp: ${new Date().toISOString()}`);
             {/* Enrollment Controls */}
             {streaming && !overallResult && (
               <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {!hasFaceEnrolled ? (
+                {!hasFaceEnrolled && !(['FACE_IDENTITY', 'CHALLENGE_RUNNING', 'CHALLENGE_COMPLETE', 'SESSION_PROTECTED', 'CONTINUOUS_VERIFICATION'].includes(phase)) ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button 
                       onClick={startEnrollmentCapture} 
@@ -1768,8 +1775,8 @@ timestamp: ${new Date().toISOString()}`);
                       <button onClick={clearEnrollment} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
                         Clear Enrollment
                       </button>
-                      <button onClick={stopCamera} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(100,100,100,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                        Stop Camera
+                      <button onClick={() => triggerSessionTermination('SESSION ENDED BY USER')} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(100,100,100,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                        End Session
                       </button>
                     </div>
                   </div>

@@ -2848,31 +2848,7 @@ def _process_demo_frame_inner(
     is_stable = detected_faces == 1 and face_confidence > 0.8
     history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality=is_stable)
 
-    # Camera feed frozen check - strict duplicate frame detection
-    # Real camera feeds (even perfectly still users) will ALWAYS have sensor noise resulting in different base64 hashes.
-    # An exactly identical frame hash over multiple frames indicates a frozen camera or replay attack.
-    if api_type == "enterprise" and history:
-        import hashlib
-        frame_hash = hashlib.md5(image_b64.encode('utf-8')).hexdigest()
-        last_hash = history.get("last_frame_hash")
-        history["last_frame_hash"] = frame_hash
-        
-        if last_hash == frame_hash:
-            frozen_count = history.get("frozen_frame_count", 0) + 1
-            history["frozen_frame_count"] = frozen_count
-            # Require 15 consecutive IDENTICAL frames (approx 0.5-1.0s depending on fps)
-            if frozen_count >= 15:
-                history["rejected_frames"] = history.get("rejected_frames", 0) + 1
-                payload = {
-                    "face_present": True, "detected_faces": detected_faces, "face_confidence": face_confidence, "landmark_count": landmark_count,
-                    "bbox": bbox, "status": "CAMERA_FEED_FROZEN", "challenge_passed": False, "enrolled_matched": False,
-                    "enterprise_report": _build_empty_enterprise_report("CAMERA_FEED_FROZEN")
-                }
-                return payload
-        else:
-            # Reset counter when image hash changes (normal camera behavior)
-            history["frozen_frame_count"] = 0
-
+    # Camera feed frozen check - removed naive MD5 block.
     # Strict Yaw/Pitch validation for embedding comparison
     # Skip this guard when the active challenge requires head movement
     pose_challenge_active = challenge_type in ("HEAD_UP", "HEAD_DOWN", "HEAD_LEFT", "HEAD_RIGHT", "NOD_HEAD", "HEAD_ROTATION")

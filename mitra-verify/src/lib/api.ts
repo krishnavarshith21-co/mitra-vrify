@@ -187,8 +187,8 @@ export const livenessAPI = {
   identity: (image: string, subjectId?: string, sessionId?: string) =>
     api.post(`/identity/verify`, { image, subject_id: subjectId, session_id: sessionId }),
   startSession: (apiType: string) => api.post('/liveness/session/start', { api_type: apiType }),
-  processDemoFrame: (image: string, sessionId?: string, challengeType?: string, apiType?: string, frameId?: string) =>
-    api.post('/liveness/demo/process', { image, frame_id: frameId, session_id: sessionId, challenge_type: challengeType, api_type: apiType }),
+  processDemoFrame: (image: string, sessionId?: string, challengeType?: string, apiType?: string, frameId?: string, action?: string) =>
+    api.post('/liveness/demo/process', { image, frame_id: frameId, session_id: sessionId, challenge_type: challengeType, api_type: apiType, action }),
   logEvent: (sessionId: string, eventType: string, apiType: string) =>
     api.post('/liveness/demo/log_event', { session_id: sessionId, event_type: eventType, api_type: apiType }),
   enrollFace: (image: string, subjectId?: string, sessionId?: string) => api.post('/identity/enroll', { image, subject_id: subjectId, session_id: sessionId }),

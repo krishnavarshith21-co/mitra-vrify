@@ -756,12 +756,14 @@ timestamp: ${new Date().toISOString()}`);
                                 (currentChallenge >= challenges.length && challenges.length > 0) ? 'liveness_verified' : 
                                 (phaseRef.current === 'CHALLENGE_RUNNING' ? challenges[currentChallenge]?.id : undefined);
                                 
+      const actionPayload = phaseRef.current === 'COLLECTING' ? 'start_enrollment_capture' : undefined;
+                                
       if (phaseRef.current === 'ENROLLMENT') {
         console.log(`[ENROLL FRONTEND]\nphase=${phaseRef.current}\nframeNumber=${fpsCounterRef.current}\nrequestStarted=${Date.now()}\nrequestCompleted=pending\nresponseReceived=pending\nresponseState=pending\nprogress=pending`);
       }
       
       const reqStart = Date.now();
-      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise');
+      const res = await livenessAPI.processDemoFrame(base64Image, sessionId, activeChallengeId, 'enterprise', undefined, actionPayload);
       const reqEnd = Date.now();
       
       const data = res?.data;
@@ -1214,10 +1216,15 @@ timestamp: ${new Date().toISOString()}`);
     setPhase('IDLE');
   }
 
-  const enrollFace = async () => {
+  const startEnrollmentCapture = () => {
+    if (phase !== 'ENROLLMENT') return;
+    setPhase('COLLECTING');
+  };
+
+  const submitEnrollment = async () => {
     // === ATOMIC GUARD 1: Phase check ===
-    if (phase !== 'ENROLLMENT' && phase !== 'READY') {
-      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phase}, expected ENROLLMENT or READY`);
+    if (phase !== 'COLLECTING' && phase !== 'READY' && phase !== 'ENROLLMENT') {
+      console.log(`[ENROLL DEBUG] BLOCKED — phase=${phase}, expected COLLECTING, READY, or ENROLLMENT`);
       return;
     }
 
@@ -1324,6 +1331,16 @@ timestamp: ${new Date().toISOString()}`);
       enrollRequestInFlightRef.current = false;
     }
   };
+
+  // Automatic submission when frames and poses are ready
+  useEffect(() => {
+    if (phase === 'COLLECTING' && enrollmentProgress?.ready && enrollmentProgress.valid_frames >= 15) {
+      if (!enrollRequestInFlightRef.current) {
+        console.log(`[ENROLL DEBUG] Auto-submitting enrollment...`);
+        submitEnrollment();
+      }
+    }
+  }, [phase, enrollmentProgress?.ready, enrollmentProgress?.valid_frames]);
 
   const clearEnrollment = async () => {
     sessionGenerationRef.current += 1;
@@ -1622,26 +1639,26 @@ timestamp: ${new Date().toISOString()}`);
                 {!hasFaceEnrolled ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button 
-                      onClick={enrollFace} 
-                      disabled={phase !== 'READY'}
+                      onClick={startEnrollmentCapture} 
+                      disabled={phase !== 'ENROLLMENT'}
                       style={{ 
                         flex: 1, 
                         padding: '10px 0', 
                         borderRadius: 10, 
-                        background: phase === 'READY' ? 'linear-gradient(135deg, #00ff88, #00cc66)' : 'rgba(100,100,100,0.3)', 
-                        color: phase === 'READY' ? '#000' : '#94a3b8', 
+                        background: phase === 'ENROLLMENT' ? 'linear-gradient(135deg, #00ff88, #00cc66)' : 'rgba(100,100,100,0.3)', 
+                        color: phase === 'ENROLLMENT' ? '#000' : '#94a3b8', 
                         fontWeight: 700, 
                         fontSize: 13, 
                         border: 'none', 
-                        cursor: phase === 'READY' ? 'pointer' : 'not-allowed', 
+                        cursor: phase === 'ENROLLMENT' ? 'pointer' : 'not-allowed', 
                         transition: 'all 0.3s ease'
                       }}>
                       {phase === 'ENROLLING' ? 'ENROLLING...' : 
-                       phase === 'READY' ? 'ENROLL CURRENT FACE' : 
+                       phase === 'ENROLLMENT' ? 'ENROLL CURRENT FACE' : 
                        phase === 'COVERAGE_INCOMPLETE' ? 'COVERAGE INCOMPLETE' : 
                        phase === 'SESSION_TERMINATED' ? 'ENROLLMENT FAILED' : 
                        phase === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
-                       enrollmentProgress ? `COLLECTING FRAMES ${enrollmentProgress.valid_frames}/${enrollmentProgress.required_frames || 15}` : 
+                       enrollmentProgress ? `COLLECTING FRAMES ${Math.min(enrollmentProgress.valid_frames, 15)}/${enrollmentProgress.required_frames || 15}` : 
                        'COLLECTING FRAMES...'}
                     </button>
                     {/* Inline enrollment status / error display */}

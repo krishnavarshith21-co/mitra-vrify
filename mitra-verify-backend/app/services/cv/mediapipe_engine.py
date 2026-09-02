@@ -2114,10 +2114,10 @@ def _build_enrollment_progress(session_id: str | None, quality_pass: bool = True
             state = "READY"
         elif valid >= 15:
             state = "COVERAGE_INCOMPLETE"
-        elif valid > 0 or rejected > 0:
+        elif valid > 0 or rejected > 0 or session.get("enrollment_capture_started", False):
             state = "COLLECTING"
         else:
-            state = "IDLE"
+            state = "ENROLLMENT"
     else:
         state = session_stage
         
@@ -3357,9 +3357,9 @@ def _process_demo_frame_inner(
         # Diagnostics
         print(f"[ENROLL DIAG] Frame={frame_count}, HighQuality={is_high_quality}, Reason='{enrollment_failure_reason}', Valid={len(history.get('enrollment_embeddings', []))}, Wait={(frame_count - history.get('enrollment_last_capture', 0))}")
 
-        # Only capture if high quality and we haven't reached 15 yet
+        # Only capture if high quality, we haven't reached 15 yet, and the frontend explicitly started capture
         emb_list = history.get("enrollment_embeddings", [])
-        if is_high_quality and len(emb_list) < 15:
+        if is_high_quality and len(emb_list) < 15 and history.get("enrollment_capture_started"):
             if (frame_count - history.get("enrollment_last_capture", 0)) >= 3:
                 collection_before = len(emb_list)
                 emb = _calculate_face_embedding(frame, landmarks)

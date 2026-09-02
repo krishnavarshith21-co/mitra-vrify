@@ -246,6 +246,7 @@ class DemoProcessRequest(BaseModel):
     challenge_type: str | None = None
     enrolled_signature: list[float] | None = None
     api_type: str | None = None
+    action: str | None = None
 
 @router.get("/debug_cv", tags=["Demo"])
 async def debug_cv():
@@ -431,7 +432,10 @@ async def demo_process(
     from app.services.cv.mediapipe_engine import SESSION_CACHE, process_demo_frame
     session = SESSION_CACHE.get(data.session_id) if data.session_id else None
     
-    print(f"[ENROLL API INPUT]\nsession_id={data.session_id}\nphase={session.get('stage') if session else 'UNKNOWN'}\nhas_frame={bool(data.image)}\nframe_size={len(data.image) if data.image else 0}\ncontent_type=base64\nchallenge_type={data.challenge_type}")
+    if session and data.action == "start_enrollment_capture":
+        session["enrollment_capture_started"] = True
+    
+    print(f"[ENROLL API INPUT]\nsession_id={data.session_id}\nphase={session.get('stage') if session else 'UNKNOWN'}\nhas_frame={bool(data.image)}\nframe_size={len(data.image) if data.image else 0}\ncontent_type=base64\nchallenge_type={data.challenge_type}\naction={data.action}")
 
     current_user = None
     enrolled_signature_db = None

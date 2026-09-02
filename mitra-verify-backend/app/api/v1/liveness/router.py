@@ -339,7 +339,7 @@ async def start_session(
     enterprise_pool = ['HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
     
     if data.api_type == "enterprise":
-        requested_count = secrets.choice([6, 7, 8])
+        requested_count = 3
         selected = secrets.SystemRandom().sample(enterprise_pool, requested_count)
     elif data.api_type == "advanced":
         requested_count = secrets.choice([3, 4, 5])
@@ -480,6 +480,12 @@ async def demo_process(
         api_type=data.api_type
     )
     
+    # ── ADVANCE STATE FROM ENROLLMENT TO IDENTITY VERIFICATION ──
+    if session and session.get("stage") == "ENROLLMENT":
+        enroll_state = cv_result.get("enrollment_progress", {}).get("state")
+        if enroll_state == "READY":
+            session["stage"] = "FACE_IDENTITY"
+            
     # ── CONTINUOUS LIVENESS VALIDATION ──
     # These statuses indicate a liveness violation that MUST block challenge advancement.
     LIVENESS_VIOLATION_STATUSES = {
@@ -541,7 +547,7 @@ async def demo_process(
     # ── CHECK FOR TERMINAL LIVENESS FAILURES DURING CHALLENGES ──
     if session and data.api_type == "enterprise":
         # Too many consecutive frames with no face → terminate
-        if session.get("challenge_face_lost_frames", 0) >= 50:
+        if session.get("challenge_face_lost_frames", 0) >= 30:
             cv_result["status"] = "NO_FACE_DETECTED"
             cv_result["challenge_passed"] = False
             cv_result["result"] = "fail"
@@ -631,6 +637,12 @@ async def demo_process(
     if status in terminal_statuses or status == "failed" and reason == "no_face_detected":
         is_terminal = True
         cv_result["result"] = "fail"
+        
+        # Security Requirement: Any terminal failure MUST result in SESSION_TERMINATED
+        original_status = cv_result.get("status")
+        if original_status != "SESSION_TERMINATED":
+            cv_result["reason"] = cv_result.get("reason") or original_status
+            cv_result["status"] = "SESSION_TERMINATED"
         
     session = SESSION_CACHE.get(data.session_id) if current_user and data.session_id else None
     

@@ -465,7 +465,7 @@ export default function EnterpriseDemoPage() {
   const [currentFps, setCurrentFps] = useState(0);
 
   // Enrollment states
-    type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLING' | 'ENROLLED' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY' | 'IDENTITY_VERIFYING' | 'IDENTITY_VERIFIED' | 'LIVENESS_CHALLENGES' | 'LIVENESS_VERIFIED' | 'ACCESS_GRANTED' | 'CONTINUOUS_MONITORING' | 'ACCESS_REVOKED' | 'FAILED';
+    type Phase = 'IDLE' | 'ENROLLMENT' | 'ENROLLING' | 'ENROLLED' | 'COLLECTING' | 'COVERAGE_INCOMPLETE' | 'READY' | 'FACE_IDENTITY' | 'CHALLENGE_RUNNING' | 'CHALLENGE_COMPLETE' | 'SESSION_PROTECTED' | 'CONTINUOUS_VERIFICATION' | 'SESSION_TERMINATED';
   const [phase, setPhase] = useState<Phase>('IDLE');
   const phaseRef = useRef<Phase>('IDLE');
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -574,6 +574,7 @@ export default function EnterpriseDemoPage() {
   // Enterprise Continuous Authentication Tracking
   const [isMounted, setIsMounted] = useState(false);
   const [sessionTerminated, setSessionTerminated] = useState(false);
+  const isTerminatedRef = useRef(false);
   const [terminationReason, setTerminationReason] = useState<string>('');
   const faceLostStartRef = useRef<number | null>(null);
 
@@ -625,6 +626,8 @@ export default function EnterpriseDemoPage() {
   useEffect(() => { const t = setTimeout(() => setIsMounted(true), 0); return () => clearTimeout(t); }, []);
 
   const triggerSessionTermination = useCallback((reason: string) => {
+    isTerminatedRef.current = true;
+    setSessionTerminated(true);
     // CRITICAL RULE: Do not allow generic fallbacks to terminate during challenges
     const isChallengeRunning = authStateRef.current === 'CHALLENGE_RUNNING';
     
@@ -679,9 +682,8 @@ timestamp: ${new Date().toISOString()}`);
     }
     setStreaming(false);
 
-    if (isSecurityEvent) {
-      setTimeout(() => { logout('/signin?reason=security_breach'); }, 3000);
-    }
+    // Any terminal failure in API 3 (Enterprise) must result in a sign out.
+    setTimeout(() => { logout('/signin?reason=security_breach'); }, 1500);
   }, [logout, sessionId]);
 
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -704,12 +706,12 @@ timestamp: ${new Date().toISOString()}`);
 
   const isMonitoringRef = useRef(false);
   useEffect(() => { isMonitoringRef.current = isMonitoring; }, [isMonitoring]);
-
   // Frame processor
   const sendFrameToBackend = useCallback(async () => {
     const currentGeneration = sessionGenerationRef.current;
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    if (isTerminatedRef.current) return;
     if (!video || !canvas || !streaming || isProcessing || (overallResult && !isMonitoring)) return;
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
@@ -731,7 +733,7 @@ timestamp: ${new Date().toISOString()}`);
         // BUG 7 FIX: Only set FACE_LOST tracking state if past enrollment phase.
         // During enrollment, brief face drops (blinks, head movement) are normal
         // and shouldn't trigger the alarming FACE_LOST UI state.
-        const isPostEnrollment = ['LIVENESS_CHALLENGES', 'CONTINUOUS_MONITORING', 'ACCESS_GRANTED', 'ACCESS_REVOKED'].includes(phaseRef.current);
+        const isPostEnrollment = ['CHALLENGE_RUNNING', 'CONTINUOUS_VERIFICATION', 'SESSION_PROTECTED'].includes(phaseRef.current);
         if (isPostEnrollment) {
           setFaceTrackingState('FACE_LOST');
           prevTrackingStateRef.current = 'FACE_LOST';
@@ -750,9 +752,9 @@ timestamp: ${new Date().toISOString()}`);
     try {
       if (currentGeneration !== sessionGenerationRef.current) { setIsProcessing(false); return; }
       const base64Image = canvas.toDataURL('image/jpeg', 0.65);
-      const activeChallengeId = phaseRef.current === 'CONTINUOUS_MONITORING' ? 'monitoring' : 
+      const activeChallengeId = phaseRef.current === 'CONTINUOUS_VERIFICATION' ? 'monitoring' : 
                                 (currentChallenge >= challenges.length && challenges.length > 0) ? 'liveness_verified' : 
-                                (phaseRef.current === 'LIVENESS_CHALLENGES' ? challenges[currentChallenge]?.id : undefined);
+                                (phaseRef.current === 'CHALLENGE_RUNNING' ? challenges[currentChallenge]?.id : undefined);
                                 
       if (phaseRef.current === 'ENROLLMENT') {
         console.log(`[ENROLL FRONTEND]\nphase=${phaseRef.current}\nframeNumber=${fpsCounterRef.current}\nrequestStarted=${Date.now()}\nrequestCompleted=pending\nresponseReceived=pending\nresponseState=pending\nprogress=pending`);
@@ -768,7 +770,7 @@ timestamp: ${new Date().toISOString()}`);
         console.log(`[ENROLL FRONTEND]\nphase=${phaseRef.current}\nframeNumber=${fpsCounterRef.current}\nrequestStarted=${reqStart}\nrequestCompleted=${reqEnd}\nresponseReceived=True\nresponseState=${data.enrollment_progress?.state}\nprogress=${data.enrollment_progress?.valid_frames}/${data.enrollment_progress?.required_frames}`);
       }
       
-      if (currentGeneration !== sessionGenerationRef.current) { setIsProcessing(false); return; }
+      if (currentGeneration !== sessionGenerationRef.current || isTerminatedRef.current) { setIsProcessing(false); return; }
       setApiResponse(data);
       if (!data) { setIsProcessing(false); return; }
 
@@ -889,20 +891,20 @@ timestamp: ${new Date().toISOString()}`);
           }
           // Use backend state as single source of truth
           const backendState = data.enrollment_progress.state as Phase;
-          if (backendState === 'CONTINUOUS_MONITORING' && !isMonitoring) {
+          if (backendState === 'CONTINUOUS_VERIFICATION' && !isMonitoring) {
             setIsMonitoring(true);
           }
           setPhase(prev => {
             if (prev === 'ENROLLING' && enrollRequestInFlightRef.current) return prev;
             // If we are showing a failure, don't immediately overwrite it with READY from the background loop
-            if (prev === 'FAILED' && backendState === 'READY') return prev;
+            if (prev === 'SESSION_TERMINATED' && backendState === 'READY') return prev;
             
             // Reset stale data on transition to verification
-            if (prev === 'ENROLLMENT' && backendState === 'IDENTITY_VERIFYING') {
+            if (prev === 'ENROLLMENT' && backendState === 'FACE_IDENTITY') {
               setSimilarity(0);
               setConfidence(0);
             }
-            if (prev !== backendState && (backendState === 'LIVENESS_CHALLENGES' || backendState === 'CONTINUOUS_MONITORING')) {
+            if (prev !== backendState && (backendState === 'CHALLENGE_RUNNING' || backendState === 'CONTINUOUS_VERIFICATION')) {
               similarityHistoryRef.current = [];
             }
             return backendState;
@@ -910,11 +912,10 @@ timestamp: ${new Date().toISOString()}`);
           
           setSessionAuthState(prev => {
              if (prev === 'SESSION_TERMINATED' || prev === 'UNAUTHORIZED_PERSON' || prev === 'SPOOF_DETECTED') return prev;
-             if (backendState === 'IDENTITY_VERIFYING') return 'INITIAL_IDENTITY_VERIFYING';
-             if (backendState === 'IDENTITY_VERIFIED') return 'IDENTITY_VERIFIED';
-             if (backendState === 'LIVENESS_CHALLENGES') return 'CHALLENGE_RUNNING';
-             if (backendState === 'LIVENESS_VERIFIED' || backendState === 'ACCESS_GRANTED') return 'CHALLENGE_COMPLETED';
-             if (backendState === 'CONTINUOUS_MONITORING') return 'CONTINUOUS_MONITORING';
+             if (backendState === 'FACE_IDENTITY') return 'INITIAL_IDENTITY_VERIFYING';
+             if (backendState === 'CHALLENGE_RUNNING') return 'CHALLENGE_RUNNING';
+             if (backendState === 'CHALLENGE_COMPLETE' || backendState === 'SESSION_PROTECTED') return 'CHALLENGE_COMPLETED';
+             if (backendState === 'CONTINUOUS_VERIFICATION') return 'CONTINUOUS_MONITORING';
              return prev;
           });
           console.log(`[STATE SYNC] backend_state=${backendState} in_flight=${enrollRequestInFlightRef.current}`);
@@ -996,7 +997,7 @@ timestamp: ${new Date().toISOString()}`);
         else { setFaceVisibleDuration((Date.now() - faceVisibleStartRef.current) / 1000); }
 
         // State machine progression MUST run if face is present, regardless of perfectly centered or not
-        if (phaseRef.current === 'LIVENESS_CHALLENGES') {
+        if (phaseRef.current === 'CHALLENGE_RUNNING') {
           
           if (currentChallenge === 0) {
             // First challenge is ALWAYS face centered
@@ -1273,7 +1274,7 @@ timestamp: ${new Date().toISOString()}`);
         
         if (res.data.code === 'SESSION_EXPIRED') {
           setEnrollmentError('Enrollment session expired. Restart enrollment.');
-          setPhase('FAILED');
+          setPhase('SESSION_TERMINATED');
         } else if (res.data.code === 'ENROLLMENT_NOT_READY') {
           setEnrollmentError(res.data.message || `Collecting frames — ${res.data.valid_embeddings || 0}/15`);
           setPhase('COLLECTING');
@@ -1285,7 +1286,7 @@ timestamp: ${new Date().toISOString()}`);
           setPhase('COLLECTING');
         } else {
           setEnrollmentError(res.data.message || 'Enrollment not ready.');
-          setPhase('FAILED');
+          setPhase('SESSION_TERMINATED');
         }
         return;
       }
@@ -1308,13 +1309,13 @@ timestamp: ${new Date().toISOString()}`);
         // setPhase('ENROLLED') is intentionally omitted.
       } else {
         console.log('[ENROLL DEBUG] FAILED — enrollment unsuccessful');
-        setPhase('FAILED');
+        setPhase('SESSION_TERMINATED');
         setEnrollmentError('Enrollment failed: invalid response from backend.');
         enrollRequestInFlightRef.current = false;
       }
     } catch (err: unknown) {
       console.error('[ENROLL DEBUG] ERROR', err);
-      setPhase('FAILED');
+      setPhase('SESSION_TERMINATED');
       const apiErr = err as { response?: { data?: { detail?: string; message?: string } } };
       const errMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail || 'Enrollment request failed. Please try again.';
       setEnrollmentError(errMsg);
@@ -1448,7 +1449,7 @@ timestamp: ${new Date().toISOString()}`);
                  phase === 'READY' ? "15 high-quality frames collected. You can now enroll your face." :
                  phase === 'ENROLLING' ? "Enrolling your biometric profile..." :
                  phase === 'ENROLLED' ? "Biometric enrollment completed." :
-                 phase === 'FAILED' ? (enrollmentError || "Enrollment failed. Please try again.") :
+                 phase === 'SESSION_TERMINATED' ? (enrollmentError || "Enrollment failed. Please try again.") :
                  "Start the camera, align your face inside the oval, and click Enroll Current Face."}
               </p>
             </div>
@@ -1518,7 +1519,7 @@ timestamp: ${new Date().toISOString()}`);
                     confidence < 0.50 ? 'CONFIDENCE TOO LOW' :
                     !faceInsideGuide ? 'POSITION FACE INSIDE OVAL' :
                     phase === 'ENROLLMENT' ? 'READY TO ENROLL - CLICK BUTTON BELOW' :
-                    phase === 'LIVENESS_CHALLENGES' ? `LIVENESS CHALLENGE ${currentChallenge + 1}/${challenges.length}` :
+                    phase === 'CHALLENGE_RUNNING' ? `LIVENESS CHALLENGE ${currentChallenge + 1}/${challenges.length}` :
                     similarity < 0.75 ? 'IDENTITY MISMATCH' :
                     `VERIFYING IDENTITY... ${challengeTimer}s`
                   }
@@ -1539,9 +1540,9 @@ timestamp: ${new Date().toISOString()}`);
                   {[
                     { label: 'CAMERA', active: cameraStatus === 'Active', pass: cameraStatus === 'Active' },
                     { label: 'FACE DETECTED', active: detectedFaces > 0, pass: confidence > 0.5 && detectedFaces === 1 },
-                    { label: 'LIVENESS', active: phase === 'LIVENESS_CHALLENGES' || phase === 'LIVENESS_VERIFIED' || phase === 'CONTINUOUS_MONITORING', pass: phase === 'LIVENESS_VERIFIED' || phase === 'CONTINUOUS_MONITORING' || phase === 'ACCESS_GRANTED' },
-                    { label: 'IDENTITY', active: hasFaceEnrolled && similarity > 0, pass: similarity >= 0.75 },
-                    { label: 'CONTINUOUS', active: isMonitoring, pass: isMonitoring && faceTrackingState === 'FACE_PRESENT' },
+                    { label: 'IDENTITY', active: phase === 'FACE_IDENTITY', pass: phase === 'CHALLENGE_RUNNING' || phase === 'CHALLENGE_COMPLETE' || phase === 'SESSION_PROTECTED' || phase === 'CONTINUOUS_VERIFICATION' },
+                    { label: 'LIVENESS', active: phase === 'CHALLENGE_RUNNING' || phase === 'CHALLENGE_COMPLETE' || phase === 'CONTINUOUS_VERIFICATION', pass: phase === 'CHALLENGE_COMPLETE' || phase === 'CONTINUOUS_VERIFICATION' || phase === 'SESSION_PROTECTED' },
+                    { label: 'CONTINUOUS', active: phase === 'CONTINUOUS_VERIFICATION', pass: phase === 'CONTINUOUS_VERIFICATION' && faceTrackingState === 'FACE_PRESENT' },
                   ].map(item => (
                     <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', fontFamily: 'monospace' }}>
                       <div style={{
@@ -1638,7 +1639,7 @@ timestamp: ${new Date().toISOString()}`);
                       {phase === 'ENROLLING' ? 'ENROLLING...' : 
                        phase === 'READY' ? 'ENROLL CURRENT FACE' : 
                        phase === 'COVERAGE_INCOMPLETE' ? 'COVERAGE INCOMPLETE' : 
-                       phase === 'FAILED' ? 'ENROLLMENT FAILED' : 
+                       phase === 'SESSION_TERMINATED' ? 'ENROLLMENT FAILED' : 
                        phase === 'ENROLLED' ? 'FACE ENROLLED ✓' : 
                        enrollmentProgress ? `COLLECTING FRAMES ${enrollmentProgress.valid_frames}/${enrollmentProgress.required_frames || 15}` : 
                        'COLLECTING FRAMES...'}
@@ -1732,7 +1733,7 @@ timestamp: ${new Date().toISOString()}`);
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {/* Simulate Threat button for pitch demo during continuous monitoring */}
-                    {isMonitoring && phase === 'CONTINUOUS_MONITORING' && (
+                    {isMonitoring && phase === 'CONTINUOUS_VERIFICATION' && (
                       <button 
                         onClick={() => {
                           triggerSessionTermination('IDENTITY MISMATCH — UNAUTHORIZED PERSON DETECTED');
@@ -1787,27 +1788,27 @@ timestamp: ${new Date().toISOString()}`);
                   </div>
                   <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'IDENTITY_VERIFYING' || phase === 'IDENTITY_VERIFIED') ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'IDENTITY_VERIFYING' ? '#ffb80022' : '#334155', border: `1px solid ${phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#475569' }}>2</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'FACE_IDENTITY') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'FACE_IDENTITY' ? '#ffb80022' : '#334155', border: `1px solid ${phase === 'FACE_IDENTITY' ? '#ffb800' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'FACE_IDENTITY' ? '#ffb800' : '#475569' }}>2</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'IDENTITY_VERIFYING' ? '#ffb800' : '#94a3b8' }}>Identity</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'FACE_IDENTITY' ? '#ffb800' : '#94a3b8' }}>Identity</div>
                   </div>
-                  <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'LIVENESS_CHALLENGES' || phase === 'LIVENESS_VERIFIED') ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff22' : '#334155', border: `1px solid ${phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#475569' }}>3</span>
+
+                  {/* Step 3 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'CHALLENGE_RUNNING' || phase === 'CHALLENGE_COMPLETE') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'CHALLENGE_RUNNING' ? '#00d4ff22' : '#334155', border: `1px solid ${phase === 'CHALLENGE_RUNNING' ? '#00d4ff' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'CHALLENGE_RUNNING' ? '#00d4ff' : '#475569' }}>3</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'LIVENESS_CHALLENGES' ? '#00d4ff' : '#94a3b8' }}>Liveness</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'CHALLENGE_RUNNING' ? '#00d4ff' : '#94a3b8' }}>Liveness</div>
                   </div>
-                  <div style={{ width: 2, height: 16, background: 'rgba(255,255,255,0.1)', marginLeft: 11, marginTop: -8, marginBottom: -8 }} />
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'CONTINUOUS_MONITORING' || phase === 'ACCESS_GRANTED') ? 1 : 0.5 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'CONTINUOUS_MONITORING' ? '#00ff8822' : '#334155', border: `1px solid ${phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#475569' }}>4</span>
+
+                  {/* Step 4 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: (phase === 'CONTINUOUS_VERIFICATION' || phase === 'SESSION_PROTECTED') ? 1 : 0.5 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: phase === 'CONTINUOUS_VERIFICATION' ? '#00ff8822' : '#334155', border: `1px solid ${phase === 'CONTINUOUS_VERIFICATION' ? '#00ff88' : '#475569'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: phase === 'CONTINUOUS_VERIFICATION' ? '#00ff88' : '#475569' }}>4</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'CONTINUOUS_MONITORING' ? '#00ff88' : '#94a3b8' }}>Monitoring</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: phase === 'CONTINUOUS_VERIFICATION' ? '#00ff88' : '#94a3b8' }}>Monitoring</div>
                   </div>
                 </div>
               </div>
@@ -1866,7 +1867,7 @@ timestamp: ${new Date().toISOString()}`);
             )}
 
             {/* Challenge Progress */}
-                        {phase === 'IDENTITY_VERIFYING' && (
+                        {phase === 'FACE_IDENTITY' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: '#ffb800', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
@@ -1880,7 +1881,7 @@ timestamp: ${new Date().toISOString()}`);
               </div>
             )}
             
-                        {phase === 'IDENTITY_VERIFIED' && (
+                        {phase === 'CHALLENGE_COMPLETE' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#00ff88' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
@@ -1894,7 +1895,7 @@ timestamp: ${new Date().toISOString()}`);
               </div>
             )}
             
-{phase === 'ACCESS_GRANTED' && (
+{phase === 'SESSION_PROTECTED' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#00ff88' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
@@ -1908,7 +1909,7 @@ timestamp: ${new Date().toISOString()}`);
               </div>
             )}
             
-            {phase === 'FAILED' && (
+            {phase === 'SESSION_TERMINATED' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#ef4444' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
@@ -1922,20 +1923,7 @@ timestamp: ${new Date().toISOString()}`);
               </div>
             )}
             
-            {phase === 'ACCESS_REVOKED' && (
-              <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', flexShrink: 0, marginBottom: 12, borderColor: '#ef4444' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                    ACCESS REVOKED
-                  </div>
-                  <AlertTriangle size={16} color="#ef4444" />
-                </div>
-                <div style={{ fontSize: 13, color: '#ef4444', lineHeight: 1.4, marginBottom: 12 }}>
-                  Session terminated due to security policy violation during continuous monitoring.
-                </div>
-              </div>
-            )}
-{phase === 'LIVENESS_CHALLENGES' && (
+{phase === 'CHALLENGE_RUNNING' && (
               <div className="glass" style={{ padding: 16, borderRadius: 14, display: 'flex', flexDirection: 'column', maxHeight: '400px', flexShrink: 0 }}>
                 <div style={{ flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

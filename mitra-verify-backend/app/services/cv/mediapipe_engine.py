@@ -229,6 +229,16 @@ def _smile_score(landmarks, w, h):
     avg_corner = (left_corner + right_corner) / 2
     return max(0.0, min(1.0, (upper_lip - avg_corner + 5) / 10))
 
+def _calculate_smile_score(landmarks, w, h):
+    """Detect smile from mouth width ratio."""
+    p_left_mouth = np.asarray([float(landmarks[291].x), float(landmarks[291].y)], dtype=np.float64)
+    p_right_mouth = np.asarray([float(landmarks[61].x), float(landmarks[61].y)], dtype=np.float64)
+    mouth_width = float(np.linalg.norm(np.asarray(p_left_mouth) - np.asarray(p_right_mouth)))
+    p_left_jaw = np.asarray([float(landmarks[234].x), float(landmarks[234].y)], dtype=np.float64)
+    p_right_jaw = np.asarray([float(landmarks[454].x), float(landmarks[454].y)], dtype=np.float64)
+    face_width = float(np.linalg.norm(np.asarray(p_left_jaw) - np.asarray(p_right_jaw)))
+    smile_ratio = mouth_width / face_width if face_width > 0.001 else 0.32
+    return float(np.clip((smile_ratio - 0.32) / 0.08, 0.0, 1.0))
 
 # ─────────────────────────────────────────────────────────────
 # BASIC LIVENESS ENGINE
@@ -2086,8 +2096,9 @@ def _build_enrollment_progress(session_id: str | None, quality_pass: bool = True
     # Calculate missing coverage
     required_poses = {"Front", "Left 15", "Right 15", "Up", "Down"}
     required_exprs = {"Neutral", "Smile"}
-    missing_poses = list(required_poses - pose_cov_set)
-    missing_exprs = list(required_exprs - expr_cov_set)
+    missing_poses = list(required_poses - set(pose_cov_set))
+    missing_exprs = list(required_exprs - set(expr_cov_set))
+    print(f"[DEBUG ENROLL] valid={valid}, pose_cov_set={pose_cov_set}, missing_poses={missing_poses}, missing_exprs={missing_exprs}")
     
     frame_seq = session.get("frames", [])
     frame_seq_id = len(frame_seq) if frame_seq else 0
@@ -2313,6 +2324,44 @@ def _process_demo_frame_inner(
     session_proxy = None
     if session_id and session_id in SESSION_CACHE:
         session_proxy = SESSION_CACHE[session_id]
+        if session_proxy.get("stage") == "SESSION_TERMINATED":
+            return {
+                "face_present": False,
+                "detected_faces": 0,
+                "face_confidence": 0.0,
+                "landmark_count": 0,
+                "status": "SESSION_TERMINATED",
+                "reason": "Session has been explicitly terminated due to a security failure.",
+                "challenge_passed": False,
+                "enrolled_matched": False
+            }
+        
+        import hashlib
+        current_hash = hashlib.md5(image_b64.encode('utf-8')).hexdigest()
+        if session_proxy is not None:
+            frame_hashes = session_proxy.get("frame_hashes", [])
+            if current_hash in frame_hashes:
+                session_proxy["identical_frames"] = session_proxy.get("identical_frames", 0) + 1
+            else:
+                session_proxy["identical_frames"] = 0
+                
+            frame_hashes.append(current_hash)
+            if len(frame_hashes) > 15:
+                frame_hashes.pop(0)
+            session_proxy["frame_hashes"] = frame_hashes
+            
+            if session_proxy.get("identical_frames", 0) >= 30:
+                session_proxy["stage"] = "SESSION_TERMINATED"
+                return {
+                    "face_present": False,
+                    "detected_faces": 0,
+                    "face_confidence": 0.0,
+                    "landmark_count": 0,
+                    "status": "SESSION_TERMINATED",
+                    "reason": "CAMERA_FREEZE",
+                    "challenge_passed": False,
+                    "enrolled_matched": False
+                }
     
     print("FACE_DETECTION_STARTED")
     if not MP_AVAILABLE or not CV2_AVAILABLE:
@@ -2448,7 +2497,7 @@ def _process_demo_frame_inner(
             current_stage = session.get("stage", "ENROLLMENT")
             session["face_lost_frames"] = session.get("face_lost_frames", 0) + 1
             
-            if current_stage in ("CONTINUOUS_MONITORING", "LIVENESS_CHALLENGES", "IDENTITY_VERIFYING", "IDENTITY_VERIFIED"):
+            if current_stage in ("CONTINUOUS_VERIFICATION", "CHALLENGE_RUNNING", "FACE_IDENTITY", "CHALLENGE_COMPLETE", "SESSION_PROTECTED"):
                 time_missing = time.time() - session["last_face_seen"]
                 if time_missing > 3.0:
                     status_code = "FACE_LOST_TIMEOUT"
@@ -2460,9 +2509,10 @@ def _process_demo_frame_inner(
                 else:
                     status_code = "searching_for_face"
                     reason_code = "no_face_detected"
-            elif time.time() - session.get("challenge_start_time", time.time()) > 300.0:
-                status_code = "CHALLENGE_FAILED"
+            elif time.time() - session.get("challenge_start_time", time.time()) > 30.0:
+                status_code = "CHALLENGE_TIMEOUT"
                 reason_code = "CHALLENGE_TIMEOUT"
+                session["stage"] = "SESSION_TERMINATED"
                 
         return {
             "face_present": False,
@@ -2764,14 +2814,12 @@ def _process_demo_frame_inner(
     gaze_direction, gaze_available = _gaze_estimation(landmarks, w, h)
     
     # 5. Smile (Mouth corner expansion ratio normalized by face width)
-    p_left_mouth = np.asarray([float(landmarks[291].x), float(landmarks[291].y)], dtype=np.float64)
-    p_right_mouth = np.asarray([float(landmarks[61].x), float(landmarks[61].y)], dtype=np.float64)
-    mouth_width = float(np.linalg.norm(np.asarray(p_left_mouth) - np.asarray(p_right_mouth)))
-    p_left_jaw = np.asarray([float(landmarks[234].x), float(landmarks[234].y)], dtype=np.float64)
-    p_right_jaw = np.asarray([float(landmarks[454].x), float(landmarks[454].y)], dtype=np.float64)
-    face_width = float(np.linalg.norm(np.asarray(p_left_jaw) - np.asarray(p_right_jaw)))
-    smile_ratio = mouth_width / face_width if face_width > 0.001 else 0.32
-    smile_score = float(np.clip((smile_ratio - 0.32) / 0.08, 0.0, 1.0))
+    smile_score = _calculate_smile_score(landmarks, w, h)
+    
+    # Need face_width for jaw_ratio later
+    p_left_jaw_local = np.asarray([float(landmarks[234].x), float(landmarks[234].y)], dtype=np.float64)
+    p_right_jaw_local = np.asarray([float(landmarks[454].x), float(landmarks[454].y)], dtype=np.float64)
+    face_width = float(np.linalg.norm(np.asarray(p_left_jaw_local) - np.asarray(p_right_jaw_local)))
     
     # 6. Eyebrow raise — use arch landmarks vs upper eyelid for best accuracy
     left_brow_y = min(landmarks[63].y, landmarks[105].y, landmarks[66].y, landmarks[107].y)
@@ -3419,88 +3467,81 @@ def _process_demo_frame_inner(
             # State transitions
             prev_stage = current_stage
             
-            if current_stage == "IDENTITY_VERIFYING":
+            if current_stage == "FACE_IDENTITY":
                 if enrolled_matched:
-                    session["stage"] = "IDENTITY_VERIFIED"
-                    session["identity_verified_time"] = time.time()
+                    session["stage"] = "CHALLENGE_RUNNING"
+                    session["challenge_start_time"] = time.time()
                 elif not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 30:
-                    session["stage"] = "FAILED"
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "UNAUTHORIZED_PERSON"
                     session["wrong_person_frames"] = 0  # Reset after terminal transition
                     
-            elif current_stage == "IDENTITY_VERIFIED":
-                # BUG 3 FIX: Default fallback was time.time() which made the
-                # condition (time.time() - time.time() > 0.5) ALWAYS false,
-                # permanently sticking the user at IDENTITY_VERIFIED.
-                if time.time() - session.get("identity_verified_time", 0) > 0.5:
-                    session["stage"] = "LIVENESS_CHALLENGES"
-                    session["challenge_start_time"] = time.time()
-                    session["wrong_person_frames"] = 0  # BUG 10: Reset on stage transition
-                    
-            elif current_stage == "LIVENESS_CHALLENGES":
+            elif current_stage == "CHALLENGE_RUNNING":
                 # BUG 10 FIX: Don't increment wrong_person_frames during challenges.
                 # Head movements are expected and temporarily drop identity match.
                 
+                # Enforce 30s timeout for challenge
+                if time.time() - session.get("challenge_start_time", time.time()) > 30.0:
+                    session["stage"] = "SESSION_TERMINATED"
+                    status = "CHALLENGE_TIMEOUT"
+                
                 # Face lost during challenges → terminate after ~1.5s (45 frames at 30fps)
-                if history and history.get("face_lost_frames", 0) >= 45:
-                    session["stage"] = "FAILED"
+                elif history and history.get("face_lost_frames", 0) >= 45:
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "FACE_LOST"
-                # BUG 6 FIX: Guard monitoring transition — only accept from valid stages.
+                # Guard monitoring transition — only accept from valid stages.
                 elif challenge_type == "liveness_verified":
-                    session["stage"] = "LIVENESS_VERIFIED"
-                    
-                    # BUG 5 FIX: Use rolling identity_history window (not single-frame
-                    # enrolled_matched) and add grace period instead of immediate FAIL.
-                    # During the last challenge, the user may have moved their head,
-                    # temporarily dropping identity match on this one frame.
                     id_history = session.get("identity_history", [])[-10:]
                     recent_matches = sum(id_history) if id_history else 0
                     is_identity_secure = recent_matches >= 3
 
-                    is_secure = (
-                        is_identity_secure and
-                        spoof_score < 0.5
-                    )
+                    is_secure = (is_identity_secure and spoof_score < 0.5)
                     if is_secure:
-                        session["stage"] = "LIVENESS_VERIFIED"
-                        session["liveness_verified_time"] = time.time()
+                        session["stage"] = "CHALLENGE_COMPLETE"
+                        session["challenge_complete_time"] = time.time()
                         session["wrong_person_frames"] = 0  # Reset on stage transition
                     else:
-                        # Grace period: don't immediately fail on one bad frame.
-                        # Give 30 frames (1 second at 30fps) to re-confirm identity.
                         lv_attempts = session.get("liveness_verify_attempts", 0) + 1
                         session["liveness_verify_attempts"] = lv_attempts
                         if lv_attempts >= 30:
-                            session["stage"] = "FAILED"
+                            session["stage"] = "SESSION_TERMINATED"
                             status = "SECURITY_CHECK_FAILED"
                         else:
-                            # Stay at LIVENESS_CHALLENGES, retry on next frame
-                            session["stage"] = "LIVENESS_CHALLENGES"
+                            session["stage"] = "CHALLENGE_RUNNING"
                             
-            elif current_stage == "LIVENESS_VERIFIED":
-                if time.time() - session.get("liveness_verified_time", 0) > 0.5:
-                    session["stage"] = "ACCESS_GRANTED"
-                    session["access_granted_time"] = time.time()
+            elif current_stage == "CHALLENGE_COMPLETE":
+                if time.time() - session.get("challenge_complete_time", 0) > 0.5:
+                    session["stage"] = "SESSION_PROTECTED"
+                    session["session_protected_time"] = time.time()
                         
-            elif current_stage == "ACCESS_GRANTED":
-                if time.time() - session.get("access_granted_time", 0) > 2.0:
-                    session["stage"] = "CONTINUOUS_MONITORING"
+            elif current_stage == "SESSION_PROTECTED":
+                if time.time() - session.get("session_protected_time", 0) > 2.0:
+                    session["stage"] = "CONTINUOUS_VERIFICATION"
                     session["wrong_person_frames"] = 0  # Reset on stage transition
+                    session["last_movement_time"] = time.time() # Track passive liveness timeout
                         
-            elif current_stage == "CONTINUOUS_MONITORING":
+            elif current_stage == "CONTINUOUS_VERIFICATION":
+                # Passive Liveness 30s Timeout Check
+                has_movement = blink_detected or mouth_movement or head_rotation or (eyebrow_raised if isinstance(eyebrow_raised, bool) else False)
+                if has_movement:
+                    session["last_movement_time"] = time.time()
+                elif time.time() - session.get("last_movement_time", time.time()) > 30.0:
+                    session["stage"] = "SESSION_TERMINATED"
+                    status = "PASSIVE_LIVENESS_TIMEOUT"
+
                 # BUG 6 FIX: Also handle monitoring challenge_type here safely
                 if not enrolled_matched and history and history.get("wrong_person_frames", 0) >= 15:
-                    session["stage"] = "ACCESS_REVOKED"
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "UNAUTHORIZED_PERSON"
                 elif detected_faces != 1 and history and history.get("multiple_faces_frames", 0) >= 15:
-                    session["stage"] = "ACCESS_REVOKED"
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "MULTIPLE_FACES"
                 elif spoof_score > 0.5:
-                    session["stage"] = "ACCESS_REVOKED"
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "SPOOF_DETECTED"
                 # Face lost during monitoring → revoke access after ~1s (30 frames at 30fps)
                 elif history and history.get("face_lost_frames", 0) >= 30:
-                    session["stage"] = "ACCESS_REVOKED"
+                    session["stage"] = "SESSION_TERMINATED"
                     status = "FACE_LOST"
 
             if prev_stage != session.get("stage"):

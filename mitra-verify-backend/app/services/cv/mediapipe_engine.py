@@ -3338,9 +3338,14 @@ def _process_demo_frame_inner(
         print(f"[ENROLL SESSION]\nfrontend_session={session_id}\nbackend_session={history.get('id', session_id)}\nsame_session={session_id == history.get('id', session_id)}")
             
         # Add to coverage even if frame isn't captured (to show user feedback)
+        pose_cov = history.get("pose_coverage", set())
         for cat in pose_categories:
-            history["pose_coverage"].add(cat)
-        history["expression_coverage"].add(expr_category)
+            pose_cov.add(cat)
+        history["pose_coverage"] = pose_cov
+        
+        expr_cov = history.get("expression_coverage", set())
+        expr_cov.add(expr_category)
+        history["expression_coverage"] = expr_cov
         
         frame_count = history.get("frame_count", 0)
         history["frame_count"] = frame_count + 1
@@ -3352,15 +3357,17 @@ def _process_demo_frame_inner(
         # Diagnostics
         print(f"[ENROLL DIAG] Frame={frame_count}, HighQuality={is_high_quality}, Reason='{enrollment_failure_reason}', Valid={len(history.get('enrollment_embeddings', []))}, Wait={(frame_count - history.get('enrollment_last_capture', 0))}")
 
-        # Only capture if high quality and we haven't reached 30 yet
-        if is_high_quality and len(history["enrollment_embeddings"]) < 30:
-            if (frame_count - history["enrollment_last_capture"]) >= 3:
-                collection_before = len(history["enrollment_embeddings"])
+        # Only capture if high quality and we haven't reached 15 yet
+        emb_list = history.get("enrollment_embeddings", [])
+        if is_high_quality and len(emb_list) < 15:
+            if (frame_count - history.get("enrollment_last_capture", 0)) >= 3:
+                collection_before = len(emb_list)
                 emb = _calculate_face_embedding(frame, landmarks)
                 print(f"[ENROLL EMBEDDING]\ngenerated=True\nshape={len(emb) if isinstance(emb, list) else getattr(emb, 'shape', 'unknown')}\ndimension=512\nfinite=True\nnorm=unknown")
-                history["enrollment_embeddings"].append(emb)
+                emb_list.append(emb)
+                history["enrollment_embeddings"] = emb_list
                 history["enrollment_last_capture"] = frame_count
-                print(f"[ENROLL ACCEPT]\nsample_added=True\ncollection_before={collection_before}\ncollection_after={len(history['enrollment_embeddings'])}")
+                print(f"[ENROLL ACCEPT]\nsample_added=True\ncollection_before={collection_before}\ncollection_after={len(emb_list)}")
 
     # 12. Face signature & matching
     t_identity_start = time.perf_counter()

@@ -340,8 +340,9 @@ async def start_session(
     enterprise_pool = ['HEAD_UP', 'HEAD_DOWN', 'HEAD_LEFT', 'HEAD_RIGHT', 'NOD_HEAD', 'OPEN_MOUTH', 'HEAD_ROTATION', 'EYEBROWS_UP']
     
     if data.api_type == "enterprise":
-        requested_count = 3
-        selected = secrets.SystemRandom().sample(enterprise_pool, requested_count)
+        requested_count = secrets.choice([6, 7]) # 6-7 random + 1 FACE_CENTERED = 7-8 total
+        num_challenges = min(len(enterprise_pool), requested_count)
+        selected = secrets.SystemRandom().sample(enterprise_pool, num_challenges)
     elif data.api_type == "advanced":
         requested_count = secrets.choice([3, 4, 5])
         num_challenges = min(len(advanced_pool), requested_count)
@@ -397,6 +398,7 @@ async def start_session(
         "smile_ratios": [],
         "baseline_smile_ratio": None,
         "current_challenge": "FACE_CENTERED",
+        "user_id": current_user.id if current_user else None,
         "current_challenge_index": 0,
         "challenges": challenges,
         "logged": False,

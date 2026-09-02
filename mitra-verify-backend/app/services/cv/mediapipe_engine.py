@@ -2848,24 +2848,20 @@ def _process_demo_frame_inner(
     is_stable = detected_faces == 1 and face_confidence > 0.8
     history = update_session_history(session_id, landmarks, avg_ear, mar, yaw, pitch, roll, challenge_type, is_calibration_quality=is_stable)
 
-    # Camera feed frozen check — skip during enrollment and active liveness challenges
-    # During challenges, users naturally hold still between movements, causing false positives
-    current_stage = history.get("stage", "ENROLLMENT") if history else "ENROLLMENT"
-    is_active_challenge = challenge_type in ("HEAD_UP", "HEAD_DOWN", "HEAD_LEFT", "HEAD_RIGHT", "NOD_HEAD", "HEAD_ROTATION", "BLINK_ONCE", "BLINK_TWICE", "OPEN_MOUTH", "EYEBROWS_UP", "FACE_CENTERED", "SMILE")
-    if api_type == "enterprise" and history and len(history["landmarks"]) >= 10 and current_stage != "ENROLLMENT" and not is_active_challenge:
-        # Use last 10 frames for more robust detection
-        recent_lms = history["landmarks"][-10:]
-        lms_np = np.array(recent_lms)
-        variance = np.var(lms_np, axis=0).mean()
-        # Test override if mocking
-        if hasattr(lms_np, "mock"): variance = 1.0
-        # Threshold lowered: real people have micro-movements ~0.0001-0.001;
-        # truly frozen feeds (static image / screenshot) have variance < 0.00001
-        if variance < 0.00001:
+    # Camera feed frozen check - strict duplicate frame detection
+    # Real camera feeds (even perfectly still users) will ALWAYS have sensor noise resulting in different base64 hashes.
+    # An exactly identical frame hash over multiple frames indicates a frozen camera or replay attack.
+    if api_type == "enterprise" and history:
+        import hashlib
+        frame_hash = hashlib.md5(image_b64.encode('utf-8')).hexdigest()
+        last_hash = history.get("last_frame_hash")
+        history["last_frame_hash"] = frame_hash
+        
+        if last_hash == frame_hash:
             frozen_count = history.get("frozen_frame_count", 0) + 1
             history["frozen_frame_count"] = frozen_count
-            # Require 10+ consecutive frozen detections before triggering terminal status
-            if frozen_count >= 10:
+            # Require 15 consecutive IDENTICAL frames (approx 0.5-1.0s depending on fps)
+            if frozen_count >= 15:
                 history["rejected_frames"] = history.get("rejected_frames", 0) + 1
                 payload = {
                     "face_present": True, "detected_faces": detected_faces, "face_confidence": face_confidence, "landmark_count": landmark_count,
@@ -2874,7 +2870,7 @@ def _process_demo_frame_inner(
                 }
                 return payload
         else:
-            # Reset counter when variance is healthy
+            # Reset counter when image hash changes (normal camera behavior)
             history["frozen_frame_count"] = 0
 
     # Strict Yaw/Pitch validation for embedding comparison

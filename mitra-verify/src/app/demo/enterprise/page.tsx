@@ -1000,42 +1000,21 @@ timestamp: ${new Date().toISOString()}`);
 
         // State machine progression MUST run if face is present, regardless of perfectly centered or not
         if (phaseRef.current === 'CHALLENGE_RUNNING') {
-          
-          if (currentChallenge === 0) {
-            // First challenge is ALWAYS face centered
-            if (data.face_confidence > 0.50 && inside && data.detected_faces === 1) {
-              if (!centerTimerStartedRef.current) {
-                centerTimerStartedRef.current = true; centerTimerStartTimeRef.current = Date.now();
-              } else {
-                const centeredDur = (Date.now() - centerTimerStartTimeRef.current) / 1000;
-                setFaceVisibleDuration(centeredDur);
-                if (centeredDur >= 1.5) { // Reduced to 1.5s for better UX
-                  setIsFacePrepared(true);
-                  setChallengePassed(prev => { const next = [...prev]; next[0] = true; return next; });
-                  currentChallengeRef.current = 1; setCurrentChallenge(1);
-                  stepStartTimeRef.current = Date.now();
-                }
-              }
-            } else { centerTimerStartedRef.current = false; setFaceVisibleDuration(0); }
-          } else {
-            // BUG 4 FIX: Sync challenge index from backend instead of advancing locally.
-            // The backend advances current_challenge_index in the liveness router (line 466)
-            // and returns sequence_advanced=true. The frontend was ALSO advancing,
-            // causing challenges to be double-advanced (skipping one).
-            if (data.current_challenge_index !== undefined) {
-              const backendIdx = data.current_challenge_index as number;
-              if (backendIdx !== currentChallenge) {
-                currentChallengeRef.current = backendIdx;
-                setCurrentChallenge(backendIdx);
-                stepStartTimeRef.current = Date.now();
-              }
+          // BUG 4 FIX: Sync challenge index entirely from backend instead of advancing locally.
+          if (data.current_challenge_index !== undefined) {
+            const backendIdx = data.current_challenge_index as number;
+            if (backendIdx !== currentChallenge) {
+              currentChallengeRef.current = backendIdx;
+              setCurrentChallenge(backendIdx);
+              stepStartTimeRef.current = Date.now();
             }
-            // Mark challenges as passed based on sequence_advanced flag from backend
-            if (data.sequence_advanced && data.challenge_passed) {
-              const passedIdx = ((data.current_challenge_index as number) ?? 1) - 1;
-              if (passedIdx >= 0) {
-                setChallengePassed(prev => { const next = [...prev]; next[passedIdx] = true; return next; });
-              }
+          }
+          // Mark challenges as passed based on sequence_advanced flag from backend
+          if (data.sequence_advanced && data.challenge_passed) {
+            const passedIdx = ((data.current_challenge_index as number) ?? 1) - 1;
+            if (passedIdx >= 0) {
+              setChallengePassed(prev => { const next = [...prev]; next[passedIdx] = true; return next; });
+              if (passedIdx === 0) setIsFacePrepared(true);
             }
           }
         } // End if phase === CHALLENGES
@@ -1368,6 +1347,16 @@ timestamp: ${new Date().toISOString()}`);
     
     await refreshUser();
     setTimeout(() => { startCamera(); }, 100);
+  };
+
+  const endSession = async () => {
+    sessionGenerationRef.current += 1;
+    stopCamera();
+    setHasFaceEnrolled(false);
+    setPhase('IDLE');
+    setEnterpriseReport(null);
+    setSessionTerminated(true);
+    setTerminationReason('Session Ended by User');
   };
 
   type EnterpriseState = 'FACE_DETECTED' | 'FACE_ENROLLED' | 'IDENTITY_MATCHED' | 'CHALLENGES_COMPLETED' | 'AUTHENTICATED' | 'MONITORING';
@@ -1994,6 +1983,27 @@ timestamp: ${new Date().toISOString()}`);
             )}
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 4, paddingBottom: 20 }}>
+              {/* Post-Enrollment Actions */}
+              {isVerified && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button 
+                    onClick={clearEnrollment}
+                    style={{ flex: 1, padding: '10px 0', background: 'rgba(255, 51, 102, 0.1)', border: '1px solid rgba(255, 51, 102, 0.3)', borderRadius: 8, color: '#ff3366', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 51, 102, 0.2)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 51, 102, 0.1)'}
+                  >
+                    Clear Enrollment
+                  </button>
+                  <button 
+                    onClick={endSession}
+                    style={{ flex: 1, padding: '10px 0', background: 'rgba(148, 163, 184, 0.1)', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: 8, color: '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(148, 163, 184, 0.2)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(148, 163, 184, 0.1)'}
+                  >
+                    End Session
+                  </button>
+                </div>
+              )}
               {/* Identity Panel — Highest Priority */}
               <IdentityPanel
                 similarity={similarity}

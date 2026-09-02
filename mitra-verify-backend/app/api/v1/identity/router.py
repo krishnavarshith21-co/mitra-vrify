@@ -31,7 +31,7 @@ async def identity_verify(
     db: AsyncSession = Depends(get_db)
 ):
     # Retrieve the enrolled face embedding for this subject from the database
-    subject_id = str(data.subject_id or current_user.id)
+    subject_id = data.subject_id or str(current_user.id)
     stmt = select(FaceProfile).where(FaceProfile.user_id == subject_id)
     res = await db.execute(stmt)
     enrolled = res.scalar_one_or_none()
@@ -123,7 +123,7 @@ async def identity_verify(
                 
                 # Update metadata if drifted
                 meta = dict(enrolled.template_metadata) if enrolled.template_metadata else {}
-                meta["drift_score"] = float(avg_orig_sim)
+                meta["drift_score"] = avg_orig_sim
                 if avg_orig_sim < 0.85:
                     meta["drift_status"] = "DRIFT_DETECTED"
                 else:
@@ -415,7 +415,7 @@ async def identity_enroll(
     print("[Enrollment] Stage 10: Embedding storage")
     print("=== DATABASE SAVE STARTED ===")
     try:
-        user_id = str(data.subject_id or current_user.id)
+        user_id = data.subject_id or str(current_user.id)
         await db.execute(delete(FaceProfile).where(FaceProfile.user_id == user_id))
         
         embedding_list = list(embedding_vector)
@@ -424,7 +424,7 @@ async def identity_enroll(
         emb_hash = hashlib.sha256(json.dumps(embedding_list).encode()).hexdigest()
         
         # Use the session_data already populated above (do NOT re-fetch — would lose template_quality_score)
-        db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id) else {}
+        db_session_data = SESSION_CACHE.get(data.session_id) or {} if data.session_id else {}
         template_meta = {
             "quality_score": db_session_data.get("template_quality_score", 100.0),
             "pose_coverage": db_session_data.get("pose_coverage_list", ["Front"]),
@@ -483,7 +483,7 @@ async def identity_enroll(
     
     # Calculate final quality score for the response message
     final_q = quality.get('quality_score', 0.0)
-    db_session_data = SESSION_CACHE.get(data.session_id, {}) if (data.session_id) else {}
+    db_session_data = SESSION_CACHE.get(data.session_id) or {} if data.session_id else {}
     if 'template_quality_score' in db_session_data:
         final_q = db_session_data['template_quality_score']
     
@@ -522,4 +522,10 @@ async def clear_enrolled_identity(
 ):
     await db.execute(delete(FaceProfile).where(FaceProfile.user_id == current_user.id))
     await db.commit()
+    
+    from app.services.cv.mediapipe_engine import SESSION_CACHE
+    keys_to_delete = [sid for sid, s in SESSION_CACHE.items() if s.get("user_id") == current_user.id]
+    for sid in keys_to_delete:
+        SESSION_CACHE.pop(sid, None)
+        
     return {"success": True}
